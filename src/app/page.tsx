@@ -1,6 +1,6 @@
 'use client';
 
-import {useState, useRef, type ChangeEvent} from 'react';
+import {useState, useRef, type ChangeEvent, useEffect} from 'react';
 import Image from 'next/image';
 import {
   Upload,
@@ -9,6 +9,8 @@ import {
   X,
   ServerCrash,
   LayoutDashboard,
+  Camera,
+  XCircle,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
@@ -30,6 +32,7 @@ import {Input} from '@/components/ui/input';
 import {Alert, AlertTitle, AlertDescription} from '@/components/ui/alert';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Badge} from '@/components/ui/badge';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 
 export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -42,6 +45,47 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {addReceipt} = useReceipts();
   const router = useRouter();
+
+  const [inputMethod, setInputMethod] = useState<'upload' | 'camera'>(
+    'upload'
+  );
+  const [hasCameraPermission, setHasCameraPermission] = useState<
+    boolean | null
+  >(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    if (inputMethod === 'camera' && !imagePreview) {
+      const getCameraPermission = async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {facingMode: 'environment'},
+          });
+          setHasCameraPermission(true);
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          setError(
+            'Camera access was denied. Please enable camera permissions in your browser settings.'
+          );
+        }
+      };
+
+      getCameraPermission();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [inputMethod, imagePreview]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -61,6 +105,36 @@ export default function Home() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleCapture = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !hasCameraPermission) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg');
+
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const previewUrl = URL.createObjectURL(blob);
+          setImagePreview(previewUrl);
+        }
+      },
+      'image/jpeg',
+      0.95
+    );
+
+    setImageData(dataUrl);
+    setError(null);
+    setDiagnosis(null);
   };
 
   const handleScanReceipt = async () => {
@@ -99,6 +173,13 @@ export default function Home() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    setHasCameraPermission(null);
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setInputMethod('upload');
   };
 
   const renderInitialState = () => (
@@ -108,32 +189,80 @@ export default function Home() {
           <Bot /> AI Receipt Scanner
         </CardTitle>
         <CardDescription>
-          Upload a photo of your receipt to get started.
+          Use your camera or upload a photo to get started.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div
-          className="relative flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors"
-          onClick={() => fileInputRef.current?.click()}
+        <Tabs
+          defaultValue="upload"
+          value={inputMethod}
+          onValueChange={(value) =>
+            setInputMethod(value as 'upload' | 'camera')
+          }
+          className="w-full"
         >
-          <div className="text-center">
-            <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Click to upload or drag and drop
-            </p>
-            <p className="text-xs text-muted-foreground">
-              PNG, JPG, or WEBP (max 4MB)
-            </p>
-          </div>
-          <Input
-            ref={fileInputRef}
-            id="receipt-upload"
-            type="file"
-            className="sr-only"
-            accept="image/png, image/jpeg, image/webp"
-            onChange={handleFileChange}
-          />
-        </div>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="upload">
+              <Upload className="mr-2" /> Upload
+            </TabsTrigger>
+            <TabsTrigger value="camera">
+              <Camera className="mr-2" /> Camera
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="upload" className="pt-4">
+            <div
+              className="relative flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="text-center">
+                <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, or WEBP (max 4MB)
+                </p>
+              </div>
+              <Input
+                ref={fileInputRef}
+                id="receipt-upload"
+                type="file"
+                className="sr-only"
+                accept="image/png, image/jpeg, image/webp"
+                onChange={handleFileChange}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="camera" className="pt-4 space-y-4">
+            <div className="relative w-full overflow-hidden rounded-lg aspect-video bg-muted border">
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                muted
+                playsInline
+              />
+              {hasCameraPermission === false && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white p-4">
+                  <XCircle className="w-10 h-10 mb-2" />
+                  <p className="text-center font-semibold">
+                    Camera Access Denied
+                  </p>
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={handleCapture}
+              disabled={!hasCameraPermission}
+              className="w-full"
+            >
+              <Camera className="mr-2" /> Capture Photo
+            </Button>
+          </TabsContent>
+        </Tabs>
+
+        <canvas ref={canvasRef} className="hidden" />
+
         {error && (
           <Alert variant="destructive">
             <ServerCrash className="w-4 h-4" />
@@ -159,7 +288,7 @@ export default function Home() {
             <Image
               src={imagePreview}
               alt="Receipt preview"
-              layout="fill"
+              fill
               objectFit="contain"
             />
           )}
@@ -223,7 +352,7 @@ export default function Home() {
               <Image
                 src={imagePreview}
                 alt="Receipt"
-                layout="fill"
+                fill
                 objectFit="contain"
               />
             )}
@@ -234,7 +363,9 @@ export default function Home() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Merchant
                 </p>
-                <p className="text-lg font-semibold">{diagnosis.merchantName}</p>
+                <p className="text-lg font-semibold">
+                  {diagnosis.merchantName}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Date</p>
@@ -323,7 +454,7 @@ export default function Home() {
             <Image
               src={imagePreview}
               alt="Receipt with error"
-              layout="fill"
+              fill
               objectFit="contain"
             />
           )}
@@ -343,8 +474,10 @@ export default function Home() {
           ? renderLoadingState()
           : diagnosis
             ? renderResultsState()
-            : error && imagePreview
-              ? renderErrorState()
+            : error && !diagnosis
+              ? imagePreview
+                ? renderErrorState()
+                : renderInitialState()
               : imagePreview
                 ? renderPreviewState()
                 : renderInitialState()}
