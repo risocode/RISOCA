@@ -11,21 +11,37 @@ import {addDoc, collection, serverTimestamp} from 'firebase/firestore';
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
-// Helper to convert data URI to Blob
-function dataURItoBlob(dataURI: string) {
-  const dataParts = dataURI.split(',');
-  if (dataParts.length !== 2) {
+type NotificationStatus = {
+  success: boolean;
+  message?: string;
+};
+
+export type ActionResponse = {
+  diagnosis: DiagnoseReceiptOutput;
+  notificationStatus: NotificationStatus;
+};
+
+// Helper to convert data URI to a Blob, compatible with Edge runtime
+function dataURItoBlob(dataURI: string): Blob {
+  const [header, base64Data] = dataURI.split(',');
+  if (!header || !base64Data) {
     throw new Error('Invalid Data URI');
   }
-  const mimeString = dataParts[0].split(':')[1].split(';')[0];
-  const byteString = Buffer.from(dataParts[1], 'base64');
-  return new Blob([byteString], {type: mimeString});
+  const mimeString = header.split(':')[1].split(';')[0];
+  const byteString = atob(base64Data);
+  const arrayBuffer = new ArrayBuffer(byteString.length);
+  const uint8Array = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < byteString.length; i++) {
+    uint8Array[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([uint8Array], {type: mimeString});
 }
+
 
 async function notifyOnTelegram(
   diagnosis: DiagnoseReceiptOutput,
   photoDataUri?: string
-) {
+): Promise<NotificationStatus> {
   if (!BOT_TOKEN || !CHANNEL_ID) {
     console.warn(
       'Telegram environment variables not set. Skipping channel notifications.'
@@ -69,7 +85,7 @@ async function notifyOnTelegram(
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to send message to Telegram:', errorData);
-        // We don't throw an error here, so the frontend still gets the diagnosis
+        return {success: false, message: 'Telegram API returned an error.'};
       }
     } else {
       // Send text only
@@ -88,6 +104,7 @@ async function notifyOnTelegram(
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to send message to Telegram:', errorData);
+        return {success: false, message: 'Telegram API returned an error.'};
       }
     }
     return {success: true};
@@ -115,17 +132,20 @@ async function saveReceiptToFirestore(
 
 export async function scanAndNotify(
   input: DiagnoseReceiptInput
-): Promise<DiagnoseReceiptOutput> {
+): Promise<ActionResponse> {
   const diagnosis = await diagnoseReceipt(input);
   await saveReceiptToFirestore(diagnosis, input.photoDataUri);
-  await notifyOnTelegram(diagnosis, input.photoDataUri);
-  return diagnosis;
+  const notificationStatus = await notifyOnTelegram(
+    diagnosis,
+    input.photoDataUri
+  );
+  return {diagnosis, notificationStatus};
 }
 
 export async function submitManualReceipt(
   data: DiagnoseReceiptOutput
-): Promise<DiagnoseReceiptOutput> {
+): Promise<ActionResponse> {
   await saveReceiptToFirestore(data);
-  await notifyOnTelegram(data);
-  return data;
+  const notificationStatus = await notifyOnTelegram(data);
+  return {diagnosis: data, notificationStatus};
 }

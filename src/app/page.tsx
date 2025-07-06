@@ -20,7 +20,11 @@ import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
-import {scanAndNotify, submitManualReceipt} from '@/app/actions';
+import {
+  scanAndNotify,
+  submitManualReceipt,
+  type ActionResponse,
+} from '@/app/actions';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {useForm, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -225,15 +229,25 @@ export default function Home() {
     setError(null);
 
     try {
-      const result = await scanAndNotify({
+      const response = await scanAndNotify({
         photoDataUri: imageData,
       });
-      setDiagnosis(result);
-      toast({
-        title: 'Scan Complete & Notified',
-        description:
-          'The receipt details have been sent to your Telegram channel and saved.',
-      });
+      setDiagnosis(response.diagnosis);
+      if (response.notificationStatus.success) {
+        toast({
+          title: 'Scan Complete & Notified',
+          description:
+            'The receipt details have been sent to your Telegram channel.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Scan Complete, Notification Failed',
+          description:
+            response.notificationStatus.message ||
+            'Could not send to Telegram channel.',
+        });
+      }
     } catch (e) {
       console.error(e);
       setError(
@@ -255,13 +269,23 @@ export default function Home() {
     };
 
     try {
-      const result = await submitManualReceipt(payload);
-      setDiagnosis(result);
-      toast({
-        title: 'Receipt Submitted & Notified',
-        description:
-          'The receipt details have been sent to your Telegram channel and saved.',
-      });
+      const response = await submitManualReceipt(payload);
+      setDiagnosis(response.diagnosis);
+      if (response.notificationStatus.success) {
+        toast({
+          title: 'Receipt Submitted & Notified',
+          description:
+            'The receipt details have been sent to your Telegram channel.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Submit Succeeded, Notification Failed',
+          description:
+            response.notificationStatus.message ||
+            'Could not send to Telegram channel.',
+        });
+      }
       form.reset();
     } catch (e) {
       console.error(e);
@@ -629,7 +653,7 @@ export default function Home() {
         <CardHeader>
           <CardTitle>Processing Receipt</CardTitle>
           <CardDescription>
-            Please wait a moment...
+            The AI is analyzing. Please wait a moment...
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2">
