@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'AI Receipt Scanner',
-  description: 'Upload and analyze receipts with AI',
+  title: 'AI Receipt Scanner Bot',
+  description: 'Telegram bot to analyze receipts with AI',
 };
 
 export default function RootLayout({
@@ -13,12 +13,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" className="h-full">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
-        <script src="https://telegram.org/js/telegram-web-app.js"></script>
       </head>
       <body className="font-body antialiased h-full">
         {children}
