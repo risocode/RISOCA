@@ -17,14 +17,12 @@ import {
   Wallet,
   FileText,
   Tag,
+  ChevronsUpDown,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
-import {
-  scanAndNotify,
-  submitManualReceipt,
-} from '@/app/actions';
+import {scanAndNotify, submitManualReceipt} from '@/app/actions';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {useForm, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -66,6 +64,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Command,
+  CommandList,
+  CommandItem,
+} from '@/components/ui/command';
 import {Calendar} from '@/components/ui/calendar';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {
@@ -128,6 +131,9 @@ export default function ReceiptPage() {
   >(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [openQtyPopovers, setOpenQtyPopovers] = useState<
+    Record<number, boolean>
+  >({});
 
   const form = useForm<ManualFormData>({
     resolver: zodResolver(ManualFormSchema),
@@ -152,6 +158,10 @@ export default function ReceiptPage() {
     categories: receiptCategories,
   } = useReceipts();
   const uniqueCategories = Object.keys(receiptCategories).length;
+
+  const setQtyPopoverOpen = (index: number, open: boolean) => {
+    setOpenQtyPopovers((prev) => ({...prev, [index]: open}));
+  };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -388,15 +398,6 @@ export default function ReceiptPage() {
 
   const renderInitialState = () => (
     <div className="w-full max-w-2xl text-center animate-enter">
-      <div className="flex items-center justify-center mb-4">
-        <Image
-          src="/logo.png"
-          alt="RISOCA Logo"
-          width={150}
-          height={40}
-          className="w-auto h-10 logo-glow"
-        />
-      </div>
       <p className="mb-8 text-lg text-muted-foreground">
         Scan, capture, or manually enter a receipt.
       </p>
@@ -637,6 +638,7 @@ export default function ReceiptPage() {
                               </FormItem>
                             )}
                           />
+                          <div className="flex gap-4 w-auto">
                           <FormField
                             control={form.control}
                             name={`items.${index}.price`}
@@ -655,6 +657,7 @@ export default function ReceiptPage() {
                               </FormItem>
                             )}
                           />
+                          </div>
                           <Button
                             type="button"
                             variant="ghost"
