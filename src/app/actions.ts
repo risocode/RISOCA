@@ -195,7 +195,6 @@ export async function submitSalesReport(
 
   try {
     await runTransaction(db, async (transaction) => {
-      const salesCollection = collection(db, 'sales');
       const inventoryCollection = collection(db, 'inventory');
 
       // Create a map of inventory items to fetch to avoid duplicate reads
@@ -217,8 +216,11 @@ export async function submitSalesReport(
       const itemRefs = Array.from(inventoryToFetch.values()).map(
         (i) => i.itemRef
       );
-      const inventoryDocs =
-        itemRefs.length > 0 ? await transaction.getAll(...itemRefs) : [];
+
+      const inventoryDocPromises = itemRefs.map((itemRef) =>
+        transaction.get(itemRef)
+      );
+      const inventoryDocs = await Promise.all(inventoryDocPromises);
 
       // Validate stock and prepare updates
       for (const inventoryDoc of inventoryDocs) {
