@@ -209,7 +209,10 @@ export default function Home() {
               <Camera className="mr-2" /> Camera
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="upload" className="pt-4">
+          <TabsContent
+            value="upload"
+            className="pt-4 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-300"
+          >
             <div
               className="relative flex flex-col items-center justify-center w-full p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -233,7 +236,10 @@ export default function Home() {
               />
             </div>
           </TabsContent>
-          <TabsContent value="camera" className="pt-4 space-y-4">
+          <TabsContent
+            value="camera"
+            className="pt-4 space-y-4 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-300"
+          >
             <div className="relative w-full overflow-hidden rounded-lg aspect-video bg-muted border">
               <video
                 ref={videoRef}
