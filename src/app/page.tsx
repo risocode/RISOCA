@@ -1,5 +1,3 @@
-"use client";
-
 import { Bot, Rss } from "lucide-react";
 
 export default function Home() {
