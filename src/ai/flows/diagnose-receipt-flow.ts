@@ -21,16 +21,29 @@ export type DiagnoseReceiptInput = z.infer<typeof DiagnoseReceiptInputSchema>;
 
 const DiagnoseReceiptOutputSchema = z.object({
   merchantName: z.string().describe('The name of the merchant or store.'),
-  transactionDate: z.string().describe('The date of the transaction in YYYY-MM-DD format.'),
+  transactionDate: z
+    .string()
+    .describe('The date of the transaction in YYYY-MM-DD format.'),
   total: z.number().describe('The final total amount of the receipt.'),
-  items: z.array(z.object({
-    name: z.string().describe('The name of the item purchased.'),
-    price: z.number().describe('The price of the item.'),
-  })).describe('A list of items purchased.'),
+  items: z
+    .array(
+      z.object({
+        name: z.string().describe('The name of the item purchased.'),
+        price: z.number().describe('The price of the item.'),
+      })
+    )
+    .describe('A list of items purchased.'),
+  category: z
+    .string()
+    .describe(
+      'The category of the expense. Examples: Groceries, Dining, Travel, Shopping, Utilities, Entertainment, Other.'
+    ),
 });
 export type DiagnoseReceiptOutput = z.infer<typeof DiagnoseReceiptOutputSchema>;
 
-export async function diagnoseReceipt(input: DiagnoseReceiptInput): Promise<DiagnoseReceiptOutput> {
+export async function diagnoseReceipt(
+  input: DiagnoseReceiptInput
+): Promise<DiagnoseReceiptOutput> {
   return diagnoseReceiptFlow(input);
 }
 
@@ -38,7 +51,10 @@ const prompt = ai.definePrompt({
   name: 'diagnoseReceiptPrompt',
   input: {schema: DiagnoseReceiptInputSchema},
   output: {schema: DiagnoseReceiptOutputSchema},
-  prompt: `You are an expert receipt scanner. Analyze the provided receipt image and extract the following information: the merchant's name, the transaction date, the list of all items with their prices, and the final total amount. Ensure the date is in YYYY-MM-DD format.
+  prompt: `You are an expert receipt scanner. Analyze the provided receipt image and extract the following information: the merchant's name, the transaction date, a list of all items with their prices, the final total amount, and a relevant category for the expense.
+
+Ensure the date is in YYYY-MM-DD format.
+Choose the most appropriate category from this list: Groceries, Dining, Travel, Shopping, Utilities, Entertainment, Other.
 
 Photo: {{media url=photoDataUri}}`,
 });
@@ -49,7 +65,7 @@ const diagnoseReceiptFlow = ai.defineFlow(
     inputSchema: DiagnoseReceiptInputSchema,
     outputSchema: DiagnoseReceiptOutputSchema,
   },
-  async input => {
+  async (input) => {
     const {output} = await prompt(input);
     return output!;
   }
