@@ -1,3 +1,4 @@
+
 import {NextRequest, NextResponse} from 'next/server';
 import TelegramBot from 'node-telegram-bot-api';
 import {diagnoseReceipt} from '@/ai/flows/diagnose-receipt-flow';
@@ -48,8 +49,6 @@ export async function POST(req: NextRequest) {
         messageText += `• ${item.name}: $${item.price.toFixed(2)}\n`;
       });
       messageText += `\n*Total: \$${diagnosis.total.toFixed(2)}*`;
-
-      const originalMessageLink = `https://t.me/c/${message.chat.id}/${message.message_id}`;
 
       await bot.sendMessage(channelId, messageText, {parse_mode: 'Markdown'});
     } else if (message && message.text) {
