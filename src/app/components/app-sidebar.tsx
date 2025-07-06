@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import {usePathname} from 'next/navigation';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -12,7 +11,6 @@ import {
 import {LayoutDashboard, ScanLine, Bot, Store} from 'lucide-react';
 
 export function AppSidebar() {
-  const pathname = usePathname();
   return (
     <>
       <SidebarHeader className="p-4">
@@ -27,7 +25,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarMenu className="p-4 pt-0">
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname === '/'}>
+          <SidebarMenuButton asChild>
             <Link href="/">
               <ScanLine />
               <span>Receipts</span>
@@ -35,7 +33,7 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname === '/dashboard'}>
+          <SidebarMenuButton asChild>
             <Link href="/dashboard">
               <LayoutDashboard />
               <span>Dashboard</span>
@@ -43,7 +41,7 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </SidebarMenuItem>
         <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname === '/store'}>
+          <SidebarMenuButton asChild>
             <Link href="/store">
               <Store />
               <span>RiSoCa Store</span>
