@@ -13,7 +13,7 @@ const LOCAL_STORAGE_KEY = 'risoca-receipts';
 
 export type Receipt = DiagnoseReceiptOutput & {
   id: string;
-  imagePreview: string;
+  imagePreview?: string;
 };
 
 interface ReceiptContextType {

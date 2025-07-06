@@ -11,14 +11,23 @@ import {
   LayoutDashboard,
   Camera,
   XCircle,
+  Pencil,
+  PlusCircle,
+  Trash2,
+  CalendarIcon,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
-import {scanAndNotify} from '@/app/actions';
+import {scanAndNotify, submitManualReceipt} from '@/app/actions';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
+import {useForm, useFieldArray} from 'react-hook-form';
+import {zodResolver} from '@hookform/resolvers/zod';
+import {z} from 'zod';
+import {format} from 'date-fns';
 
+import {cn} from '@/lib/utils';
 import {
   Card,
   CardContent,
@@ -32,6 +41,59 @@ import {Alert, AlertTitle, AlertDescription} from '@/components/ui/alert';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Badge} from '@/components/ui/badge';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {Calendar} from '@/components/ui/calendar';
+
+const categories = [
+  'Groceries',
+  'Dining',
+  'Travel',
+  'Shopping',
+  'Utilities',
+  'Entertainment',
+  'Other',
+];
+
+const ManualFormSchema = z.object({
+  merchantName: z.string().min(1, 'Merchant name is required.'),
+  transactionDate: z.date({required_error: 'A date is required.'}),
+  total: z.coerce
+    .number({invalid_type_error: 'Total must be a number.'})
+    .min(0, 'Total must be a positive number.'),
+  category: z.string({required_error: 'Please select a category.'}),
+  items: z
+    .array(
+      z.object({
+        name: z.string().min(1, 'Item name is required.'),
+        price: z.coerce
+          .number({invalid_type_error: 'Price must be a number.'})
+          .min(0, 'Price must be a positive number.'),
+      })
+    )
+    .min(1, 'At least one item is required.'),
+});
+
+type ManualFormData = z.infer<typeof ManualFormSchema>;
 
 export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -46,7 +108,7 @@ export default function Home() {
   const router = useRouter();
   const {toast} = useToast();
 
-  const [inputMethod, setInputMethod] = useState<'upload' | 'camera'>(
+  const [inputMethod, setInputMethod] = useState<'upload' | 'camera' | 'manual'>(
     'upload'
   );
   const [hasCameraPermission, setHasCameraPermission] = useState<
@@ -54,6 +116,23 @@ export default function Home() {
   >(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const form = useForm<ManualFormData>({
+    resolver: zodResolver(ManualFormSchema),
+    defaultValues: {
+      merchantName: '',
+      items: [
+        {name: '', price: 0},
+        {name: '', price: 0},
+        {name: '', price: 0},
+      ],
+    },
+  });
+
+  const {fields, append, remove} = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -148,12 +227,13 @@ export default function Home() {
 
     try {
       const result = await scanAndNotify({photoDataUri: imageData});
-      setDiagnosis(result);
-      addReceipt({
+      const newReceipt = {
         ...result,
         id: uuidv4(),
         imagePreview: imagePreview,
-      });
+      };
+      setDiagnosis(newReceipt);
+      addReceipt(newReceipt);
       toast({
         title: 'Notification Sent',
         description:
@@ -164,6 +244,38 @@ export default function Home() {
       setError(
         'The AI could not process the receipt. It might be blurry or unsupported. Please try another image.'
       );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualSubmit = async (data: ManualFormData) => {
+    setIsLoading(true);
+    setDiagnosis(null);
+    setError(null);
+
+    const payload: DiagnoseReceiptOutput = {
+      ...data,
+      transactionDate: format(data.transactionDate, 'yyyy-MM-dd'),
+    };
+
+    try {
+      const result = await submitManualReceipt(payload);
+      const newReceipt = {
+        ...result,
+        id: uuidv4(),
+      };
+      setDiagnosis(newReceipt);
+      addReceipt(newReceipt);
+      toast({
+        title: 'Notification Sent',
+        description:
+          'The receipt details have been sent to your Telegram channel.',
+      });
+      form.reset();
+    } catch (e) {
+      console.error(e);
+      setError('Could not submit the receipt. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -185,30 +297,43 @@ export default function Home() {
       videoRef.current.srcObject = null;
     }
     setInputMethod('upload');
+    form.reset({
+      merchantName: '',
+      items: [
+        {name: '', price: 0},
+        {name: '', price: 0},
+        {name: '', price: 0},
+      ],
+    });
   };
 
   const renderInitialState = () => (
-    <div className="w-full max-w-lg text-center animate-enter">
+    <div className="w-full max-w-2xl text-center animate-enter">
       <div className="flex items-center justify-center gap-3 mb-2">
         <Bot className="w-9 h-9 text-primary" />
         <h1 className="text-4xl font-bold tracking-tight">RiSoCa Bot</h1>
       </div>
       <p className="mb-8 text-lg text-muted-foreground">
-        Scan a receipt using your camera or by uploading a photo.
+        Scan, capture, or manually enter a receipt.
       </p>
 
       <Tabs
         defaultValue="upload"
         value={inputMethod}
-        onValueChange={(value) => setInputMethod(value as 'upload' | 'camera')}
+        onValueChange={(value) =>
+          setInputMethod(value as 'upload' | 'camera' | 'manual')
+        }
         className="w-full"
       >
-        <TabsList className="grid w-full h-12 grid-cols-2 p-1 border rounded-lg bg-muted/50">
+        <TabsList className="grid w-full h-12 grid-cols-3 p-1 border rounded-lg bg-muted/50">
           <TabsTrigger value="upload" className="h-full text-base rounded-md">
             <Upload className="mr-2" /> Upload
           </TabsTrigger>
           <TabsTrigger value="camera" className="h-full text-base rounded-md">
             <Camera className="mr-2" /> Camera
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="h-full text-base rounded-md">
+            <Pencil className="mr-2" /> Manual
           </TabsTrigger>
         </TabsList>
         <TabsContent
@@ -268,11 +393,204 @@ export default function Home() {
             <Camera className="mr-2" /> Capture Photo
           </Button>
         </TabsContent>
+        <TabsContent
+          value="manual"
+          className="pt-6 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Manual Receipt Entry</CardTitle>
+              <CardDescription>
+                Fill in the details of your receipt below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(handleManualSubmit)}
+                  className="space-y-8"
+                >
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="merchantName"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Merchant Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Jollibee" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="transactionDate"
+                      render={({field}) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Transaction Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={'outline'}
+                                  className={cn(
+                                    'pl-3 text-left font-normal',
+                                    !field.value && 'text-muted-foreground'
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, 'PPP')
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() ||
+                                  date < new Date('1900-01-01')
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                  {cat}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="total"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Total Amount (₱)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="e.g. 150.75"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <FormLabel>Items</FormLabel>
+                    <FormDescription className="mb-4">
+                      Add the items from your receipt.
+                    </FormDescription>
+                    <div className="space-y-4">
+                      {fields.map((field, index) => (
+                        <div
+                          key={field.id}
+                          className="flex items-start gap-4"
+                        >
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.name`}
+                            render={({field}) => (
+                              <FormItem className="flex-1">
+                                <FormControl>
+                                  <Input placeholder="Item name" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.price`}
+                            render={({field}) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="Price"
+                                    className="w-32"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => remove(index)}
+                            disabled={fields.length <= 1}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => append({name: '', price: 0})}
+                      >
+                        <PlusCircle className="mr-2" /> Add Item
+                      </Button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" size="lg">
+                    Submit Receipt
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <canvas ref={canvasRef} className="hidden" />
 
-      {error && (
+      {error && !imagePreview && (
         <Alert variant="destructive" className="mt-6 text-left">
           <ServerCrash className="w-4 h-4" />
           <AlertTitle>Error</AlertTitle>
@@ -319,9 +637,9 @@ export default function Home() {
     <div className="animate-enter">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Analyzing Receipt</CardTitle>
+          <CardTitle>Processing Receipt</CardTitle>
           <CardDescription>
-            The AI is working its magic. Please wait...
+            Please wait a moment...
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2">
@@ -354,20 +672,24 @@ export default function Home() {
       <div className="animate-enter">
         <Card className="w-full max-w-3xl">
           <CardHeader>
-            <CardTitle>Analysis Complete</CardTitle>
+            <CardTitle>Process Complete</CardTitle>
             <CardDescription>
-              Here's what the AI found on your receipt.
+              Here's what we got from your receipt.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-8 md:grid-cols-2">
             <div className="relative w-full overflow-hidden rounded-lg aspect-[16/10] border">
-              {imagePreview && (
+              {imagePreview ? (
                 <Image
                   src={imagePreview}
                   alt="Receipt"
                   fill
                   objectFit="contain"
                 />
+              ) : (
+                <div className="flex items-center justify-center w-full h-full bg-muted">
+                  <Pencil className="w-16 h-16 text-muted-foreground" />
+                </div>
               )}
             </div>
             <div className="space-y-4">
@@ -444,7 +766,7 @@ export default function Home() {
               <LayoutDashboard className="mr-2" /> View Dashboard
             </Button>
             <Button onClick={handleReset} className="w-full">
-              <ReceiptText className="mr-2" /> Scan Another
+              <ReceiptText className="mr-2" /> Process Another
             </Button>
           </div>
         </Card>
@@ -455,7 +777,7 @@ export default function Home() {
     <div className="animate-enter">
       <Card className="w-full max-w-lg shadow-2xl shadow-destructive/20">
         <CardHeader>
-          <CardTitle>Analysis Failed</CardTitle>
+          <CardTitle>Processing Failed</CardTitle>
           <CardDescription>
             Sorry, we couldn't process your receipt.
           </CardDescription>
