@@ -53,6 +53,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import {ScrollArea} from '@/components/ui/scroll-area';
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 
 const SaleItemSchema = z.object({
   itemName: z.string().min(1, 'Item name is required.'),
@@ -97,6 +98,7 @@ export default function StorePage() {
   const [allSales, setAllSales] = useState<SaleDoc[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [historyLimit, setHistoryLimit] = useState(5);
   const {toast} = useToast();
 
   const form = useForm<SalesFormData>({
@@ -176,7 +178,7 @@ export default function StorePage() {
     (sale) => sale.createdAt.toDate() >= today
   );
   const todaysTotal = todaysSales.reduce((acc, sale) => acc + sale.total, 0);
-  const recentHistory = allSales.slice(0, 5);
+  const recentHistory = allSales.slice(0, historyLimit);
 
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
@@ -360,48 +362,68 @@ export default function StorePage() {
 
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" /> Sales History
-              </CardTitle>
-              <CardDescription>
-                Showing the last 5 transactions.
-              </CardDescription>
+              <div className="flex justify-between items-start">
+                <div className="space-y-1.5">
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5" /> Sales History
+                  </CardTitle>
+                  <CardDescription>
+                    Showing the last {historyLimit} transactions.
+                  </CardDescription>
+                </div>
+                <Tabs
+                  defaultValue="5"
+                  onValueChange={(value) => setHistoryLimit(Number(value))}
+                  className="w-auto"
+                >
+                  <TabsList className="h-8">
+                    <TabsTrigger value="5" className="h-6 text-xs px-2">
+                      5
+                    </TabsTrigger>
+                    <TabsTrigger value="10" className="h-6 text-xs px-2">
+                      10
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentHistory.length > 0 ? (
-                    recentHistory.map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell>
-                          <p className="font-medium">{sale.itemName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sale.createdAt.toDate().toLocaleDateString()}
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          ₱{sale.total.toFixed(2)}
+              <ScrollArea className="h-48">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentHistory.length > 0 ? (
+                      recentHistory.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell>
+                            <p className="font-medium">{sale.itemName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {sale.createdAt.toDate().toLocaleDateString()}
+                            </p>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ₱{sale.total.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={2}
+                          className="text-center text-muted-foreground py-10"
+                        >
+                          No sales history yet.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={2}
-                        className="text-center text-muted-foreground py-10"
-                      >
-                        No sales history yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
