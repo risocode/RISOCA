@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
       <main className="flex-1 p-4 overflow-y-auto">
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
               <DollarSign className="w-4 h-4 text-muted-foreground" />
@@ -69,7 +69,7 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">
                 Receipts Scanned
@@ -83,7 +83,7 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">
                 Unique Categories
@@ -103,7 +103,7 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        <Card className="mt-6">
+        <Card className="mt-6 shadow-lg">
           <CardHeader>
             <CardTitle>Receipt History</CardTitle>
             <CardDescription>

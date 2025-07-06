@@ -468,7 +468,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center w-full min-h-full p-4 bg-background">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/20 via-background to-background -z-10"></div>
+      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/10 via-background to-background -z-10"></div>
       <div className="z-10 flex items-center justify-center w-full h-full">
         {isLoading
           ? renderLoadingState()
