@@ -2,6 +2,7 @@
 'use client';
 
 import {useState, useEffect} from 'react';
+import Link from 'next/link';
 import {useForm, useFieldArray, useWatch, type Control} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
@@ -21,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Table,
@@ -48,7 +50,9 @@ import {
   Store,
   History,
   CalendarDays,
+  ArrowRight,
 } from 'lucide-react';
+import {ScrollArea} from '@/components/ui/scroll-area';
 
 const SaleItemSchema = z.object({
   itemName: z.string().min(1, 'Item name is required.'),
@@ -168,7 +172,9 @@ export default function StorePage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const todaysSales = allSales.filter((sale) => sale.createdAt.toDate() >= today);
+  const todaysSales = allSales.filter(
+    (sale) => sale.createdAt.toDate() >= today
+  );
   const todaysTotal = todaysSales.reduce((acc, sale) => acc + sale.total, 0);
   const recentHistory = allSales.slice(0, 5);
 
@@ -225,7 +231,11 @@ export default function StorePage() {
                             <FormItem className="flex-1 sm:w-24">
                               <FormLabel>Qty</FormLabel>
                               <FormControl>
-                                <Input type="number" placeholder="1" {...field} />
+                                <Input
+                                  type="number"
+                                  placeholder="1"
+                                  {...field}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -270,7 +280,9 @@ export default function StorePage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => append({itemName: '', quantity: 1, unitPrice: 0})}
+                    onClick={() =>
+                      append({itemName: '', quantity: 1, unitPrice: 0})
+                    }
                   >
                     <PlusCircle className="mr-2" /> Add Another Item
                   </Button>
@@ -307,40 +319,42 @@ export default function StorePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {todaysSales.length > 0 ? (
-                    todaysSales.map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell>
-                          <p className="font-medium">{sale.itemName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sale.quantity} x ₱{sale.unitPrice.toFixed(2)}
-                          </p>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          ₱{sale.total.toFixed(2)}
+              <ScrollArea className="h-72">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {todaysSales.length > 0 ? (
+                      todaysSales.map((sale) => (
+                        <TableRow key={sale.id}>
+                          <TableCell>
+                            <p className="font-medium">{sale.itemName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {sale.quantity} x ₱{sale.unitPrice.toFixed(2)}
+                            </p>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ₱{sale.total.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={2}
+                          className="text-center text-muted-foreground py-10"
+                        >
+                          No sales logged today.
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={2}
-                        className="text-center text-muted-foreground"
-                      >
-                        No sales logged today.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             </CardContent>
           </Card>
 
@@ -380,7 +394,7 @@ export default function StorePage() {
                     <TableRow>
                       <TableCell
                         colSpan={2}
-                        className="text-center text-muted-foreground"
+                        className="text-center text-muted-foreground py-10"
                       >
                         No sales history yet.
                       </TableCell>
@@ -389,6 +403,13 @@ export default function StorePage() {
                 </TableBody>
               </Table>
             </CardContent>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/store/history">
+                  View Full History <ArrowRight className="ml-2" />
+                </Link>
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </div>
