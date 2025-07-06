@@ -116,6 +116,9 @@ export default function StorePage() {
   const [historyLimit, setHistoryLimit] = useState(5);
   const {toast} = useToast();
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
+  const [openQtyPopovers, setOpenQtyPopovers] = useState<
+    Record<number, boolean>
+  >({});
 
   const form = useForm<SalesFormData>({
     resolver: zodResolver(SalesFormSchema),
@@ -221,6 +224,10 @@ export default function StorePage() {
 
   const setPopoverOpen = (index: number, open: boolean) => {
     setOpenPopovers((prev) => ({...prev, [index]: open}));
+  };
+
+  const setQtyPopoverOpen = (index: number, open: boolean) => {
+    setOpenQtyPopovers((prev) => ({...prev, [index]: open}));
   };
 
   const today = new Date();
@@ -387,13 +394,58 @@ export default function StorePage() {
                           render={({field}) => (
                             <FormItem className="flex-1 sm:w-24">
                               <FormLabel>Qty</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="1"
-                                  {...field}
-                                />
-                              </FormControl>
+                              <div className="relative">
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="1"
+                                    className="pr-8 text-center"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <Popover
+                                  open={openQtyPopovers[index]}
+                                  onOpenChange={(open) =>
+                                    setQtyPopoverOpen(index, open)
+                                  }
+                                >
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      className="absolute inset-y-0 right-0 px-2 text-muted-foreground hover:bg-muted"
+                                    >
+                                      <ChevronsUpDown className="h-4 w-4" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-20 p-0">
+                                    <Command>
+                                      <CommandList>
+                                        {Array.from(
+                                          {length: 10},
+                                          (_, i) => i + 1
+                                        ).map((qty) => (
+                                          <CommandItem
+                                            key={qty}
+                                            value={String(qty)}
+                                            onSelect={() => {
+                                              form.setValue(
+                                                `items.${index}.quantity`,
+                                                qty
+                                              );
+                                              setQtyPopoverOpen(index, false);
+                                            }}
+                                          >
+                                            <span className="w-full text-center">
+                                              {qty}
+                                            </span>
+                                          </CommandItem>
+                                        ))}
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
