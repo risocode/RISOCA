@@ -606,7 +606,7 @@ export default function Home() {
                 src={imagePreview}
                 alt="Receipt preview"
                 fill
-                objectFit="contain"
+                className="object-contain"
               />
             )}
           </div>
@@ -674,7 +674,7 @@ export default function Home() {
                   src={imagePreview}
                   alt="Receipt"
                   fill
-                  objectFit="contain"
+                  className="object-contain"
                 />
               ) : (
                 <div className="flex items-center justify-center w-full h-full bg-muted">
@@ -784,7 +784,7 @@ export default function Home() {
                 src={imagePreview}
                 alt="Receipt with error"
                 fill
-                objectFit="contain"
+                className="object-contain"
               />
             )}
           </div>
