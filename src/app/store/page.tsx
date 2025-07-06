@@ -358,11 +358,16 @@ export default function StorePage() {
                                                 : 'opacity-0'
                                             )}
                                           />
-                                          <div className="flex justify-between w-full">
+                                          <div className="flex justify-between w-full items-center">
                                             <span>{item.name}</span>
-                                            <span className="text-muted-foreground text-xs">
-                                              Stock: {item.stock}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                              <span className="text-muted-foreground text-xs leading-none">
+                                                Stock
+                                              </span>
+                                              <span className="font-medium leading-tight">
+                                                {item.stock}
+                                              </span>
+                                            </div>
                                           </div>
                                         </CommandItem>
                                       ))}
