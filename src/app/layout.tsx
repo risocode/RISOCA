@@ -18,8 +18,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'RiSoCa Bot',
-  description: 'Scan receipts with AI using this installable web app.',
+  title: 'RISOCA',
+  description: 'An application for scanning receipts and managing a store inventory.',
 };
 
 export default function RootLayout({
@@ -34,10 +34,10 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
-        <meta name="application-name" content="RiSoCa Bot" />
+        <meta name="application-name" content="RISOCA" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="RiSoCaBot" />
+        <meta name="apple-mobile-web-app-title" content="RISOCA" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#0f172a" />

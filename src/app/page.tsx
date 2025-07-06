@@ -5,7 +5,6 @@ import Image from 'next/image';
 import {
   Upload,
   ReceiptText,
-  Bot,
   X,
   ServerCrash,
   Camera,
@@ -390,8 +389,8 @@ export default function ReceiptPage() {
   const renderInitialState = () => (
     <div className="w-full max-w-2xl text-center animate-enter">
       <div className="flex items-center justify-center gap-3 mb-2">
-        <Bot className="w-9 h-9 text-primary" />
-        <h1 className="text-4xl font-bold tracking-tight">RiSoCa Bot</h1>
+        <Image src="/logo.png" alt="RISOCA Logo" width={36} height={36} className="w-9 h-9" />
+        <h1 className="text-4xl font-bold tracking-tight">RISOCA</h1>
       </div>
       <p className="mb-8 text-lg text-muted-foreground">
         Scan, capture, or manually enter a receipt.

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -8,16 +9,16 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import {LayoutDashboard, ScanLine, Bot, Store} from 'lucide-react';
+import {LayoutDashboard, ScanLine, Store} from 'lucide-react';
 
 export function AppSidebar() {
   return (
     <>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <Bot className="w-6 h-6 text-primary" />
+          <Image src="/logo.png" alt="RISOCA Logo" width={28} height={28} className="w-7 h-7" />
           <h1 className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            RiSoCa Bot
+            RISOCA
           </h1>
           <div className="grow" />
           <SidebarTrigger className="hidden md:flex" />
