@@ -15,6 +15,7 @@ import {
   PlusCircle,
   Trash2,
   CalendarIcon,
+  Loader2,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
@@ -103,6 +104,7 @@ export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
   const [diagnosis, setDiagnosis] = useState<DiagnoseReceiptOutput | null>(
     null
   );
@@ -169,27 +171,73 @@ export default function Home() {
     };
   }, [inputMethod, imagePreview]);
 
+  const resizeImage = (
+    dataUrl: string,
+    maxWidth = 1280,
+    maxHeight = 1280
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        let {width, height} = img;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not get canvas context'));
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = (err) => reject(err);
+      img.src = dataUrl;
+    });
+  };
+
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        // 4MB limit
-        setError('File is too large. Please upload an image under 4MB.');
+      if (file.size > 10 * 1024 * 1024) {
+        // 10MB limit
+        setError('File is too large. Please upload an image under 10MB.');
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const dataUrl = reader.result as string;
-        setImagePreview(URL.createObjectURL(file));
-        setImageData(dataUrl);
-        setError(null);
-        setDiagnosis(null);
+        setIsProcessingImage(true);
+        try {
+          const resizedDataUrl = await resizeImage(dataUrl);
+          setImagePreview(URL.createObjectURL(file));
+          setImageData(resizedDataUrl);
+          setError(null);
+          setDiagnosis(null);
+        } catch (err) {
+          console.error('Failed to resize image', err);
+          setError(
+            'Could not process the selected image. It might be in an unsupported format.'
+          );
+        } finally {
+          setIsProcessingImage(false);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !hasCameraPermission) return;
@@ -197,26 +245,29 @@ export default function Home() {
     const context = canvas.getContext('2d');
     if (!context) return;
 
+    setIsProcessingImage(true);
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL('image/jpeg');
 
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          const previewUrl = URL.createObjectURL(blob);
-          setImagePreview(previewUrl);
-        }
-      },
-      'image/jpeg',
-      0.95
-    );
+    try {
+      const resizedDataUrl = await resizeImage(dataUrl);
+      const blob = await (await fetch(resizedDataUrl)).blob();
+      const previewUrl = URL.createObjectURL(blob);
 
-    setImageData(dataUrl);
-    setError(null);
-    setDiagnosis(null);
+      setImagePreview(previewUrl);
+      setImageData(resizedDataUrl);
+      setError(null);
+      setDiagnosis(null);
+    } catch (err) {
+      console.error('Failed to resize and process image', err);
+      setError('Could not process the captured image. Please try again.');
+    } finally {
+      setIsProcessingImage(false);
+    }
   };
 
   const handleScanReceipt = async () => {
@@ -354,28 +405,37 @@ export default function Home() {
           value="upload"
           className="pt-6 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
         >
-          <div
-            className="relative flex flex-col items-center justify-center w-full p-10 transition-colors border-2 border-dashed rounded-xl cursor-pointer bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="text-center">
-              <Upload className="w-12 h-12 mx-auto text-primary/80" />
+          {isProcessingImage ? (
+            <div className="relative flex flex-col items-center justify-center w-full h-[202px] p-10 transition-colors border-2 border-dashed rounded-xl bg-primary/5 border-primary/20">
+              <Loader2 className="w-12 h-12 animate-spin text-primary/80" />
               <p className="mt-4 text-lg font-medium text-foreground">
-                Click to upload or drag and drop
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                PNG, JPG, or WEBP (max 4MB)
+                Optimizing image...
               </p>
             </div>
-            <Input
-              ref={fileInputRef}
-              id="receipt-upload"
-              type="file"
-              className="sr-only"
-              accept="image/png, image/jpeg, image/webp"
-              onChange={handleFileChange}
-            />
-          </div>
+          ) : (
+            <div
+              className="relative flex flex-col items-center justify-center w-full p-10 transition-colors border-2 border-dashed rounded-xl cursor-pointer bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="text-center">
+                <Upload className="w-12 h-12 mx-auto text-primary/80" />
+                <p className="mt-4 text-lg font-medium text-foreground">
+                  Click to upload or drag and drop
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  PNG, JPG, or WEBP (max 10MB)
+                </p>
+              </div>
+              <Input
+                ref={fileInputRef}
+                id="receipt-upload"
+                type="file"
+                className="sr-only"
+                accept="image/png, image/jpeg, image/webp"
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
         </TabsContent>
         <TabsContent
           value="camera"
@@ -400,11 +460,16 @@ export default function Home() {
           </div>
           <Button
             onClick={handleCapture}
-            disabled={!hasCameraPermission}
+            disabled={!hasCameraPermission || isProcessingImage}
             className="w-full h-12 text-lg"
             size="lg"
           >
-            <Camera className="mr-2" /> Capture Photo
+            {isProcessingImage ? (
+              <Loader2 className="mr-2 animate-spin" />
+            ) : (
+              <Camera className="mr-2" />
+            )}
+            {isProcessingImage ? 'Processing...' : 'Capture Photo'}
           </Button>
         </TabsContent>
         <TabsContent
