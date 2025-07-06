@@ -57,3 +57,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom scrollbar for CMDK command list */
+[cmdk-list]::-webkit-scrollbar {
+  width: 8px;
+}
+
+[cmdk-list]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[cmdk-list]::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.5);
+  border-radius: 9999px;
+}
+
+[cmdk-list] {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.5) transparent;
+}
