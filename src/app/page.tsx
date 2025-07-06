@@ -8,7 +8,6 @@ import {
   Bot,
   X,
   ServerCrash,
-  LayoutDashboard,
   Camera,
   XCircle,
   Pencil,
@@ -16,15 +15,16 @@ import {
   Trash2,
   CalendarIcon,
   Loader2,
+  Wallet,
+  FileText,
+  Tag,
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
-import {v4 as uuidv4} from 'uuid';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
 import {
   scanAndNotify,
   submitManualReceipt,
-  type ActionResponse,
 } from '@/app/actions';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {useForm, useFieldArray} from 'react-hook-form';
@@ -68,6 +68,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {Calendar} from '@/components/ui/calendar';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const categories = [
   'Groceries',
@@ -100,7 +108,7 @@ const ManualFormSchema = z.object({
 
 type ManualFormData = z.infer<typeof ManualFormSchema>;
 
-export default function Home() {
+export default function ReceiptPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -110,7 +118,6 @@ export default function Home() {
   );
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
   const {toast} = useToast();
 
   const [inputMethod, setInputMethod] = useState<'upload' | 'camera' | 'manual'>(
@@ -138,6 +145,13 @@ export default function Home() {
     control: form.control,
     name: 'items',
   });
+
+  const {
+    receipts,
+    totalSpent,
+    categories: receiptCategories,
+  } = useReceipts();
+  const uniqueCategories = Object.keys(receiptCategories).length;
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -836,18 +850,11 @@ export default function Home() {
               </div>
             </div>
           </CardContent>
-          <div className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
-            <Button
-              onClick={() => router.push('/dashboard')}
-              variant="outline"
-              className="w-full"
-            >
-              <LayoutDashboard className="mr-2" /> View Dashboard
-            </Button>
+          <CardContent className="p-6 pt-0">
             <Button onClick={handleReset} className="w-full">
               <ReceiptText className="mr-2" /> Process Another
             </Button>
-          </div>
+          </CardContent>
         </Card>
       </div>
     );
@@ -889,10 +896,9 @@ export default function Home() {
     </div>
   );
 
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center w-full p-4">
-      <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-primary/10 via-background to-background -z-10"></div>
-      <div className="z-10 flex items-center justify-center w-full h-full">
+  const AddReceiptTabContent = () => (
+    <div className="flex flex-col items-center justify-start w-full py-8">
+      <div className="w-full">
         {isLoading
           ? renderLoadingState()
           : diagnosis
@@ -905,6 +911,143 @@ export default function Home() {
           ? renderPreviewState()
           : renderInitialState()}
       </div>
+    </div>
+  );
+
+  const HistoryTabContent = () => {
+    if (receipts.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center p-8 mt-8 border rounded-lg bg-card">
+          <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
+          <h2 className="text-2xl font-semibold">No Receipts Scanned</h2>
+          <p className="max-w-md mt-2 text-muted-foreground">
+            You haven't scanned any receipts yet. Go to the 'Add Receipt' tab
+            to upload your first one.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+              <Wallet className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ₱{totalSpent.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                from {receipts.length} receipts
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Receipts Scanned
+              </CardTitle>
+              <FileText className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{receipts.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Keep them coming!
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Unique Categories
+              </CardTitle>
+              <Tag className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{uniqueCategories}</div>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {Object.keys(receiptCategories).map((cat) => (
+                  <Badge key={cat} variant="secondary">
+                    {cat}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="mt-6 shadow-lg">
+          <CardHeader>
+            <CardTitle>Receipt History</CardTitle>
+            <CardDescription>
+              A detailed list of all your scanned receipts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Merchant</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {receipts.map((receipt) => (
+                  <TableRow key={receipt.id}>
+                    <TableCell className="font-medium">
+                      {receipt.merchantName}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(
+                        receipt.transactionDate + 'T00:00:00'
+                      ).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{receipt.category}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      ₱{receipt.total.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
+      <header>
+        <h1 className="text-3xl font-bold">Receipts</h1>
+        <p className="text-muted-foreground">
+          Scan new receipts or view your history.
+        </p>
+      </header>
+
+      <Tabs defaultValue="add" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="add">Add Receipt</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="add">
+          <AddReceiptTabContent />
+        </TabsContent>
+        <TabsContent value="history">
+          <HistoryTabContent />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

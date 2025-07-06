@@ -30,7 +30,7 @@ export function AppSidebar() {
           <SidebarMenuButton asChild isActive={pathname === '/'}>
             <Link href="/">
               <ScanLine />
-              <span>Scanner</span>
+              <span>Receipts</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
