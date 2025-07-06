@@ -10,7 +10,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 210 40% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 54 90% 61%;
+    --primary: 170 52% 66%;
     --primary-foreground: 222.2 84% 4.9%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 210 10% 23%;
@@ -22,7 +22,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 210 40% 90%;
     --input: 210 40% 90%;
-    --ring: 54 90% 61%;
+    --ring: 170 52% 66%;
     --radius: 0.5rem;
   }
 
@@ -33,7 +33,7 @@
     --card-foreground: 210 40% 98%;
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 54 90% 61%;
+    --primary: 170 52% 66%;
     --primary-foreground: 222.2 84% 4.9%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
@@ -45,7 +45,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217 33% 20%;
     --input: 217 33% 20%;
-    --ring: 54 90% 61%;
+    --ring: 170 52% 66%;
   }
 }
 
@@ -79,6 +79,6 @@
 
 @layer utilities {
   .logo-glow {
-    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.7));
+    filter: drop-shadow(0 0 12px hsl(54 90% 65% / 0.9));
   }
 }
