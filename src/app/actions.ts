@@ -21,6 +21,13 @@ export type ActionResponse = {
   notificationStatus: NotificationStatus;
 };
 
+// Helper to escape text for Telegram's MarkdownV2 format
+function escapeMarkdownV2(text: string): string {
+  // Characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . !
+  const charsToEscape = /[_*[\]()~`>#+\-=|{}.!]/g;
+  return text.replace(charsToEscape, '\\$&');
+}
+
 // Helper to convert data URI to a Blob, compatible with Edge runtime
 function dataURItoBlob(dataURI: string): Blob {
   const [header, base64Data] = dataURI.split(',');
@@ -37,7 +44,6 @@ function dataURItoBlob(dataURI: string): Blob {
   return new Blob([uint8Array], {type: mimeString});
 }
 
-
 async function notifyOnTelegram(
   diagnosis: DiagnoseReceiptOutput,
   photoDataUri?: string
@@ -53,22 +59,30 @@ async function notifyOnTelegram(
     const caption = [
       `🧾 *Receipt Processed* 🧾`,
       ``,
-      `*Merchant:* ${diagnosis.merchantName}`,
-      `*Date:* ${new Date(
-        diagnosis.transactionDate + 'T00:00:00'
-      ).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })}`,
-      `*Category:* ${diagnosis.category}`,
-      `*Total:* ₱${diagnosis.total.toFixed(2)}`,
+      `*Merchant:* ${escapeMarkdownV2(diagnosis.merchantName)}`,
+      `*Date:* ${escapeMarkdownV2(
+        new Date(diagnosis.transactionDate + 'T00:00:00').toLocaleDateString(
+          undefined,
+          {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }
+        )
+      )}`,
+      `*Category:* ${escapeMarkdownV2(diagnosis.category)}`,
+      `*Total:* ₱${escapeMarkdownV2(diagnosis.total.toFixed(2))}`,
       ``,
       `*Items:*`,
       ...diagnosis.items.map(
-        (item) => `- ${item.name}: ₱${item.price.toFixed(2)}`
+        (item) =>
+          `\\- ${escapeMarkdownV2(item.name)}: ₱${escapeMarkdownV2(
+            item.price.toFixed(2)
+          )}`
       ),
     ].join('\n');
+
+    const parseMode = 'MarkdownV2';
 
     if (photoDataUri) {
       // Send with photo
@@ -77,7 +91,7 @@ async function notifyOnTelegram(
       formData.append('chat_id', CHANNEL_ID);
       formData.append('photo', blob, 'receipt.jpg');
       formData.append('caption', caption);
-      formData.append('parse_mode', 'Markdown');
+      formData.append('parse_mode', parseMode);
       const response = await fetch(
         `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,
         {method: 'POST', body: formData}
@@ -85,7 +99,9 @@ async function notifyOnTelegram(
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to send message to Telegram:', errorData);
-        return {success: false, message: 'Telegram API returned an error.'};
+        const description =
+          errorData.description || 'Telegram API returned an error.';
+        return {success: false, message: description};
       }
     } else {
       // Send text only
@@ -97,14 +113,16 @@ async function notifyOnTelegram(
           body: JSON.stringify({
             chat_id: CHANNEL_ID,
             text: caption,
-            parse_mode: 'Markdown',
+            parse_mode: parseMode,
           }),
         }
       );
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to send message to Telegram:', errorData);
-        return {success: false, message: 'Telegram API returned an error.'};
+        const description =
+          errorData.description || 'Telegram API returned an error.';
+        return {success: false, message: description};
       }
     }
     return {success: true};
