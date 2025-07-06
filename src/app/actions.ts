@@ -6,7 +6,16 @@ import {
   type DiagnoseReceiptOutput,
 } from '@/ai/flows/diagnose-receipt-flow';
 import {db} from '@/lib/firebase';
-import {addDoc, collection, serverTimestamp} from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  updateDoc,
+  type Timestamp,
+} from 'firebase/firestore';
+import type {InventoryItemInput} from '@/lib/schemas';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID?.trim();
@@ -195,5 +204,55 @@ export async function submitSalesReport(
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {success: false, message: `Could not save report: ${message}`};
+  }
+}
+
+// Actions for Inventory
+export async function addInventoryItem(
+  item: InventoryItemInput
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await addDoc(collection(db, 'inventory'), {
+      ...item,
+      createdAt: serverTimestamp(),
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error adding inventory item to Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not add item: ${message}`};
+  }
+}
+
+export async function updateInventoryItem(
+  id: string,
+  item: InventoryItemInput
+): Promise<{success: boolean; message?: string}> {
+  try {
+    const itemRef = doc(db, 'inventory', id);
+    await updateDoc(itemRef, {
+      ...item,
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error updating inventory item in Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not update item: ${message}`};
+  }
+}
+
+export async function deleteInventoryItem(
+  id: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await deleteDoc(doc(db, 'inventory', id));
+    return {success: true};
+  } catch (error) {
+    console.error('Error deleting inventory item from Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not delete item: ${message}`};
   }
 }

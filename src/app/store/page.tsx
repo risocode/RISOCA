@@ -51,6 +51,7 @@ import {
   History,
   CalendarDays,
   ArrowRight,
+  PackageSearch,
 } from 'lucide-react';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -182,14 +183,22 @@ export default function StorePage() {
 
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
-      <header className="flex items-center gap-4">
-        <Store className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">RiSoCa Store</h1>
-          <p className="text-muted-foreground">
-            Log your daily sales and track your history.
-          </p>
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Store className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">RiSoCa Store</h1>
+            <p className="text-muted-foreground">
+              Log your daily sales and track your history.
+            </p>
+          </div>
         </div>
+        <Button asChild variant="outline">
+          <Link href="/store/inventory">
+            <PackageSearch className="mr-2" />
+            Manage Inventory
+          </Link>
+        </Button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
