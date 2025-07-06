@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect} from 'react';
@@ -45,7 +46,7 @@ import {
   Trash2,
   Loader2,
   Store,
-  BookClock,
+  History,
   CalendarDays,
 } from 'lucide-react';
 
@@ -346,7 +347,7 @@ export default function StorePage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BookClock className="w-5 h-5" /> Sales History
+                <History className="w-5 h-5" /> Sales History
               </CardTitle>
               <CardDescription>
                 Showing the last 5 transactions.
