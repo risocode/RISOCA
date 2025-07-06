@@ -45,7 +45,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-1 flex-col">
       <header className="p-4 border-b">
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">

@@ -22,7 +22,7 @@ export function AppSidebar() {
             RiSoCa Bot
           </h1>
           <div className="grow" />
-          <SidebarTrigger />
+          <SidebarTrigger className="hidden md:flex" />
         </div>
       </SidebarHeader>
       <SidebarMenu className="p-4 pt-0">
