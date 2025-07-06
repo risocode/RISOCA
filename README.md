@@ -1,5 +1,5 @@
 
-# AI Receipt Scanner Web App
+# RiSoCa Bot
 
 This is a Next.js Progressive Web App (PWA) that lets you scan receipts using AI. Upload a photo of a receipt, and it will use Google's Gemini model to extract the merchant name, date, items, and total amount.
 
@@ -10,7 +10,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 *   **AI-Powered Scanning:** Uses Genkit and the Gemini AI model to accurately parse receipt data.
 *   **Telegram Integration:** Automatically sends scanned receipt details and images to a Telegram channel.
 *   **PWA Ready:** Installable on desktop and mobile devices for quick access.
-*   **Dashboard:** View a history of your scanned receipts and see a summary of your spending for the session.
+*   **Dashboard:** View a history of your scanned receipts and see a summary of your spending for the session. Data is persisted in your browser's local storage.
 *   **Dual Input:** Upload a receipt image or use your device's camera to capture one directly.
 *   **Responsive UI:** A clean, modern interface built with Next.js, ShadCN UI, and Tailwind CSS.
 

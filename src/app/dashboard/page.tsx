@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
-import {DollarSign, FileText, ScanLine, Tag} from 'lucide-react';
+import {Wallet, FileText, ScanLine, Tag} from 'lucide-react';
 
 export default function DashboardPage() {
   const {receipts, totalSpent, categories} = useReceipts();
@@ -58,11 +58,11 @@ export default function DashboardPage() {
           <Card className="shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <Wallet className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${totalSpent.toFixed(2)}
+                ₱{totalSpent.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">
                 from {receipts.length} receipts
@@ -139,7 +139,7 @@ export default function DashboardPage() {
                       <Badge variant="outline">{receipt.category}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      ${receipt.total.toFixed(2)}
+                      ₱{receipt.total.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -19,7 +19,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <Bot className="w-6 h-6 text-primary" />
           <h1 className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            Receipt Scanner
+            RiSoCa Bot
           </h1>
           <div className="grow" />
           <SidebarTrigger />

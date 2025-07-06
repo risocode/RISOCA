@@ -191,7 +191,7 @@ export default function Home() {
     <Card className="w-full max-w-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Bot /> AI Receipt Scanner
+          <Bot /> RiSoCa Bot
         </CardTitle>
         <CardDescription>
           Use your camera or upload a photo to get started.
@@ -245,10 +245,10 @@ export default function Home() {
             value="camera"
             className="pt-4 space-y-4 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-300"
           >
-            <div className="relative w-full overflow-hidden rounded-lg aspect-video bg-muted border">
+            <div className="relative w-full h-96 overflow-hidden rounded-lg bg-muted border">
               <video
                 ref={videoRef}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 autoPlay
                 muted
                 playsInline
@@ -398,7 +398,7 @@ export default function Home() {
                   Total
                 </p>
                 <p className="text-2xl font-bold text-primary">
-                  ${diagnosis.total.toFixed(2)}
+                  ₱{diagnosis.total.toFixed(2)}
                 </p>
               </div>
               <div>
@@ -422,7 +422,7 @@ export default function Home() {
                     >
                       <span className="pr-2 truncate">{item.name}</span>
                       <span className="flex-shrink-0">
-                        ${item.price.toFixed(2)}
+                        ₱{item.price.toFixed(2)}
                       </span>
                     </li>
                   ))}

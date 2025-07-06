@@ -42,11 +42,11 @@ export async function scanAndNotify(
           day: 'numeric',
         })}`,
         `*Category:* ${diagnosis.category}`,
-        `*Total:* $${diagnosis.total.toFixed(2)}`,
+        `*Total:* ₱${diagnosis.total.toFixed(2)}`,
         ``,
         `*Items:*`,
         ...diagnosis.items.map(
-          (item) => `- ${item.name}: $${item.price.toFixed(2)}`
+          (item) => `- ${item.name}: ₱${item.price.toFixed(2)}`
         ),
       ].join('\n');
 

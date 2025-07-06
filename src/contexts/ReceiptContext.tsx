@@ -1,7 +1,15 @@
 'use client';
 
-import {createContext, useContext, useState, type ReactNode} from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+  useEffect,
+} from 'react';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
+
+const LOCAL_STORAGE_KEY = 'risoca-receipts';
 
 export type Receipt = DiagnoseReceiptOutput & {
   id: string;
@@ -19,6 +27,33 @@ const ReceiptContext = createContext<ReceiptContextType | undefined>(undefined);
 
 export function ReceiptsProvider({children}: {children: ReactNode}) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const storedReceipts = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (storedReceipts) {
+        setReceipts(JSON.parse(storedReceipts));
+      }
+    } catch (error) {
+      console.error('Failed to parse receipts from localStorage', error);
+      // Clear corrupted data
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save to localStorage whenever receipts change
+  useEffect(() => {
+    if (isInitialized) {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(receipts));
+      } catch (error) {
+        console.error('Failed to save receipts to localStorage', error);
+      }
+    }
+  }, [receipts, isInitialized]);
 
   const addReceipt = (receipt: Receipt) => {
     setReceipts((prevReceipts) => [receipt, ...prevReceipts]);
