@@ -318,3 +318,44 @@ export async function deleteInventoryItem(
     return {success: false, message: `Could not delete item: ${message}`};
   }
 }
+
+export async function seedInventory(): Promise<{
+  success: boolean;
+  message?: string;
+}> {
+  const sampleItems: InventoryItemInput[] = [
+    {name: 'Lucky Me! Pancit Canton Chilimansi', price: 15.5, stock: 100},
+    {name: 'Coca-Cola Sakto 200ml', price: 12.0, stock: 50},
+    {name: 'Bear Brand Fortified 150g', price: 75.0, stock: 30},
+    {name: 'Kopiko Brown Coffee Twin Pack', price: 10.0, stock: 200},
+    {name: 'Silver Swan Soy Sauce 200ml', price: 20.0, stock: 40},
+    {name: 'Nissin Cup Noodles - Beef', price: 35.0, stock: 60},
+    {name: 'C2 Green Tea Apple 500ml', price: 28.0, stock: 45},
+    {name: 'Piattos - Cheese 85g', price: 45.0, stock: 70},
+    {name: 'Century Tuna Flakes in Oil 155g', price: 42.5, stock: 80},
+    {name: 'UFC Banana Ketchup 320g', price: 30.0, stock: 55},
+  ];
+
+  try {
+    const inventoryCollection = collection(db, 'inventory');
+
+    const addPromises = sampleItems.map((item) =>
+      addDoc(inventoryCollection, {
+        ...item,
+        createdAt: serverTimestamp(),
+      })
+    );
+
+    await Promise.all(addPromises);
+
+    return {
+      success: true,
+      message: `${sampleItems.length} sample items added.`,
+    };
+  } catch (error) {
+    console.error('Error seeding inventory:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not seed inventory: ${message}`};
+  }
+}

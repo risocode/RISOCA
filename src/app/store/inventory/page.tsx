@@ -16,6 +16,7 @@ import {
   addInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  seedInventory,
 } from '@/app/actions';
 import {
   InventoryItemSchema,
@@ -77,12 +78,14 @@ import {
   Pencil,
   Trash2,
   Loader2,
+  ShoppingCart,
 } from 'lucide-react';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -198,6 +201,24 @@ export default function InventoryPage() {
     setDeletingItemId(null);
   };
 
+  const handleSeedData = async () => {
+    setIsSeeding(true);
+    const response = await seedInventory();
+    if (response.success) {
+      toast({
+        title: 'Sample Data Added',
+        description: response.message,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Seeding Failed',
+        description: response.message || 'An unknown error occurred.',
+      });
+    }
+    setIsSeeding(false);
+  };
+
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
       <header className="flex items-center gap-4">
@@ -225,89 +246,103 @@ export default function InventoryPage() {
               A list of all items currently in your inventory.
             </CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="mr-2" /> Add New Item
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingItem ? 'Edit Item' : 'Add New Item'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingItem
-                    ? "Update the item's details below."
-                    : 'Fill in the details for the new item.'}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(handleFormSubmit)}
-                  className="space-y-4 py-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Item Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., T-Shirt" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Price (₱)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="150.00"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="stock"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Stock Quantity</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="100" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button type="button" variant="secondary">
-                        Cancel
-                      </Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting && (
-                        <Loader2 className="mr-2 animate-spin" />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSeedData}
+              disabled={isSeeding}
+            >
+              {isSeeding ? (
+                <Loader2 className="mr-2 animate-spin" />
+              ) : (
+                <ShoppingCart className="mr-2" />
+              )}
+              {isSeeding ? 'Adding...' : 'Add Samples'}
+            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="mr-2" /> Add New Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingItem ? 'Edit Item' : 'Add New Item'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingItem
+                      ? "Update the item's details below."
+                      : 'Fill in the details for the new item.'}
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(handleFormSubmit)}
+                    className="space-y-4 py-4"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Item Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., T-Shirt" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                      {editingItem ? 'Save Changes' : 'Add Item'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                    />
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Price (₱)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="150.00"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stock"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Stock Quantity</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="100" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button type="button" variant="secondary">
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && (
+                          <Loader2 className="mr-2 animate-spin" />
+                        )}
+                        {editingItem ? 'Save Changes' : 'Add Item'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
