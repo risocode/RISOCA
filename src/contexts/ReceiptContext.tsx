@@ -8,8 +8,8 @@ import {
   useEffect,
 } from 'react';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
-
-const LOCAL_STORAGE_KEY = 'risoca-receipts';
+import {db} from '@/lib/firebase';
+import {collection, query, onSnapshot, orderBy} from 'firebase/firestore';
 
 export type Receipt = DiagnoseReceiptOutput & {
   id: string;
@@ -18,7 +18,6 @@ export type Receipt = DiagnoseReceiptOutput & {
 
 interface ReceiptContextType {
   receipts: Receipt[];
-  addReceipt: (receipt: Receipt) => void;
   totalSpent: number;
   categories: Record<string, number>;
 }
@@ -27,37 +26,38 @@ const ReceiptContext = createContext<ReceiptContextType | undefined>(undefined);
 
 export function ReceiptsProvider({children}: {children: ReactNode}) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from localStorage on initial mount
+  // Load from firestore on initial mount and listen for updates
   useEffect(() => {
-    try {
-      const storedReceipts = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (storedReceipts) {
-        setReceipts(JSON.parse(storedReceipts));
+    const q = query(collection(db, 'receipts'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const receiptsFromDb: Receipt[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          // Note: The document shape in Firestore should match this.
+          // createdAt is added in actions.ts but not used here directly.
+          receiptsFromDb.push({
+            id: doc.id,
+            merchantName: data.merchantName,
+            transactionDate: data.transactionDate,
+            total: data.total,
+            items: data.items,
+            category: data.category,
+            imagePreview: data.imagePreview,
+          });
+        });
+        setReceipts(receiptsFromDb);
+      },
+      (error) => {
+        console.error('Error fetching receipts from Firestore:', error);
       }
-    } catch (error) {
-      console.error('Failed to parse receipts from localStorage', error);
-      // Clear corrupted data
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    }
-    setIsInitialized(true);
+    );
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
-
-  // Save to localStorage whenever receipts change
-  useEffect(() => {
-    if (isInitialized) {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(receipts));
-      } catch (error) {
-        console.error('Failed to save receipts to localStorage', error);
-      }
-    }
-  }, [receipts, isInitialized]);
-
-  const addReceipt = (receipt: Receipt) => {
-    setReceipts((prevReceipts) => [receipt, ...prevReceipts]);
-  };
 
   const totalSpent = receipts.reduce(
     (total, receipt) => total + receipt.total,
@@ -73,9 +73,7 @@ export function ReceiptsProvider({children}: {children: ReactNode}) {
   );
 
   return (
-    <ReceiptContext.Provider
-      value={{receipts, addReceipt, totalSpent, categories}}
-    >
+    <ReceiptContext.Provider value={{receipts, totalSpent, categories}}>
       {children}
     </ReceiptContext.Provider>
   );

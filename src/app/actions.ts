@@ -5,6 +5,8 @@ import {
   type DiagnoseReceiptInput,
   type DiagnoseReceiptOutput,
 } from '@/ai/flows/diagnose-receipt-flow';
+import {db} from '@/lib/firebase';
+import {addDoc, collection, serverTimestamp} from 'firebase/firestore';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
@@ -96,10 +98,27 @@ async function notifyOnTelegram(
   }
 }
 
+async function saveReceiptToFirestore(
+  receiptData: DiagnoseReceiptOutput,
+  imagePreview?: string
+) {
+  try {
+    await addDoc(collection(db, 'receipts'), {
+      ...receiptData,
+      imagePreview: imagePreview || null,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error writing document to Firestore: ', error);
+    throw new Error('Could not save receipt to database.');
+  }
+}
+
 export async function scanAndNotify(
   input: DiagnoseReceiptInput
 ): Promise<DiagnoseReceiptOutput> {
   const diagnosis = await diagnoseReceipt(input);
+  await saveReceiptToFirestore(diagnosis, input.photoDataUri);
   await notifyOnTelegram(diagnosis, input.photoDataUri);
   return diagnosis;
 }
@@ -107,6 +126,7 @@ export async function scanAndNotify(
 export async function submitManualReceipt(
   data: DiagnoseReceiptOutput
 ): Promise<DiagnoseReceiptOutput> {
+  await saveReceiptToFirestore(data);
   await notifyOnTelegram(data);
   return data;
 }

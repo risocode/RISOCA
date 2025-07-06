@@ -8,10 +8,11 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 ## Features
 
 *   **AI-Powered Scanning:** Uses Genkit and the Gemini AI model to accurately parse receipt data.
+*   **Firebase Integration:** All scanned receipts are saved to a central Firestore database, ensuring your data is persistent and secure.
 *   **Telegram Integration:** Automatically sends scanned receipt details and images to a Telegram channel.
 *   **PWA Ready:** Installable on desktop and mobile devices for quick access.
-*   **Dashboard:** View a history of your scanned receipts and see a summary of your spending for the session. Data is persisted in your browser's local storage.
-*   **Dual Input:** Upload a receipt image or use your device's camera to capture one directly.
+*   **Dashboard:** View a history of your scanned receipts and see a summary of your spending. Data is loaded in real-time from Firestore.
+*   **Triple Input:** Upload an image, use your device's camera, or enter receipt details manually.
 *   **Responsive UI:** A clean, modern interface built with Next.js, ShadCN UI, and Tailwind CSS.
 
 ## Getting Started
@@ -19,9 +20,10 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 ### Prerequisites
 
 *   Node.js and npm
-*   A Google AI API Key (you can get one from [Google AI Studio](https://aistudio.google.com/)).
-*   A Telegram Bot Token from BotFather.
-*   A Telegram Channel ID where the bot will post messages.
+*   A Google AI API Key (from [Google AI Studio](https://aistudio.google.com/)).
+*   A Telegram Bot Token (from BotFather).
+*   A Telegram Channel ID.
+*   A Firebase project with Firestore enabled.
 
 ### Installation and Setup
 
@@ -36,16 +38,35 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     npm install
     ```
 
-3.  **Set up your environment variables:**
-    Create a file named `.env` in the root of your project and add the following keys. The Google AI key should be for a project with the "Generative Language API" enabled. To get a Telegram Channel ID, create a channel, add your bot as an administrator, and then use a helper bot like `@userinfobot` to get the channel's ID (it usually starts with `-100...`).
+3.  **Set up Firebase:**
+    *   Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+    *   In your project, go to **Project Settings** (click the gear icon).
+    *   Under the "General" tab, scroll down to "Your apps" and click the **Web** icon (`</>`).
+    *   Give your app a nickname and click "Register app".
+    *   You'll see an `firebaseConfig` object. Copy the key-value pairs. You will need these for your environment variables.
+    *   In the Firebase console, go to the **Firestore Database** section, click "Create database", and start in **production mode**. Choose a location and click "Enable".
+
+4.  **Set up your environment variables:**
+    Create a file named `.env` in the root of your project and add your keys.
 
     ```
+    # Google AI Key
     GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
+
+    # Telegram Bot
     TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
     TELEGRAM_CHANNEL_ID=YOUR_TELEGRAM_CHANNEL_ID
+
+    # Firebase Configuration
+    NEXT_PUBLIC_FIREBASE_API_KEY=FROM_FIREBASE_CONFIG
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=FROM_FIREBASE_CONFIG
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=FROM_FIREBASE_CONFIG
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=FROM_FIREBASE_CONFIG
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=FROM_FIREBASE_CONFIG
+    NEXT_PUBLIC_FIREBASE_APP_ID=FROM_FIREBASE_CONFIG
     ```
 
-4.  **Run the development server:**
+5.  **Run the development server:**
     ```bash
     npm run dev
     ```
@@ -60,7 +81,7 @@ This application is ready to be deployed to any static hosting provider like Ver
 
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
-3.  **Configure Environment Variables:** In the Vercel project settings, add your `GOOGLE_API_KEY`, `TELEGRAM_BOT_TOKEN`, and `TELEGRAM_CHANNEL_ID` as environment variables.
+3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file.
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.

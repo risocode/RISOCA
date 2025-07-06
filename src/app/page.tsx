@@ -104,7 +104,6 @@ export default function Home() {
   );
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const {addReceipt} = useReceipts();
   const router = useRouter();
   const {toast} = useToast();
 
@@ -226,18 +225,14 @@ export default function Home() {
     setError(null);
 
     try {
-      const result = await scanAndNotify({photoDataUri: imageData});
-      const newReceipt = {
-        ...result,
-        id: uuidv4(),
-        imagePreview: imagePreview,
-      };
-      setDiagnosis(newReceipt);
-      addReceipt(newReceipt);
+      const result = await scanAndNotify({
+        photoDataUri: imageData,
+      });
+      setDiagnosis(result);
       toast({
-        title: 'Notification Sent',
+        title: 'Scan Complete & Notified',
         description:
-          'The receipt details have been sent to your Telegram channel.',
+          'The receipt details have been sent to your Telegram channel and saved.',
       });
     } catch (e) {
       console.error(e);
@@ -261,16 +256,11 @@ export default function Home() {
 
     try {
       const result = await submitManualReceipt(payload);
-      const newReceipt = {
-        ...result,
-        id: uuidv4(),
-      };
-      setDiagnosis(newReceipt);
-      addReceipt(newReceipt);
+      setDiagnosis(result);
       toast({
-        title: 'Notification Sent',
+        title: 'Receipt Submitted & Notified',
         description:
-          'The receipt details have been sent to your Telegram channel.',
+          'The receipt details have been sent to your Telegram channel and saved.',
       });
       form.reset();
     } catch (e) {
