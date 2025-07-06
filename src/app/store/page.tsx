@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useState, useEffect} from 'react';
@@ -15,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {submitSalesReport, type SaleItem} from '@/app/actions';
+import type {InventoryItem} from '@/lib/schemas';
 
 import {
   Card,
@@ -52,11 +52,24 @@ import {
   CalendarDays,
   ArrowRight,
   PackageSearch,
+  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
+import {
+  Command,
+  CommandInput,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {cn} from '@/lib/utils';
 
 const SaleItemSchema = z.object({
+  itemId: z.string().optional(),
   itemName: z.string().min(1, 'Item name is required.'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1.'),
   unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative.'),
@@ -97,10 +110,12 @@ const SalesFormTotals = ({control}: {control: Control<SalesFormData>}) => {
 
 export default function StorePage() {
   const [allSales, setAllSales] = useState<SaleDoc[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [historyLimit, setHistoryLimit] = useState(5);
   const {toast} = useToast();
+  const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
 
   const form = useForm<SalesFormData>({
     resolver: zodResolver(SalesFormSchema),
@@ -116,10 +131,17 @@ export default function StorePage() {
 
   useEffect(() => {
     setIsLoading(true);
-    const q = query(collection(db, 'sales'), orderBy('createdAt', 'desc'));
+    const salesQuery = query(
+      collection(db, 'sales'),
+      orderBy('createdAt', 'desc')
+    );
+    const inventoryQuery = query(
+      collection(db, 'inventory'),
+      orderBy('name', 'asc')
+    );
 
-    const unsubscribe = onSnapshot(
-      q,
+    const unsubscribeSales = onSnapshot(
+      salesQuery,
       (querySnapshot) => {
         const salesFromDb: SaleDoc[] = [];
         querySnapshot.forEach((doc) => {
@@ -142,7 +164,32 @@ export default function StorePage() {
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribeInventory = onSnapshot(
+      inventoryQuery,
+      (querySnapshot) => {
+        const inventoryFromDb: InventoryItem[] = [];
+        querySnapshot.forEach((doc) => {
+          inventoryFromDb.push({
+            id: doc.id,
+            ...doc.data(),
+          } as InventoryItem);
+        });
+        setInventory(inventoryFromDb);
+      },
+      (error) => {
+        console.error('Error fetching inventory from Firestore:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Database Error',
+          description: 'Could not fetch inventory data.',
+        });
+      }
+    );
+
+    return () => {
+      unsubscribeSales();
+      unsubscribeInventory();
+    };
   }, [toast]);
 
   const handleFormSubmit = async (data: SalesFormData) => {
@@ -157,7 +204,7 @@ export default function StorePage() {
     if (response.success) {
       toast({
         title: 'Success',
-        description: 'Sales report submitted successfully.',
+        description: 'Sales report submitted and inventory updated.',
       });
       form.reset({
         items: [{itemName: '', quantity: 1, unitPrice: 0}],
@@ -170,6 +217,10 @@ export default function StorePage() {
       });
     }
     setIsSubmitting(false);
+  };
+
+  const setPopoverOpen = (index: number, open: boolean) => {
+    setOpenPopovers((prev) => ({...prev, [index]: open}));
   };
 
   const today = new Date();
@@ -206,7 +257,7 @@ export default function StorePage() {
           <CardHeader>
             <CardTitle>Submit Daily Sales</CardTitle>
             <CardDescription>
-              Add items sold today. Totals are calculated automatically.
+              Add items sold today. Stock will be updated automatically.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -227,9 +278,99 @@ export default function StorePage() {
                         render={({field}) => (
                           <FormItem className="flex-1">
                             <FormLabel>Item Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g. T-Shirt" {...field} />
-                            </FormControl>
+                            <Popover
+                              open={openPopovers[index]}
+                              onOpenChange={(open) =>
+                                setPopoverOpen(index, open)
+                              }
+                            >
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      'w-full justify-between',
+                                      !field.value && 'text-muted-foreground'
+                                    )}
+                                  >
+                                    {field.value || 'Select or type an item'}
+                                    <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command
+                                  filter={(value, search) => {
+                                    if (
+                                      value
+                                        .toLowerCase()
+                                        .includes(search.toLowerCase())
+                                    )
+                                      return 1;
+                                    return 0;
+                                  }}
+                                >
+                                  <CommandInput
+                                    placeholder="Search inventory..."
+                                    onValueChange={(search) => {
+                                      // Allow custom values
+                                      form.setValue(
+                                        `items.${index}.itemName`,
+                                        search
+                                      );
+                                      form.setValue(
+                                        `items.${index}.itemId`,
+                                        undefined
+                                      );
+                                    }}
+                                  />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      No inventory item found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {inventory.map((item) => (
+                                        <CommandItem
+                                          value={item.name}
+                                          key={item.id}
+                                          onSelect={() => {
+                                            form.setValue(
+                                              `items.${index}.itemName`,
+                                              item.name
+                                            );
+                                            form.setValue(
+                                              `items.${index}.unitPrice`,
+                                              item.price
+                                            );
+                                            form.setValue(
+                                              `items.${index}.itemId`,
+                                              item.id
+                                            );
+                                            setPopoverOpen(index, false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              'mr-2 h-4 w-4',
+                                              field.value === item.name
+                                                ? 'opacity-100'
+                                                : 'opacity-0'
+                                            )}
+                                          />
+                                          <div className="flex justify-between w-full">
+                                            <span>{item.name}</span>
+                                            <span className="text-muted-foreground text-xs">
+                                              Stock: {item.stock}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}

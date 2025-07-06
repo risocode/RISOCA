@@ -11,14 +11,16 @@ import {
   collection,
   deleteDoc,
   doc,
+  runTransaction,
   serverTimestamp,
   updateDoc,
+  type DocumentReference,
   type Timestamp,
 } from 'firebase/firestore';
 import type {InventoryItemInput} from '@/lib/schemas';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID?.trim();
+const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
 type NotificationStatus = {
   success: boolean;
@@ -172,6 +174,7 @@ export async function submitManualReceipt(
 
 // Types for Sales Report
 export type SaleItem = {
+  itemId?: string;
   itemName: string;
   quantity: number;
   unitPrice: number;
@@ -191,19 +194,77 @@ export async function submitSalesReport(
   }
 
   try {
-    const salesCollection = collection(db, 'sales');
-    for (const item of report.items) {
-      await addDoc(salesCollection, {
-        ...item,
-        createdAt: serverTimestamp(),
-      });
-    }
+    await runTransaction(db, async (transaction) => {
+      const salesCollection = collection(db, 'sales');
+      const inventoryCollection = collection(db, 'inventory');
+
+      // Create a map of inventory items to fetch to avoid duplicate reads
+      const inventoryToFetch = new Map<
+        string,
+        {itemRef: DocumentReference; quantity: number}
+      >();
+      for (const item of report.items) {
+        if (item.itemId) {
+          const existing = inventoryToFetch.get(item.itemId);
+          inventoryToFetch.set(item.itemId, {
+            itemRef: doc(inventoryCollection, item.itemId),
+            quantity: (existing?.quantity || 0) + item.quantity,
+          });
+        }
+      }
+
+      // Read all necessary inventory documents
+      const itemRefs = Array.from(inventoryToFetch.values()).map(
+        (i) => i.itemRef
+      );
+      const inventoryDocs =
+        itemRefs.length > 0 ? await transaction.getAll(...itemRefs) : [];
+
+      // Validate stock and prepare updates
+      for (const inventoryDoc of inventoryDocs) {
+        if (!inventoryDoc.exists()) {
+          const failedItem = report.items.find(
+            (i) => i.itemId === inventoryDoc.id
+          );
+          throw new Error(
+            `Item "${failedItem?.itemName}" with ID ${inventoryDoc.id} not found in inventory.`
+          );
+        }
+
+        const required = inventoryToFetch.get(inventoryDoc.id)!;
+        const currentStock = inventoryDoc.data().stock as number;
+
+        if (currentStock < required.quantity) {
+          throw new Error(
+            `Insufficient stock for "${inventoryDoc.data().name}". Available: ${currentStock}, Requested: ${required.quantity}.`
+          );
+        }
+
+        // Prepare the stock update
+        transaction.update(inventoryDoc.ref, {
+          stock: currentStock - required.quantity,
+        });
+      }
+
+      // Record all sales
+      for (const item of report.items) {
+        const {itemId, ...saleData} = item;
+        transaction.set(doc(collection(db, 'sales')), {
+          ...saleData,
+          createdAt: serverTimestamp(),
+        });
+      }
+    });
+
     return {success: true};
   } catch (error) {
-    console.error('Error writing sales report to Firestore: ', error);
+    console.error('Error in sales report transaction: ', error);
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
-    return {success: false, message: `Could not save report: ${message}`};
+    return {
+      success: false,
+      message: `Transaction failed: ${message}`,
+    };
   }
 }
 
@@ -235,7 +296,8 @@ export async function updateInventoryItem(
       ...item,
     });
     return {success: true};
-  } catch (error) {
+  } catch (error)
+  {
     console.error('Error updating inventory item in Firestore: ', error);
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
