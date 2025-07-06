@@ -10,6 +10,7 @@ import {
 import {AppSidebar} from './components/app-sidebar';
 import {Toaster} from '@/components/ui/toaster';
 import {MobileHeader} from './components/mobile-header';
+import {SiteProtection} from './components/site-protection';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,7 +20,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'RISOCA',
-  description: 'An application for scanning receipts and managing a store inventory.',
+  description:
+    'An application for scanning receipts and managing a store inventory.',
 };
 
 export default function RootLayout({
@@ -48,18 +50,20 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased h-full">
-        <ReceiptsProvider>
-          <SidebarProvider>
-            <Sidebar>
-              <AppSidebar />
-            </Sidebar>
-            <SidebarInset>
-              <MobileHeader />
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
-        </ReceiptsProvider>
-        <Toaster />
+        <SiteProtection>
+          <ReceiptsProvider>
+            <SidebarProvider>
+              <Sidebar>
+                <AppSidebar />
+              </Sidebar>
+              <SidebarInset>
+                <MobileHeader />
+                {children}
+              </SidebarInset>
+            </SidebarProvider>
+          </ReceiptsProvider>
+          <Toaster />
+        </SiteProtection>
       </body>
     </html>
   );
