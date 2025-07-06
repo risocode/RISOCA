@@ -68,6 +68,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {Calendar} from '@/components/ui/calendar';
+import {ScrollArea} from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -832,21 +833,23 @@ export default function ReceiptPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Items ({diagnosis.items.length})
                 </p>
-                <div className="p-3 border rounded-md max-h-48 overflow-y-auto text-sm bg-muted/50">
-                  <ul className="space-y-2">
-                    {diagnosis.items.map((item, index) => (
-                      <li
-                        key={index}
-                        className="flex justify-between py-1 border-b last:border-none"
-                      >
-                        <span className="pr-2 truncate">{item.name}</span>
-                        <span className="flex-shrink-0">
-                          ₱{item.price.toFixed(2)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <ScrollArea className="h-48 rounded-md border bg-muted/50">
+                  <div className="p-3 text-sm">
+                    <ul className="space-y-2">
+                      {diagnosis.items.map((item, index) => (
+                        <li
+                          key={index}
+                          className="flex justify-between py-1 border-b last:border-none"
+                        >
+                          <span className="pr-2 truncate">{item.name}</span>
+                          <span className="flex-shrink-0">
+                            ₱{item.price.toFixed(2)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           </CardContent>
