@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, type ChangeEvent, type DragEvent } from "react";
+import { useState, useRef, type ChangeEvent, type DragEvent, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,50 @@ export default function Home() {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const handleReset = useCallback(() => {
+    setAppState("initial");
+    setReceiptData(null);
+    setImageDataUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
+
+  useEffect(() => {
+    const WebApp = window.Telegram?.WebApp;
+    if (!WebApp) return;
+
+    const handleMainButtonClick = () => {
+      if (appState === 'initial') {
+        fileInputRef.current?.click();
+      } else {
+        handleReset();
+      }
+    };
+
+    WebApp.ready();
+    WebApp.expand();
+    WebApp.MainButton.onClick(handleMainButtonClick);
+
+    if (appState === 'initial') {
+      WebApp.MainButton.setText('UPLOAD RECEIPT');
+      WebApp.MainButton.show();
+      WebApp.MainButton.hideProgress();
+    } else if (appState === 'loading') {
+      WebApp.MainButton.showProgress();
+      WebApp.MainButton.disable();
+    } else if (appState === 'result' || appState === 'error') {
+      WebApp.MainButton.setText('SCAN ANOTHER RECEIPT');
+      WebApp.MainButton.show();
+      WebApp.MainButton.hideProgress();
+      WebApp.MainButton.enable();
+    }
+    
+    return () => {
+        WebApp.MainButton.offClick(handleMainButtonClick);
+    }
+  }, [appState, handleReset]);
 
   const handleFileChange = (file: File | null) => {
     if (!file) return;
@@ -69,14 +113,6 @@ export default function Home() {
     }
   };
 
-  const handleReset = () => {
-    setAppState("initial");
-    setReceiptData(null);
-    setImageDataUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-secondary/30">
