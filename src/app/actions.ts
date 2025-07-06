@@ -13,14 +13,13 @@ const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
 
 // Helper to convert data URI to Blob
 function dataURItoBlob(dataURI: string) {
-  const byteString = atob(dataURI.split(',')[1]);
-  const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-  const ab = new ArrayBuffer(byteString.length);
-  const ia = new Uint8Array(ab);
-  for (let i = 0; i < byteString.length; i++) {
-    ia[i] = byteString.charCodeAt(i);
+  const dataParts = dataURI.split(',');
+  if (dataParts.length !== 2) {
+    throw new Error('Invalid Data URI');
   }
-  return new Blob([ab], {type: mimeString});
+  const mimeString = dataParts[0].split(':')[1].split(';')[0];
+  const byteString = Buffer.from(dataParts[1], 'base64');
+  return new Blob([byteString], {type: mimeString});
 }
 
 async function notifyOnTelegram(
