@@ -16,10 +16,13 @@ export function AppSidebar() {
     <>
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="RISOCA Logo" width={28} height={28} className="w-7 h-7" />
-          <h1 className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
-            RISOCA
-          </h1>
+          <Image
+            src="/logo.png"
+            alt="RISOCA Logo"
+            width={90}
+            height={28}
+            className="w-auto h-7"
+          />
           <div className="grow" />
           <SidebarTrigger className="hidden md:flex" />
         </div>
