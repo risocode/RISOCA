@@ -28,20 +28,16 @@ function escapeMarkdownV2(text: string): string {
   return text.replace(charsToEscape, '\\$&');
 }
 
-// Helper to convert data URI to a Blob, compatible with Edge runtime
+// Helper to convert data URI to a Blob, compatible with Edge runtime and Node.js
 function dataURItoBlob(dataURI: string): Blob {
   const [header, base64Data] = dataURI.split(',');
   if (!header || !base64Data) {
     throw new Error('Invalid Data URI');
   }
   const mimeString = header.split(':')[1].split(';')[0];
-  const byteString = atob(base64Data);
-  const arrayBuffer = new ArrayBuffer(byteString.length);
-  const uint8Array = new Uint8Array(arrayBuffer);
-  for (let i = 0; i < byteString.length; i++) {
-    uint8Array[i] = byteString.charCodeAt(i);
-  }
-  return new Blob([uint8Array], {type: mimeString});
+  // Use Buffer.from for robust Base64 decoding on the server
+  const buffer = Buffer.from(base64Data, 'base64');
+  return new Blob([buffer], {type: mimeString});
 }
 
 async function notifyOnTelegram(
@@ -54,13 +50,6 @@ async function notifyOnTelegram(
     );
     return {success: false, message: 'Telegram not configured.'};
   }
-
-  // --- START TEMPORARY DEBUGGING ---
-  console.log('--- Telegram Notification Debug ---');
-  console.log(`Attempting to send to CHANNEL_ID: "${CHANNEL_ID}"`);
-  const maskedToken = BOT_TOKEN.substring(0, 15) + '...';
-  console.log(`Using BOT_TOKEN starting with: "${maskedToken}"`);
-  // --- END TEMPORARY DEBUGGING ---
 
   try {
     const caption = [
@@ -90,9 +79,6 @@ async function notifyOnTelegram(
     ].join('\n');
 
     const parseMode = 'MarkdownV2';
-    // --- TEMPORARY DEBUGGING ---
-    console.log('Generated Caption:\n', caption);
-    // ---
 
     let response: Response;
     if (photoDataUri) {
@@ -103,56 +89,45 @@ async function notifyOnTelegram(
       formData.append('photo', blob, 'receipt.jpg');
       formData.append('caption', caption);
       formData.append('parse_mode', parseMode);
-      
+
       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
-      // --- TEMPORARY DEBUGGING ---
-      console.log('Sending PHOTO to URL:', url);
-      // ---
-
       response = await fetch(url, {method: 'POST', body: formData});
-
     } else {
       // Send text only
-       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
       const body = {
         chat_id: CHANNEL_ID,
         text: caption,
         parse_mode: parseMode,
       };
 
-      // --- TEMPORARY DEBUGGING ---
-      console.log('Sending TEXT to URL:', url);
-      console.log('Request Body:', JSON.stringify(body, null, 2));
-      // ---
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+      });
+    }
 
-      response = await fetch(url,
-        {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(body),
-        }
-      );
-    }
-    
     if (!response.ok) {
-        const errorData = await response.json();
-        // --- TEMPORARY DEBUGGING ---
-        console.error('--- Full Telegram Error Response ---');
-        console.error(`Status: ${response.status} ${response.statusText}`);
-        console.error('Error Body:', JSON.stringify(errorData, null, 2));
-        console.error('Error Description from Telegram:', errorData.description);
-        // ---
-        const description =
-          errorData.description || 'Telegram API returned an error.';
-        return {success: false, message: `Telegram Error: ${description}`};
+      const errorData = await response.json();
+      console.error(
+        'Telegram API Error:',
+        JSON.stringify(errorData, null, 2)
+      );
+      const description =
+        errorData.description || 'Telegram API returned an error.';
+      return {success: false, message: `Telegram Error: ${description}`};
     }
-    
-    console.log('--- Telegram Notification Success ---');
+
     return {success: true};
   } catch (error) {
-    console.error('--- Network or other error sending notification to Telegram ---', error);
-    const message = error instanceof Error ? error.message : 'An unknown error occurred.';
-    return {success: false, message: `A network error occurred while sending to Telegram: ${message}`};
+    console.error('Error sending notification to Telegram:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      message: `A network error occurred while sending to Telegram: ${message}`,
+    };
   }
 }
 
