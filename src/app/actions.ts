@@ -320,3 +320,14 @@ export async function deleteInventoryItem(
     return {success: false, message: `Could not delete item: ${message}`};
   }
 }
+
+export async function verifyPassword(password: string): Promise<{success: boolean}> {
+  if (!process.env.SITE_PASSWORD) {
+    console.error('SITE_PASSWORD environment variable is not set.');
+    // In a real-world scenario, you might want to prevent any access
+    // if the password isn't configured. For now, we'll just fail the check.
+    return {success: false};
+  }
+  const isCorrect = password === process.env.SITE_PASSWORD;
+  return {success: isCorrect};
+}

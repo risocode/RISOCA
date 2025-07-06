@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useState} from 'react';
@@ -6,8 +5,9 @@ import {Input} from '@/components/ui/input';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
-import {ShieldAlert, LogIn} from 'lucide-react';
+import {ShieldAlert, LogIn, Loader2} from 'lucide-react';
 import Image from 'next/image';
+import {verifyPassword} from '@/app/actions';
 
 interface PasswordProtectProps {
   onSuccess: () => void;
@@ -16,14 +16,26 @@ interface PasswordProtectProps {
 export function PasswordProtect({onSuccess}: PasswordProtectProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === process.env.NEXT_PUBLIC_SITE_PASSWORD) {
-      setError('');
-      onSuccess();
-    } else {
-      setError('Incorrect password. Please try again.');
+    setError('');
+    setIsVerifying(true);
+
+    try {
+      const result = await verifyPassword(password);
+      if (result.success) {
+        onSuccess();
+      } else {
+        setError('Incorrect password. Please try again.');
+        setPassword('');
+      }
+    } catch (err) {
+      console.error('Password verification error:', err);
+      setError('An error occurred. Please try again later.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -66,9 +78,13 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full">
-              <LogIn className="mr-2"/>
-              Unlock
+            <Button type="submit" className="w-full" disabled={isVerifying}>
+              {isVerifying ? (
+                <Loader2 className="mr-2 animate-spin" />
+              ) : (
+                <LogIn className="mr-2"/>
+              )}
+              {isVerifying ? 'Verifying...' : 'Unlock'}
             </Button>
           </form>
         </CardContent>
