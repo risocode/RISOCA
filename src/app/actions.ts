@@ -9,7 +9,7 @@ import {db} from '@/lib/firebase';
 import {addDoc, collection, serverTimestamp} from 'firebase/firestore';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
+const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID?.trim();
 
 type NotificationStatus = {
   success: boolean;
@@ -71,12 +71,12 @@ async function notifyOnTelegram(
         )
       )}`,
       `*Category:* ${escapeMarkdownV2(diagnosis.category)}`,
-      `*Total:* ₱${escapeMarkdownV2(diagnosis.total.toFixed(2))}`,
+      `*Total:* ${escapeMarkdownV2(diagnosis.total.toFixed(2))}`,
       ``,
       `*Items:*`,
       ...diagnosis.items.map(
         (item) =>
-          `\\- ${escapeMarkdownV2(item.name)}: ₱${escapeMarkdownV2(
+          `\\- ${escapeMarkdownV2(item.name)}: ${escapeMarkdownV2(
             item.price.toFixed(2)
           )}`
       ),
