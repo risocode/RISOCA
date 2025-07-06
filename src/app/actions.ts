@@ -55,6 +55,13 @@ async function notifyOnTelegram(
     return {success: false, message: 'Telegram not configured.'};
   }
 
+  // --- START TEMPORARY DEBUGGING ---
+  console.log('--- Telegram Notification Debug ---');
+  console.log(`Attempting to send to CHANNEL_ID: "${CHANNEL_ID}"`);
+  const maskedToken = BOT_TOKEN.substring(0, 15) + '...';
+  console.log(`Using BOT_TOKEN starting with: "${maskedToken}"`);
+  // --- END TEMPORARY DEBUGGING ---
+
   try {
     const caption = [
       `🧾 *Receipt Processed* 🧾`,
@@ -83,6 +90,9 @@ async function notifyOnTelegram(
     ].join('\n');
 
     const parseMode = 'MarkdownV2';
+    // --- TEMPORARY DEBUGGING ---
+    console.log('Generated Caption:\n', caption);
+    // ---
 
     if (photoDataUri) {
       // Send with photo
@@ -92,43 +102,61 @@ async function notifyOnTelegram(
       formData.append('photo', blob, 'receipt.jpg');
       formData.append('caption', caption);
       formData.append('parse_mode', parseMode);
-      const response = await fetch(
-        `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`,
-        {method: 'POST', body: formData}
-      );
+      
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+      // --- TEMPORARY DEBUGGING ---
+      console.log('Sending PHOTO to URL:', url);
+      // ---
+
+      const response = await fetch(url, {method: 'POST', body: formData});
+
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Failed to send message to Telegram:', errorData);
+        // --- TEMPORARY DEBUGGING ---
+        console.error('--- Full Telegram Error Response (Photo) ---');
+        console.error(JSON.stringify(errorData, null, 2));
+        // ---
         const description =
           errorData.description || 'Telegram API returned an error.';
         return {success: false, message: description};
       }
     } else {
       // Send text only
-      const response = await fetch(
-        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+      const body = {
+        chat_id: CHANNEL_ID,
+        text: caption,
+        parse_mode: parseMode,
+      };
+
+      // --- TEMPORARY DEBUGGING ---
+      console.log('Sending TEXT to URL:', url);
+      console.log('Request Body:', JSON.stringify(body, null, 2));
+      // ---
+
+      const response = await fetch(url,
         {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            chat_id: CHANNEL_ID,
-            text: caption,
-            parse_mode: parseMode,
-          }),
+          body: JSON.stringify(body),
         }
       );
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Failed to send message to Telegram:', errorData);
+        // --- TEMPORARY DEBUGGING ---
+        console.error('--- Full Telegram Error Response (Text) ---');
+        console.error(JSON.stringify(errorData, null, 2));
+        // ---
         const description =
           errorData.description || 'Telegram API returned an error.';
         return {success: false, message: description};
       }
     }
+    console.log('--- Telegram Notification Success ---');
     return {success: true};
   } catch (error) {
-    console.error('Error sending notification to Telegram:', error);
-    return {success: false, message: 'Failed to send to Telegram.'};
+    console.error('--- Network or other error sending notification to Telegram ---', error);
+    return {success: false, message: 'A network error occurred while sending to Telegram.'};
   }
 }
 
