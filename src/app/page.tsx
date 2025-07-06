@@ -14,11 +14,10 @@ import {
 } from 'lucide-react';
 import {useRouter} from 'next/navigation';
 import {v4 as uuidv4} from 'uuid';
-import {
-  diagnoseReceipt,
-  type DiagnoseReceiptOutput,
-} from '@/ai/flows/diagnose-receipt-flow';
 import {useReceipts} from '@/contexts/ReceiptContext';
+import {useToast} from '@/hooks/use-toast';
+import {scanAndNotify} from '@/app/actions';
+import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 
 import {
   Card,
@@ -45,6 +44,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {addReceipt} = useReceipts();
   const router = useRouter();
+  const {toast} = useToast();
 
   const [inputMethod, setInputMethod] = useState<'upload' | 'camera'>(
     'upload'
@@ -147,12 +147,17 @@ export default function Home() {
     setError(null);
 
     try {
-      const result = await diagnoseReceipt({photoDataUri: imageData});
+      const result = await scanAndNotify({photoDataUri: imageData});
       setDiagnosis(result);
       addReceipt({
         ...result,
         id: uuidv4(),
         imagePreview: imagePreview,
+      });
+      toast({
+        title: 'Notification Sent',
+        description:
+          'The receipt details have been sent to your Telegram channel.',
       });
     } catch (e) {
       console.error(e);

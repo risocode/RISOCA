@@ -8,6 +8,7 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import {AppSidebar} from './components/app-sidebar';
+import {Toaster} from '@/components/ui/toaster';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -52,6 +53,7 @@ export default function RootLayout({
             <SidebarInset>{children}</SidebarInset>
           </SidebarProvider>
         </ReceiptsProvider>
+        <Toaster />
       </body>
     </html>
   );
