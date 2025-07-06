@@ -10,6 +10,7 @@ import {
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {db} from '@/lib/firebase';
 import {collection, query, onSnapshot, orderBy} from 'firebase/firestore';
+import {useToast} from '@/hooks/use-toast';
 
 export type Receipt = DiagnoseReceiptOutput & {
   id: string;
@@ -26,6 +27,7 @@ const ReceiptContext = createContext<ReceiptContextType | undefined>(undefined);
 
 export function ReceiptsProvider({children}: {children: ReactNode}) {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const {toast} = useToast();
 
   // Load from firestore on initial mount and listen for updates
   useEffect(() => {
@@ -52,12 +54,18 @@ export function ReceiptsProvider({children}: {children: ReactNode}) {
       },
       (error) => {
         console.error('Error fetching receipts from Firestore:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Database Connection Error',
+          description:
+            'Could not connect to Firestore. Please check your security rules in the Firebase console and refresh the page.',
+        });
       }
     );
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
   const totalSpent = receipts.reduce(
     (total, receipt) => total + receipt.total,
