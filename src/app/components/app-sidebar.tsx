@@ -9,7 +9,7 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import {LayoutDashboard, ScanLine, Bot} from 'lucide-react';
+import {LayoutDashboard, ScanLine, Bot, Store} from 'lucide-react';
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -39,6 +39,14 @@ export function AppSidebar() {
             <Link href="/dashboard">
               <LayoutDashboard />
               <span>Dashboard</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild isActive={pathname === '/store'}>
+            <Link href="/store">
+              <Store />
+              <span>RiSoCa Store</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

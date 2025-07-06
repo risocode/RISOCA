@@ -21,21 +21,17 @@ export type ActionResponse = {
   notificationStatus: NotificationStatus;
 };
 
-// Helper to escape text for Telegram's MarkdownV2 format
 function escapeMarkdownV2(text: string): string {
-  // Characters to escape: _ * [ ] ( ) ~ ` > # + - = | { } . !
   const charsToEscape = /[_*[\]()~`>#+\-=|{}.!]/g;
   return text.replace(charsToEscape, '\\$&');
 }
 
-// Helper to convert data URI to a Blob, compatible with Edge runtime and Node.js
 function dataURItoBlob(dataURI: string): Blob {
   const [header, base64Data] = dataURI.split(',');
   if (!header || !base64Data) {
     throw new Error('Invalid Data URI');
   }
   const mimeString = header.split(':')[1].split(';')[0];
-  // Use Buffer.from for robust Base64 decoding on the server
   const buffer = Buffer.from(base64Data, 'base64');
   return new Blob([buffer], {type: mimeString});
 }
@@ -82,7 +78,6 @@ async function notifyOnTelegram(
 
     let response: Response;
     if (photoDataUri) {
-      // Send with photo
       const blob = dataURItoBlob(photoDataUri);
       const formData = new FormData();
       formData.append('chat_id', CHANNEL_ID);
@@ -93,7 +88,6 @@ async function notifyOnTelegram(
       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
       response = await fetch(url, {method: 'POST', body: formData});
     } else {
-      // Send text only
       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
       const body = {
         chat_id: CHANNEL_ID,
@@ -165,4 +159,41 @@ export async function submitManualReceipt(
   await saveReceiptToFirestore(data);
   const notificationStatus = await notifyOnTelegram(data);
   return {diagnosis: data, notificationStatus};
+}
+
+// Types for Sales Report
+export type SaleItem = {
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+};
+
+export type SalesReportInput = {
+  items: SaleItem[];
+};
+
+// Action to submit a sales report
+export async function submitSalesReport(
+  report: SalesReportInput
+): Promise<{success: boolean; message?: string}> {
+  if (!report.items || report.items.length === 0) {
+    return {success: false, message: 'No items in the report.'};
+  }
+
+  try {
+    const salesCollection = collection(db, 'sales');
+    for (const item of report.items) {
+      await addDoc(salesCollection, {
+        ...item,
+        createdAt: serverTimestamp(),
+      });
+    }
+    return {success: true};
+  } catch (error) {
+    console.error('Error writing sales report to Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not save report: ${message}`};
+  }
 }
