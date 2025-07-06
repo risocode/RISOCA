@@ -21,7 +21,7 @@ export function AppSidebar() {
             alt="RISOCA Logo"
             width={90}
             height={28}
-            className="w-auto h-7"
+            className="w-auto h-7 logo-glow"
           />
           <div className="grow" />
           <SidebarTrigger className="hidden md:flex" />

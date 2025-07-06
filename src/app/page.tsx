@@ -394,7 +394,7 @@ export default function ReceiptPage() {
           alt="RISOCA Logo"
           width={150}
           height={40}
-          className="w-auto h-10"
+          className="w-auto h-10 logo-glow"
         />
       </div>
       <p className="mb-8 text-lg text-muted-foreground">
