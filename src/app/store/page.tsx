@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect} from 'react';
@@ -218,14 +219,10 @@ export default function StorePage() {
 
   return (
     <>
-      <div className="p-4 md:p-6 space-y-4">
-        <header>
-          <h1 className="text-2xl font-bold">Daily Sales</h1>
-        </header>
-
+      <div className="p-4 md:p-6 space-y-6">
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Add New Sale</CardTitle>
+            <CardTitle>Daily Sales</CardTitle>
             <CardDescription>
               Add items sold today. Stock will be updated automatically.
             </CardDescription>
@@ -466,8 +463,8 @@ export default function StorePage() {
           <CardFooter>
             <Button asChild variant="outline" className="w-full">
               <Link href="/store/history">
+                <History className="mr-2"/>
                 View Full History
-                <History />
               </Link>
             </Button>
           </CardFooter>
