@@ -4,29 +4,6 @@
 
 @layer base {
   :root {
-    --background: 240 10% 98%; /* Light gray */
-    --foreground: 240 6% 10%; /* Dark gray */
-    --card: 0 0% 100%;
-    --card-foreground: 240 6% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 6% 10%;
-    --primary: 265 60% 55%; /* Vibrant Purple */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 90%;
-    --secondary-foreground: 240 6% 10%;
-    --muted: 240 5% 90%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 330 85% 58%; /* Magenta/Pink for FAB */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 265 60% 55%;
-    --radius: 0.75rem;
-  }
-
-  .dark {
     --background: 240 6% 10%;
     --foreground: 0 0% 98%;
     --card: 240 5% 15%;
@@ -45,6 +22,29 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 4% 20%;
     --input: 240 4% 20%;
+    --ring: 265 60% 55%;
+    --radius: 0.75rem;
+  }
+
+  .light {
+    --background: 240 10% 98%; /* Light gray */
+    --foreground: 240 6% 10%; /* Dark gray */
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 6% 10%;
+    --primary: 265 60% 55%; /* Vibrant Purple */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 90%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 330 85% 58%; /* Magenta/Pink for FAB */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
     --ring: 265 60% 55%;
   }
 }
@@ -75,4 +75,10 @@
 [cmdk-list] {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--border) / 0.5) transparent;
+}
+
+@layer utilities {
+  .logo-glow {
+    filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.8)) drop-shadow(0 0 20px hsl(var(--accent) / 0.5));
+  }
 }
