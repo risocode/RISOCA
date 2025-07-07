@@ -50,17 +50,13 @@ import {Input} from '@/components/ui/input';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {useToast} from '@/hooks/use-toast';
 import {
-  ArrowLeft,
   UserPlus,
   Loader2,
-  BookUser,
   ChevronRight,
-  Bell,
-  Wallet,
+  Info,
   Users,
   TrendingUp,
   TrendingDown,
-  Info,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 
@@ -212,24 +208,16 @@ export default function LedgerPage() {
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
-        <header className="flex items-center gap-4">
-          <Button asChild variant="outline" size="icon">
-            <Link href="/store">
-              <ArrowLeft />
-              <span className="sr-only">Back to Store</span>
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Credit Ledger</h1>
-            <p className="text-muted-foreground">
-              Manage customer credits and payments.
-            </p>
-          </div>
+        <header>
+          <h1 className="text-3xl font-bold">Credit Ledger</h1>
+          <p className="text-muted-foreground">
+            Manage customer credits and payments.
+          </p>
         </header>
 
-        <Card className="shadow-lg text-white bg-gradient-to-br from-primary via-primary/90 to-primary/70">
+        <Card className="shadow-lg text-primary-foreground bg-primary">
           <CardHeader>
-            <CardTitle className="text-lg font-normal">Total Balance</CardTitle>
+            <CardTitle className="text-lg font-normal">Total Outstanding Balance</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-5xl font-bold tracking-tighter">
@@ -241,9 +229,7 @@ export default function LedgerPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Customer Entries
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Customers</CardTitle>
               <Users className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -261,7 +247,7 @@ export default function LedgerPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Payment</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
               <TrendingDown className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -273,15 +259,11 @@ export default function LedgerPage() {
         <Card>
           <CardHeader>
             <CardTitle>Customer List</CardTitle>
-            <Tabs
-              defaultValue="all"
-              className="w-full sm:w-auto"
-              onValueChange={setFilter}
-            >
+            <Tabs defaultValue="all" className="w-full sm:w-auto" onValueChange={setFilter}>
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
-                <TabsTrigger value="paid">Paid</TabsTrigger>
+                <TabsTrigger value="unpaid">With Balance</TabsTrigger>
+                <TabsTrigger value="paid">Fully Paid</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
@@ -289,8 +271,7 @@ export default function LedgerPage() {
             <div className="space-y-2">
               {isLoading ? (
                 Array.from({length: 5}).map((_, i) => (
-                  <div key={i} className="flex items-center p-4 space-x-4">
-                    <Skeleton className="h-10 w-24 rounded-md" />
+                  <div key={i} className="flex items-center p-4 space-x-4 border-b">
                     <Skeleton className="h-6 flex-1" />
                     <Skeleton className="h-6 w-20" />
                   </div>
@@ -302,12 +283,8 @@ export default function LedgerPage() {
                     href={`/store/ledger/${customer.id}`}
                     className="flex items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
                   >
-                    <Button variant="outline" size="sm" disabled className="hidden sm:inline-flex mr-4">
-                        <Bell className="mr-2" />
-                        Remind
-                    </Button>
                     <span className="font-medium flex-1">{customer.name}</span>
-                    <span className="font-mono text-right mr-2">
+                    <span className={`font-mono text-right mr-2 ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
                       {formatCurrency(customer.balance)}
                     </span>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -326,7 +303,7 @@ export default function LedgerPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl"
+            className="fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl"
             size="icon"
           >
             <UserPlus className="h-8 w-8" />

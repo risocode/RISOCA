@@ -32,7 +32,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import {
   Table,
@@ -60,7 +59,6 @@ import {
   Loader2,
   Plus,
   Minus,
-  MessageSquare,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -181,9 +179,7 @@ export default function CustomerLedgerPage() {
 
   const handleConfirmDelete = async () => {
     if(!alertAction) return;
-
     setIsDeleting(true);
-
     let response;
     if (alertAction === 'deleteTransaction' && deletingId) {
       response = await deleteLedgerTransaction(deletingId);
@@ -213,17 +209,10 @@ export default function CustomerLedgerPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <Skeleton className="h-8 w-1/4 mb-4" />
-        <Skeleton className="h-4 w-1/2 mb-8" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-1/3" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-40 w-full" />
-          </CardContent>
-        </Card>
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-4 w-1/3" />
+        <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent><Skeleton className="h-40 w-full" /></CardContent></Card>
       </div>
     );
   }
@@ -233,21 +222,21 @@ export default function CustomerLedgerPage() {
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
        <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button asChild variant="outline" size="icon">
+           <Button asChild variant="outline" size="icon" className="flex-shrink-0">
             <Link href="/store/ledger">
               <ArrowLeft />
               <span className="sr-only">Back to Ledger</span>
             </Link>
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{customer?.name}</h1>
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold truncate">{customer?.name}</h1>
             <p className="text-muted-foreground">
-              Current Balance: <span className="font-bold text-primary">{formatCurrency(balance)}</span>
+              Balance: <span className={`font-bold ${balance > 0 ? 'text-destructive' : 'text-green-600'}`}>{formatCurrency(balance)}</span>
             </p>
           </div>
         </div>
-        <Button variant="destructive" onClick={() => openDeleteAlert('deleteCustomer')}>
-            <Trash2 className="mr-2"/> Delete Customer
+        <Button variant="destructive" size="sm" onClick={() => openDeleteAlert('deleteCustomer')}>
+            <Trash2 className="mr-2 h-4 w-4"/> Delete
         </Button>
       </header>
       
@@ -256,55 +245,30 @@ export default function CustomerLedgerPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>New Transaction</CardTitle>
-                    <CardDescription>Add a credit or payment for this customer.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-                            <FormField
-                                control={form.control}
-                                name="type"
-                                render={({field}) => (
-                                    <FormItem>
-                                        <FormLabel>Transaction Type</FormLabel>
-                                        <FormControl>
-                                           <Tabs defaultValue="credit" onValueChange={field.onChange} className="w-full">
-                                                <TabsList className="grid w-full grid-cols-2">
-                                                    <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
-                                                    <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
-                                                </TabsList>
-                                            </Tabs>
-                                        </FormControl>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="amount"
-                                render={({field}) => (
-                                    <FormItem>
-                                        <FormLabel>Amount (₱)</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" step="0.01" {...field} />
-                                        </FormControl>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="description"
-                                render={({field}) => (
-                                    <FormItem>
-                                        <FormLabel>Description (Optional)</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
-                                        </FormControl>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )}
-                            />
+                            <FormField control={form.control} name="type" render={({field}) => (
+                                <FormItem><FormControl>
+                                   <Tabs defaultValue="credit" onValueChange={field.onChange} className="w-full">
+                                        <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
+                                            <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                </FormControl><FormMessage/></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="amount" render={({field}) => (
+                                <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
+                                    <Input type="number" step="0.01" {...field} />
+                                </FormControl><FormMessage/></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="description" render={({field}) => (
+                                <FormItem><FormLabel>Description (Optional)</FormLabel><FormControl>
+                                    <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
+                                </FormControl><FormMessage/></FormItem>
+                            )}/>
                             <Button type="submit" disabled={isSubmitting} className="w-full">
                                 {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : null}
                                 Add Transaction
@@ -318,7 +282,6 @@ export default function CustomerLedgerPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Transaction History</CardTitle>
-                    <CardDescription>A complete log of all credits and payments.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -326,8 +289,7 @@ export default function CustomerLedgerPage() {
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Type</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead>Amount</TableHead>
                                 <TableHead className="text-center">Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -336,11 +298,8 @@ export default function CustomerLedgerPage() {
                                 transactions.map((tx) => (
                                     <TableRow key={tx.id}>
                                         <TableCell>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={tx.type === 'credit' ? 'destructive' : 'default'}>{tx.type}</Badge>
-                                        </TableCell>
-                                        <TableCell className="max-w-[200px] truncate">{tx.description || '-'}</TableCell>
-                                        <TableCell className="text-right font-mono">{formatCurrency(tx.amount)}</TableCell>
+                                        <TableCell><Badge variant={tx.type === 'credit' ? 'destructive' : 'default'}>{tx.type}</Badge></TableCell>
+                                        <TableCell className="font-mono">{formatCurrency(tx.amount)}</TableCell>
                                         <TableCell className="text-center">
                                             <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)}>
                                                 <Trash2 className="w-4 h-4 text-destructive"/>

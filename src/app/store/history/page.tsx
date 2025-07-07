@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import {Button} from '@/components/ui/button';
 import {useToast} from '@/hooks/use-toast';
-import {ArrowLeft, History, Trash2, Loader2} from 'lucide-react';
+import {History, Trash2, Loader2} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 
 type SaleDoc = SaleItem & {
@@ -95,7 +95,6 @@ export default function SalesHistoryPage() {
     if (!voidingSale) return;
 
     setIsVoiding(true);
-    // Destructure to remove the non-serializable `createdAt` Timestamp
     const {createdAt, ...saleToVoid} = voidingSale;
     const response = await voidSale(saleToVoid);
 
@@ -123,19 +122,11 @@ export default function SalesHistoryPage() {
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
-        <header className="flex items-center gap-4">
-          <Button asChild variant="outline" size="icon">
-            <Link href="/store">
-              <ArrowLeft />
-              <span className="sr-only">Back to Store</span>
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Full Sales History</h1>
-            <p className="text-muted-foreground">
-              A complete log of all your recorded sales.
-            </p>
-          </div>
+        <header>
+          <h1 className="text-3xl font-bold">Sales Reports</h1>
+          <p className="text-muted-foreground">
+            A complete log of all your recorded sales.
+          </p>
         </header>
 
         <Card className="shadow-lg">
@@ -145,7 +136,7 @@ export default function SalesHistoryPage() {
             </CardTitle>
             <CardDescription>
               Showing {allSales.length} total transactions with a revenue of{' '}
-              <span className="font-mono font-semibold">
+              <span className="font-mono font-semibold text-primary">
                 ₱{totalRevenue.toFixed(2)}
               </span>
               .
@@ -165,18 +156,10 @@ export default function SalesHistoryPage() {
                 {isLoading
                   ? Array.from({length: 10}).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell>
-                          <Skeleton className="h-5 w-3/4" />
-                        </TableCell>
-                        <TableCell>
-                          <Skeleton className="h-5 w-1/2" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="h-5 w-1/4 ml-auto" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="h-8 w-10 ml-auto" />
-                        </TableCell>
+                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-8 w-10 ml-auto" /></TableCell>
                       </TableRow>
                     ))
                   : allSales.length > 0
@@ -192,9 +175,7 @@ export default function SalesHistoryPage() {
                           {sale.createdAt
                             .toDate()
                             .toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
+                              year: 'numeric', month: 'short', day: 'numeric',
                             })}
                         </TableCell>
                         <TableCell className="text-right font-mono">
@@ -214,10 +195,7 @@ export default function SalesHistoryPage() {
                     ))
                   : !isLoading && (
                       <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="text-center text-muted-foreground h-24"
-                        >
+                        <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
                           No sales history yet.
                         </TableCell>
                       </TableRow>

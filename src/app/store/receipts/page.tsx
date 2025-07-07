@@ -2,7 +2,6 @@
 
 import {useState, useRef, type ChangeEvent, useEffect} from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   Upload,
   ReceiptText,
@@ -18,10 +17,7 @@ import {
   Wallet,
   FileText,
   Tag,
-  ChevronsUpDown,
-  ArrowLeft,
 } from 'lucide-react';
-import {useRouter} from 'next/navigation';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
 import {scanAndNotify, submitManualReceipt} from '@/app/actions';
@@ -48,7 +44,6 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -66,11 +61,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Command,
-  CommandList,
-  CommandItem,
-} from '@/components/ui/command';
 import {Calendar} from '@/components/ui/calendar';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {
@@ -133,19 +123,12 @@ export default function ReceiptPage() {
   >(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [openQtyPopovers, setOpenQtyPopovers] = useState<
-    Record<number, boolean>
-  >({});
 
   const form = useForm<ManualFormData>({
     resolver: zodResolver(ManualFormSchema),
     defaultValues: {
       merchantName: '',
-      items: [
-        {name: '', price: 0},
-        {name: '', price: 0},
-        {name: '', price: 0},
-      ],
+      items: [{name: '', price: 0}],
     },
   });
 
@@ -160,10 +143,6 @@ export default function ReceiptPage() {
     categories: receiptCategories,
   } = useReceipts();
   const uniqueCategories = Object.keys(receiptCategories).length;
-
-  const setQtyPopoverOpen = (index: number, open: boolean) => {
-    setOpenQtyPopovers((prev) => ({...prev, [index]: open}));
-  };
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -233,7 +212,6 @@ export default function ReceiptPage() {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        // 10MB limit
         setError('File is too large. Please upload an image under 10MB.');
         return;
       }
@@ -269,11 +247,9 @@ export default function ReceiptPage() {
     if (!context) return;
 
     setIsProcessingImage(true);
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
     const dataUrl = canvas.toDataURL('image/jpeg');
 
     try {
@@ -303,30 +279,18 @@ export default function ReceiptPage() {
     setError(null);
 
     try {
-      const response = await scanAndNotify({
-        photoDataUri: imageData,
-      });
+      const response = await scanAndNotify({photoDataUri: imageData});
       setDiagnosis(response.diagnosis);
-      if (response.notificationStatus.success) {
-        toast({
-          title: 'Scan Complete & Notified',
-          description:
-            'The receipt details have been sent to your Telegram channel.',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Scan Complete, Notification Failed',
-          description:
-            response.notificationStatus.message ||
-            'Could not send to Telegram channel.',
-        });
-      }
+      toast({
+        title: 'Scan Complete',
+        description: response.notificationStatus.success
+          ? 'Notified on Telegram.'
+          : 'Telegram notification failed.',
+        variant: response.notificationStatus.success ? 'default' : 'destructive',
+      });
     } catch (e) {
       console.error(e);
-      setError(
-        'The AI could not process the receipt. It might be blurry or unsupported. Please try another image.'
-      );
+      setError('The AI could not process the receipt. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -345,21 +309,13 @@ export default function ReceiptPage() {
     try {
       const response = await submitManualReceipt(payload);
       setDiagnosis(response.diagnosis);
-      if (response.notificationStatus.success) {
-        toast({
-          title: 'Receipt Submitted & Notified',
-          description:
-            'The receipt details have been sent to your Telegram channel.',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Submit Succeeded, Notification Failed',
-          description:
-            response.notificationStatus.message ||
-            'Could not send to Telegram channel.',
-        });
-      }
+      toast({
+        title: 'Receipt Submitted',
+        description: response.notificationStatus.success
+          ? 'Notified on Telegram.'
+          : 'Telegram notification failed.',
+        variant: response.notificationStatus.success ? 'default' : 'destructive',
+      });
       form.reset();
     } catch (e) {
       console.error(e);
@@ -384,122 +340,45 @@ export default function ReceiptPage() {
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
-    setInputMethod('upload');
-    form.reset({
-      merchantName: '',
-      items: [
-        {name: '', price: 0},
-        {name: '', price: 0},
-        {name: '', price: 0},
-      ],
-    });
+    form.reset({merchantName: '', items: [{name: '', price: 0}]});
   };
 
-  if (inputMethod === 'camera' && !imagePreview) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 object-cover w-full h-full"
-          autoPlay
-          muted
-          playsInline
-        />
-        <canvas ref={canvasRef} className="hidden" />
-
-        {hasCameraPermission === false && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center text-white bg-black/70">
-            <XCircle className="w-16 h-16 mb-4" />
-            <h2 className="text-xl font-semibold">Camera Access Denied</h2>
-            <p className="max-w-xs mt-2 text-neutral-300">
-              Please enable camera permissions in your browser settings to use
-              this feature.
-            </p>
-          </div>
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-8 bg-gradient-to-t from-black/80 to-transparent">
-          <Button
-            onClick={handleCapture}
-            disabled={!hasCameraPermission || isProcessingImage}
-            className="w-20 h-20 p-2 bg-white/30 rounded-full border-4 border-white backdrop-blur-sm hover:bg-white/50"
-            size="icon"
-          >
-            {isProcessingImage ? (
-              <Loader2 className="w-8 h-8 text-white animate-spin" />
-            ) : (
-              <span className="block w-full h-full bg-white rounded-full" />
-            )}
-            <span className="sr-only">Capture Photo</span>
-          </Button>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setInputMethod('upload')}
-          className="absolute z-20 text-white bg-black/30 top-6 right-6 hover:bg-black/50 hover:text-white backdrop-blur-sm"
-        >
-          <X className="w-6 h-6" />
-          <span className="sr-only">Close camera</span>
-        </Button>
-      </div>
-    );
-  }
-
   const renderInitialState = () => (
-    <div className="w-full text-center animate-enter md:max-w-2xl md:mx-auto">
-      <p className="mb-8 text-lg text-muted-foreground">
-        Scan, capture, or manually enter a receipt.
-      </p>
-
+    <div className="w-full text-center animate-enter">
       <Tabs
-        defaultValue="upload"
-        value={inputMethod}
+        defaultValue={inputMethod}
         onValueChange={(value) =>
           setInputMethod(value as 'upload' | 'camera' | 'manual')
         }
         className="w-full"
       >
-        <TabsList className="grid w-full h-12 grid-cols-3 p-1 border rounded-lg bg-muted/50">
-          <TabsTrigger value="upload" className="h-full text-base rounded-md">
+        <TabsList className="grid w-full h-12 grid-cols-3 p-1">
+          <TabsTrigger value="upload" className="h-full text-base">
             <Upload className="mr-2" /> Upload
           </TabsTrigger>
-          <TabsTrigger value="camera" className="h-full text-base rounded-md">
+          <TabsTrigger value="camera" className="h-full text-base">
             <Camera className="mr-2" /> Camera
           </TabsTrigger>
-          <TabsTrigger value="manual" className="h-full text-base rounded-md">
+          <TabsTrigger value="manual" className="h-full text-base">
             <Pencil className="mr-2" /> Manual
           </TabsTrigger>
         </TabsList>
-        <TabsContent
-          value="upload"
-          className="pt-6 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
-        >
+        <TabsContent value="upload" className="pt-6">
           {isProcessingImage ? (
-            <div className="relative flex flex-col items-center justify-center w-full h-[202px] p-10 transition-colors border-2 border-dashed rounded-xl bg-primary/5 border-primary/20">
+             <div className="relative flex flex-col items-center justify-center w-full h-[202px] p-10 transition-colors border-2 border-dashed rounded-xl bg-primary/5 border-primary/20">
               <Loader2 className="w-12 h-12 animate-spin text-primary/80" />
-              <p className="mt-4 text-lg font-medium text-foreground">
-                Optimizing image...
-              </p>
+              <p className="mt-4 text-lg font-medium text-foreground">Optimizing image...</p>
             </div>
           ) : (
             <div
               className="relative flex flex-col items-center justify-center w-full p-10 transition-colors border-2 border-dashed rounded-xl cursor-pointer bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40"
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="text-center">
-                <Upload className="w-12 h-12 mx-auto text-primary/80" />
-                <p className="mt-4 text-lg font-medium text-foreground">
-                  Click to upload or drag and drop
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  PNG, JPG, or WEBP (max 10MB)
-                </p>
-              </div>
+              <Upload className="w-12 h-12 mx-auto text-primary/80" />
+              <p className="mt-4 text-lg font-medium text-foreground">Click to upload</p>
+              <p className="mt-1 text-sm text-muted-foreground">PNG, JPG, WEBP (max 10MB)</p>
               <Input
                 ref={fileInputRef}
-                id="receipt-upload"
                 type="file"
                 className="sr-only"
                 accept="image/png, image/jpeg, image/webp"
@@ -508,29 +387,14 @@ export default function ReceiptPage() {
             </div>
           )}
         </TabsContent>
-        <TabsContent
-          value="camera"
-          className="pt-6 space-y-4 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
-        >
-          <div className="relative w-full overflow-hidden border rounded-xl bg-muted aspect-video">
-            <p className="p-4 text-center text-muted-foreground">
-              Camera will open full-screen.
-            </p>
-          </div>
-          <Button disabled className="w-full h-12 text-lg" size="lg">
-            <Camera className="mr-2" /> Launch Camera
-          </Button>
+        <TabsContent value="camera">
+           {/* This UI is just a trigger; the full-screen view is handled separately */}
         </TabsContent>
-        <TabsContent
-          value="manual"
-          className="pt-6 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
-        >
+        <TabsContent value="manual" className="pt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Manual Receipt Entry</CardTitle>
-              <CardDescription>
-                Fill in the details of your receipt below.
-              </CardDescription>
+              <CardTitle>Manual Entry</CardTitle>
+              <CardDescription>Fill in the details of your receipt.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -539,175 +403,53 @@ export default function ReceiptPage() {
                   className="space-y-8"
                 >
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="merchantName"
-                      render={({field}) => (
-                        <FormItem>
-                          <FormLabel>Merchant Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Jollibee" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="transactionDate"
-                      render={({field}) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Transaction Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={'outline'}
-                                  className={cn(
-                                    'pl-3 text-left font-normal',
-                                    !field.value && 'text-muted-foreground'
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, 'PPP')
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                            >
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() ||
-                                  date < new Date('1900-01-01')
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({field}) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {categories.map((cat) => (
-                                <SelectItem key={cat} value={cat}>
-                                  {cat}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="total"
-                      render={({field}) => (
-                        <FormItem>
-                          <FormLabel>Total Amount (₱)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="e.g. 150.75"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormField name="merchantName" control={form.control} render={({field}) => (
+                      <FormItem><FormLabel>Merchant Name</FormLabel><FormControl><Input placeholder="e.g. Jollibee" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField name="transactionDate" control={form.control} render={({field}) => (
+                      <FormItem className="flex flex-col"><FormLabel>Transaction Date</FormLabel><Popover><PopoverTrigger asChild><FormControl>
+                        <Button variant="outline" className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
+                          {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                          <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
+                        </Button>
+                      </FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus/>
+                      </PopoverContent></Popover><FormMessage /></FormItem>
+                    )}/>
+                    <FormField name="category" control={form.control} render={({field}) => (
+                      <FormItem><FormLabel>Category</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
+                        <SelectContent>{categories.map((cat) => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent>
+                      </Select><FormMessage /></FormItem>
+                    )}/>
+                    <FormField name="total" control={form.control} render={({field}) => (
+                      <FormItem><FormLabel>Total Amount (₱)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 150.75" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
                   </div>
 
                   <div>
                     <FormLabel>Items</FormLabel>
-                    <FormDescription className="mb-4">
-                      Add the items from your receipt.
-                    </FormDescription>
-                    <div className="space-y-4">
+                    <div className="space-y-2 mt-2">
                       {fields.map((field, index) => (
-                        <div
-                          key={field.id}
-                          className="flex flex-col sm:flex-row items-start sm:items-end gap-2"
-                        >
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.name`}
-                            render={({field}) => (
-                              <FormItem className="flex-grow w-full">
-                                <FormControl>
-                                  <Input placeholder="Item name" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name={`items.${index}.price`}
-                            render={({field}) => (
-                              <FormItem className="w-full sm:w-32">
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="Price"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => remove(index)}
-                            disabled={fields.length <= 1}
-                            className="self-end"
-                          >
+                        <div key={field.id} className="flex items-start gap-2">
+                          <FormField name={`items.${index}.name`} control={form.control} render={({field}) => (
+                            <FormItem className="flex-grow"><FormControl><Input placeholder="Item name" {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                          <FormField name={`items.${index}.price`} control={form.control} render={({field}) => (
+                            <FormItem className="w-32"><FormControl><Input type="number" step="0.01" placeholder="Price" {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => append({name: '', price: 0})}
-                      >
+                      <Button type="button" variant="outline" size="sm" onClick={() => append({name: '', price: 0})}>
                         <PlusCircle className="mr-2" /> Add Item
                       </Button>
                     </div>
                   </div>
                   <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                    {isLoading ? (<Loader2 className="mr-2 animate-spin" />) : null}
+                    {isLoading ? <Loader2 className="mr-2 animate-spin"/> : null}
                     Submit Receipt
                   </Button>
                 </form>
@@ -716,44 +458,53 @@ export default function ReceiptPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {error && !imagePreview && (
-        <Alert variant="destructive" className="mt-6 text-left">
-          <ServerCrash className="w-4 h-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 
-  const renderPreviewState = () => (
-    <div className="animate-enter w-full md:max-w-lg md:mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Ready to Scan</CardTitle>
-          <CardDescription>
-            Click the button below to analyze your receipt.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative w-full overflow-hidden rounded-lg aspect-[16/10] border">
-            {imagePreview && (
-              <Image
-                src={imagePreview}
-                alt="Receipt preview"
-                fill
-                className="object-contain"
-              />
-            )}
+  if (inputMethod === 'camera' && !imagePreview) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+        <video ref={videoRef} className="absolute inset-0 object-cover w-full h-full" autoPlay muted playsInline />
+        <canvas ref={canvasRef} className="hidden" />
+
+        {hasCameraPermission === false && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center text-white bg-black/70">
+            <XCircle className="w-16 h-16 mb-4" />
+            <h2 className="text-xl font-semibold">Camera Access Denied</h2>
+            <p className="max-w-xs mt-2 text-neutral-300">Enable camera permissions to use this feature.</p>
           </div>
+        )}
+
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-8 bg-gradient-to-t from-black/80 to-transparent">
+          <Button onClick={handleCapture} disabled={!hasCameraPermission || isProcessingImage} className="w-20 h-20 p-2 bg-white/30 rounded-full border-4 border-white backdrop-blur-sm hover:bg-white/50" size="icon">
+            {isProcessingImage ? <Loader2 className="w-8 h-8 text-white animate-spin" /> : <span className="block w-full h-full bg-white rounded-full" />}
+          </Button>
+        </div>
+
+        <Button variant="ghost" size="icon" onClick={() => {setInputMethod('upload'); handleReset();}} className="absolute z-20 text-white bg-black/30 top-6 right-6 hover:bg-black/50 hover:text-white backdrop-blur-sm">
+          <X className="w-6 h-6" />
+        </Button>
+      </div>
+    );
+  }
+
+  const renderContent = () => {
+     if (isLoading) return renderLoadingState();
+     if (diagnosis) return renderResultsState();
+     if (error) return imagePreview ? renderErrorState() : renderInitialState();
+     if (imagePreview) return renderPreviewState();
+     return renderInitialState();
+  }
+
+  const renderPreviewState = () => (
+    <div className="animate-enter w-full">
+      <Card>
+        <CardHeader><CardTitle>Ready to Scan</CardTitle><CardDescription>Click the button below to analyze your receipt.</CardDescription></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative w-full overflow-hidden rounded-lg aspect-[16/10] border"><Image src={imagePreview!} alt="Receipt preview" fill className="object-contain" /></div>
           <div className="flex justify-between gap-2">
-            <Button variant="outline" onClick={handleReset}>
-              <X className="mr-2" /> Cancel
-            </Button>
-            <Button onClick={handleScanReceipt}>
-              <ReceiptText className="mr-2" /> Scan Receipt
-            </Button>
+            <Button variant="outline" onClick={handleReset}><X className="mr-2" /> Cancel</Button>
+            <Button onClick={handleScanReceipt}><ReceiptText className="mr-2" /> Scan Receipt</Button>
           </div>
         </CardContent>
       </Card>
@@ -761,314 +512,89 @@ export default function ReceiptPage() {
   );
 
   const renderLoadingState = () => (
-    <div className="animate-enter w-full md:max-w-2xl md:mx-auto">
+    <div className="animate-enter w-full">
       <Card>
-        <CardHeader>
-          <CardTitle>Processing Receipt</CardTitle>
-          <CardDescription>
-            The AI is analyzing. Please wait a moment...
-          </CardDescription>
-        </CardHeader>
+        <CardHeader><CardTitle>Processing Receipt</CardTitle><CardDescription>The AI is analyzing. Please wait...</CardDescription></CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2">
           <Skeleton className="w-full rounded-lg aspect-video" />
           <div className="space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="w-1/4 h-4" />
-              <Skeleton className="w-2/4 h-6" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/4" />
-              <Skeleton className="w-1/3 h-4" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/4" />
-              <Skeleton className="w-1/5 h-8" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-1/4" />
-              <Skeleton className="w-full h-20" />
-            </div>
+            <div className="space-y-2"><Skeleton className="w-1/4 h-4" /><Skeleton className="w-2/4 h-6" /></div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/4" /><Skeleton className="w-1/3 h-4" /></div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/4" /><Skeleton className="w-1/5 h-8" /></div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/4" /><Skeleton className="w-full h-20" /></div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
 
-  const renderResultsState = () =>
-    diagnosis && (
-      <div className="animate-enter w-full md:max-w-3xl md:mx-auto">
+  const renderResultsState = () => diagnosis && (
+      <div className="animate-enter w-full">
         <Card>
-          <CardHeader>
-            <CardTitle>Process Complete</CardTitle>
-            <CardDescription>
-              Here's what we got from your receipt.
-            </CardDescription>
-          </CardHeader>
+          <CardHeader><CardTitle>Process Complete</CardTitle><CardDescription>Here's what we got from your receipt.</CardDescription></CardHeader>
           <CardContent className="grid gap-8 md:grid-cols-2">
             <div className="relative w-full overflow-hidden rounded-lg aspect-[16/10] border">
-              {imagePreview ? (
-                <Image
-                  src={imagePreview}
-                  alt="Receipt"
-                  fill
-                  className="object-contain"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full h-full bg-muted">
-                  <Pencil className="w-16 h-16 text-muted-foreground" />
-                </div>
-              )}
+              {imagePreview ? <Image src={imagePreview} alt="Receipt" fill className="object-contain" /> : <div className="flex items-center justify-center w-full h-full bg-muted"><Pencil className="w-16 h-16 text-muted-foreground" /></div>}
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Merchant
-                  </p>
-                  <p className="text-lg font-semibold">
-                    {diagnosis.merchantName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Date
-                  </p>
-                  <p>
-                    {new Date(
-                      diagnosis.transactionDate + 'T00:00:00'
-                    ).toLocaleDateString(undefined, {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </p>
-                </div>
+                <div><p className="text-sm font-medium text-muted-foreground">Merchant</p><p className="text-lg font-semibold">{diagnosis.merchantName}</p></div>
+                <div><p className="text-sm font-medium text-muted-foreground">Date</p><p>{new Date(diagnosis.transactionDate + 'T00:00:00').toLocaleDateString(undefined, {year: 'numeric', month: 'long', day: 'numeric'})}</p></div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Total
-                  </p>
-                  <p className="text-2xl font-bold text-primary">
-                    ₱
-                    {diagnosis.total.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Category
-                  </p>
-                  <Badge variant="outline">{diagnosis.category}</Badge>
-                </div>
+                <div><p className="text-sm font-medium text-muted-foreground">Total</p><p className="text-2xl font-bold text-primary">₱{diagnosis.total.toLocaleString('en-US', {minimumFractionDigits: 2,maximumFractionDigits: 2})}</p></div>
+                <div><p className="text-sm font-medium text-muted-foreground">Category</p><Badge variant="outline">{diagnosis.category}</Badge></div>
               </div>
-
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Items ({diagnosis.items.length})
-                </p>
-                <ScrollArea className="h-48 rounded-md border bg-muted/50">
-                  <div className="p-3 text-sm">
-                    <ul className="space-y-2">
-                      {diagnosis.items.map((item, index) => (
-                        <li
-                          key={index}
-                          className="flex justify-between py-1 border-b last:border-none"
-                        >
-                          <span className="pr-2 truncate">{item.name}</span>
-                          <span className="flex-shrink-0">
-                            ₱
-                            {item.price.toLocaleString('en-US', {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </ScrollArea>
+              <div><p className="text-sm font-medium text-muted-foreground">Items ({diagnosis.items.length})</p>
+                <ScrollArea className="h-48 rounded-md border bg-muted/50"><div className="p-3 text-sm"><ul className="space-y-2">
+                  {diagnosis.items.map((item, index) => (<li key={index} className="flex justify-between py-1 border-b last:border-none"><span className="pr-2 truncate">{item.name}</span><span className="flex-shrink-0">₱{item.price.toLocaleString('en-US', {minimumFractionDigits: 2,maximumFractionDigits: 2})}</span></li>))}
+                </ul></div></ScrollArea>
               </div>
             </div>
           </CardContent>
-          <CardContent className="p-6 pt-0">
-            <Button onClick={handleReset} className="w-full">
-              <ReceiptText className="mr-2" /> Process Another
-            </Button>
-          </CardContent>
+          <CardContent className="p-6 pt-0"><Button onClick={handleReset} className="w-full"><ReceiptText className="mr-2" /> Process Another</Button></CardContent>
         </Card>
       </div>
-    );
+  );
 
   const renderErrorState = () => (
-    <div className="animate-enter w-full md:max-w-lg md:mx-auto">
+    <div className="animate-enter w-full">
       <Card className="shadow-2xl shadow-destructive/20">
-        <CardHeader>
-          <CardTitle>Processing Failed</CardTitle>
-          <CardDescription>
-            Sorry, we couldn't process your receipt.
-          </CardDescription>
-        </CardHeader>
+        <CardHeader><CardTitle>Processing Failed</CardTitle><CardDescription>Sorry, we couldn't process your receipt.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
-          <Alert variant="destructive">
-            <ServerCrash className="w-4 h-4" />
-            <AlertTitle>Processing Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-          <div className="relative w-full overflow-hidden rounded-lg aspect-video opacity-50 border">
-            {imagePreview && (
-              <Image
-                src={imagePreview}
-                alt="Receipt with error"
-                fill
-                className="object-contain"
-              />
-            )}
-          </div>
-          <Button
-            onClick={handleReset}
-            variant="destructive"
-            className="w-full"
-          >
-            <Upload className="mr-2" /> Try Again
-          </Button>
+          <Alert variant="destructive"><ServerCrash className="w-4 h-4" /><AlertTitle>Processing Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
+          <div className="relative w-full overflow-hidden rounded-lg aspect-video opacity-50 border">{imagePreview && <Image src={imagePreview} alt="Receipt with error" fill className="object-contain" />}</div>
+          <Button onClick={handleReset} variant="destructive" className="w-full"><Upload className="mr-2" /> Try Again</Button>
         </CardContent>
       </Card>
     </div>
   );
 
-  const AddReceiptTabContent = () => (
-    <div className="flex flex-col justify-start w-full py-4 md:py-8">
-      <div className="w-full">
-        {isLoading
-          ? renderLoadingState()
-          : diagnosis
-          ? renderResultsState()
-          : error && !diagnosis
-          ? imagePreview
-            ? renderErrorState()
-            : renderInitialState()
-          : imagePreview
-          ? renderPreviewState()
-          : renderInitialState()}
+  const HistoryTabContent = () => (
+    receipts.length === 0 ? (
+      <div className="flex flex-col items-center justify-center text-center p-8 mt-8 border rounded-lg bg-card">
+        <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
+        <h2 className="text-2xl font-semibold">No Receipts Scanned</h2>
+        <p className="max-w-md mt-2 text-muted-foreground">Go to the 'Add Receipt' tab to upload one.</p>
       </div>
-    </div>
-  );
-
-  const HistoryTabContent = () => {
-    if (receipts.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center text-center p-8 mt-8 border rounded-lg bg-card">
-          <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
-          <h2 className="text-2xl font-semibold">No Receipts Scanned</h2>
-          <p className="max-w-md mt-2 text-muted-foreground">
-            You haven't scanned any receipts yet. Go to the 'Add Receipt' tab
-            to upload your first one.
-          </p>
-        </div>
-      );
-    }
-
-    return (
+    ) : (
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-              <Wallet className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₱
-                {totalSpent.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                from {receipts.length} receipts
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Receipts Scanned
-              </CardTitle>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{receipts.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Keep them coming!
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Unique Categories
-              </CardTitle>
-              <Tag className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{uniqueCategories}</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Object.keys(receiptCategories).map((cat) => (
-                  <Badge key={cat} variant="secondary">
-                    {cat}
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0"><CardTitle className="text-sm font-medium">Total Spent</CardTitle><Wallet className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">₱{totalSpent.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><p className="text-xs text-muted-foreground">from {receipts.length} receipts</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0"><CardTitle className="text-sm font-medium">Receipts Scanned</CardTitle><FileText className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{receipts.length}</div><p className="text-xs text-muted-foreground">Keep them coming!</p></CardContent></Card>
+          <Card><CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0"><CardTitle className="text-sm font-medium">Unique Categories</CardTitle><Tag className="w-4 h-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{uniqueCategories}</div><div className="flex flex-wrap gap-1 mt-1">{Object.keys(receiptCategories).map((cat) => (<Badge key={cat} variant="secondary">{cat}</Badge>))}</div></CardContent></Card>
         </div>
-
-        <Card className="mt-6 shadow-lg">
-          <CardHeader>
-            <CardTitle>Receipt History</CardTitle>
-            <CardDescription>
-              A detailed list of all your scanned receipts.
-            </CardDescription>
-          </CardHeader>
+        <Card className="mt-6"><CardHeader><CardTitle>Receipt History</CardTitle><CardDescription>A list of all your scanned receipts.</CardDescription></CardHeader>
           <CardContent>
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Merchant</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeader><TableRow><TableHead>Merchant</TableHead><TableHead>Date</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
               <TableBody>
                 {receipts.map((receipt) => (
                   <TableRow key={receipt.id}>
-                    <TableCell className="p-2 md:p-4 font-medium">
-                      {receipt.merchantName}
-                    </TableCell>
-                    <TableCell className="p-2 md:p-4 whitespace-nowrap">
-                      {new Date(
-                        receipt.transactionDate + 'T00:00:00'
-                      ).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </TableCell>
-                    <TableCell className="p-2 md:p-4">
-                      <Badge variant="outline">{receipt.category}</Badge>
-                    </TableCell>
-                    <TableCell className="p-2 md:p-4 text-right font-mono whitespace-nowrap">
-                      ₱
-                      {receipt.total.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
+                    <TableCell className="font-medium">{receipt.merchantName}</TableCell>
+                    <TableCell className="whitespace-nowrap">{new Date(receipt.transactionDate + 'T00:00:00').toLocaleDateString(undefined, {month: 'short',day: 'numeric',year: 'numeric',})}</TableCell>
+                    <TableCell><Badge variant="outline">{receipt.category}</Badge></TableCell>
+                    <TableCell className="text-right font-mono whitespace-nowrap">₱{receipt.total.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2})}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1076,24 +602,16 @@ export default function ReceiptPage() {
           </CardContent>
         </Card>
       </div>
-    );
-  };
+    )
+  );
 
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
-      <header className="flex items-center gap-4">
-        <Button asChild variant="outline" size="icon">
-          <Link href="/store">
-            <ArrowLeft />
-            <span className="sr-only">Back to Store</span>
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Receipts</h1>
-          <p className="text-muted-foreground">
-            Scan new receipts or view your history.
-          </p>
-        </div>
+      <header>
+        <h1 className="text-3xl font-bold">Receipts</h1>
+        <p className="text-muted-foreground">
+          Scan new receipts or view your history.
+        </p>
       </header>
 
       <Tabs defaultValue="add" className="w-full">
@@ -1101,10 +619,12 @@ export default function ReceiptPage() {
           <TabsTrigger value="add">Add Receipt</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
-        <TabsContent value="add">
-          <AddReceiptTabContent />
+        <TabsContent value="add" className="pt-4">
+          <div className="flex flex-col justify-start w-full">
+            {renderContent()}
+          </div>
         </TabsContent>
-        <TabsContent value="history">
+        <TabsContent value="history" className="pt-4">
           <HistoryTabContent />
         </TabsContent>
       </Tabs>

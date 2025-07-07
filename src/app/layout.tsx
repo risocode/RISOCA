@@ -2,15 +2,9 @@ import type {Metadata} from 'next';
 import {Inter} from 'next/font/google';
 import './globals.css';
 import {ReceiptsProvider} from '@/contexts/ReceiptContext';
-import {
-  Sidebar,
-  SidebarProvider,
-  SidebarInset,
-} from '@/components/ui/sidebar';
-import {AppSidebar} from './components/app-sidebar';
 import {Toaster} from '@/components/ui/toaster';
-import {MobileHeader} from './components/mobile-header';
 import {SiteProtection} from './components/site-protection';
+import {BottomNav} from './components/bottom-nav';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -30,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full">
+    <html lang="en" className="h-full">
       <head>
         <meta
           name="viewport"
@@ -42,25 +36,20 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="RISOCA" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#0f172a" />
+        <meta name="theme-color" content="#fafafa" />
 
         <link
           rel="apple-touch-icon"
-          href="https://placehold.co/192x192.png"
+          href="/logo.png"
         />
       </head>
-      <body className="font-body antialiased h-full">
+      <body className="font-body antialiased h-full bg-background">
         <SiteProtection>
           <ReceiptsProvider>
-            <SidebarProvider>
-              <Sidebar>
-                <AppSidebar />
-              </Sidebar>
-              <SidebarInset>
-                <MobileHeader />
-                {children}
-              </SidebarInset>
-            </SidebarProvider>
+            <div className="relative flex flex-col h-full">
+              <main className="flex-1 pb-24">{children}</main>
+              <BottomNav />
+            </div>
           </ReceiptsProvider>
           <Toaster />
         </SiteProtection>

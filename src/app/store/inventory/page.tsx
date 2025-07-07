@@ -202,35 +202,17 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
-      <header className="flex items-center gap-4">
-        <Button asChild variant="outline" size="icon">
-          <Link href="/store">
-            <ArrowLeft />
-            <span className="sr-only">Back to Store</span>
-          </Link>
-        </Button>
+      <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Inventory Management</h1>
+          <h1 className="text-3xl font-bold">Inventory</h1>
           <p className="text-muted-foreground">
             Add, edit, and manage your store's items.
           </p>
         </div>
-      </header>
-
-      <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <PackageSearch className="w-5 h-5" /> All Items
-            </CardTitle>
-            <CardDescription>
-              A list of all items currently in your inventory.
-            </CardDescription>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => handleOpenDialog()}>
-                <Plus className="mr-2" /> Add New Item
+                <Plus className="mr-2" /> Add Item
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -330,6 +312,18 @@ export default function InventoryPage() {
               </Form>
             </DialogContent>
           </Dialog>
+      </header>
+
+      <Card className="shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <PackageSearch className="w-5 h-5" /> All Items
+            </CardTitle>
+            <CardDescription>
+              A list of all items currently in your inventory.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
