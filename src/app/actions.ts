@@ -201,61 +201,61 @@ export async function submitSaleTransaction(
   }
 
   try {
-    let transactionId: string | undefined = undefined;
+    const transactionRef = doc(collection(db, 'saleTransactions')); // Define ref outside transaction
+
     await runTransaction(db, async (transaction) => {
-      // 1. Create the main transaction document
-      const transactionRef = doc(collection(db, 'saleTransactions'));
-      transactionId = transactionRef.id;
+      // Step 1: Aggregate all inventory items and their quantities.
+      const inventoryMap = new Map<string, { ref: DocumentReference; quantity: number }>();
+      for (const item of saleData.items) {
+        if (item.itemId) {
+          const existing = inventoryMap.get(item.itemId);
+          inventoryMap.set(item.itemId, {
+            ref: doc(db, 'inventory', item.itemId),
+            quantity: (existing?.quantity || 0) + item.quantity,
+          });
+        }
+      }
+
+      // Step 2: Read all required inventory documents first.
+      const inventoryRefs = Array.from(inventoryMap.values()).map(i => i.ref);
+      const inventoryDocs = inventoryRefs.length > 0
+        ? await Promise.all(inventoryRefs.map(ref => transaction.get(ref)))
+        : [];
+      
+      const inventoryUpdates: { ref: DocumentReference; newStock: number }[] = [];
+
+      // Step 3: Validate stock levels (this is now a non-transactional read of fetched data).
+      for (const inventoryDoc of inventoryDocs) {
+        if (!inventoryDoc.exists()) {
+           throw new Error(`Inventory item with ID ${inventoryDoc.id} not found.`);
+        }
+        const required = inventoryMap.get(inventoryDoc.id)!;
+        const currentStock = inventoryDoc.data().stock as number;
+        if (currentStock < required.quantity) {
+          throw new Error(
+            `Insufficient stock for "${
+              inventoryDoc.data().name
+            }". Available: ${currentStock}, Requested: ${required.quantity}.`
+          );
+        }
+        inventoryUpdates.push({ ref: inventoryDoc.ref, newStock: currentStock - required.quantity });
+      }
+
+      // Step 4: Now, perform all write operations.
+      // Write 1: Create the main sale transaction document.
       transaction.set(transactionRef, {
         ...saleData,
         createdAt: serverTimestamp(),
         status: 'active',
       });
 
-      // 2. Update inventory stock
-      const inventoryCollection = collection(db, 'inventory');
-      const inventoryToFetch = new Map<
-        string,
-        {itemRef: DocumentReference; quantity: number}
-      >();
-      for (const item of saleData.items) {
-        if (item.itemId) {
-          const existing = inventoryToFetch.get(item.itemId);
-          inventoryToFetch.set(item.itemId, {
-            itemRef: doc(inventoryCollection, item.itemId),
-            quantity: (existing?.quantity || 0) + item.quantity,
-          });
-        }
-      }
-
-      const itemRefs = Array.from(inventoryToFetch.values()).map(
-        (i) => i.itemRef
-      );
-
-      if (itemRefs.length > 0) {
-        const inventoryDocPromises = itemRefs.map((itemRef) =>
-          transaction.get(itemRef)
-        );
-        const inventoryDocs = await Promise.all(inventoryDocPromises);
-        for (const inventoryDoc of inventoryDocs) {
-          if (!inventoryDoc.exists()) continue;
-          const required = inventoryToFetch.get(inventoryDoc.id)!;
-          const currentStock = inventoryDoc.data().stock as number;
-          if (currentStock < required.quantity) {
-            throw new Error(
-              `Insufficient stock for "${
-                inventoryDoc.data().name
-              }". Available: ${currentStock}, Requested: ${required.quantity}.`
-            );
-          }
-          transaction.update(inventoryDoc.ref, {
-            stock: currentStock - required.quantity,
-          });
-        }
+      // Write 2: Update all inventory items.
+      for (const update of inventoryUpdates) {
+        transaction.update(update.ref, { stock: update.newStock });
       }
     });
 
-    return {success: true, transactionId};
+    return {success: true, transactionId: transactionRef.id};
   } catch (error) {
     console.error('Error in sales transaction: ', error);
     const message =
