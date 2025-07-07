@@ -1,24 +1,58 @@
 'use client';
 
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import Image from 'next/image';
+import {
+  startRegistration,
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from '@simplewebauthn/browser';
 import {Input} from '@/components/ui/input';
 import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
-import {ShieldAlert, LogIn, Loader2} from 'lucide-react';
+import {Separator} from '@/components/ui/separator';
+import {
+  ShieldAlert,
+  LogIn,
+  Loader2,
+  Fingerprint,
+  KeyRound,
+} from 'lucide-react';
 import {verifyPassword} from '@/app/actions';
+import {useToast} from '@/hooks/use-toast';
 
 interface PasswordProtectProps {
   onSuccess: () => void;
 }
 
+// We need a unique identifier for the credential store.
+// Using a prefix helps avoid collisions in localStorage.
+const WEBAUTHN_LS_KEY_REGISTERED = 'risoca_webauthn_registered';
+const WEBAUTHN_LS_KEY_CREDENTIAL_ID = 'risoca_webauthn_credential_id';
+
 export function PasswordProtect({onSuccess}: PasswordProtectProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [isBiometricRegistered, setIsBiometricRegistered] = useState(false);
+  const {toast} = useToast();
+
+  useEffect(() => {
+    const checkSupport = async () => {
+      const supported = await browserSupportsWebAuthn();
+      setIsBiometricSupported(supported);
+      if (supported && localStorage.getItem(WEBAUTHN_LS_KEY_REGISTERED) === 'true') {
+        setIsBiometricRegistered(true);
+      }
+    };
+    checkSupport();
+  }, []);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsVerifying(true);
@@ -26,7 +60,11 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     try {
       const result = await verifyPassword(password);
       if (result.success) {
-        onSuccess();
+        if (isBiometricSupported && !isBiometricRegistered) {
+          setShowRegisterPrompt(true);
+        } else {
+          onSuccess();
+        }
       } else {
         setError('Incorrect password. Please try again.');
         setPassword('');
@@ -39,29 +77,153 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     }
   };
 
+  const handleRegisterBiometrics = async () => {
+    setIsVerifying(true);
+    setError('');
+    try {
+      const reg = await startRegistration({
+        rp: {name: 'RiSoCa Receipt', id: window.location.hostname},
+        user: {id: 'user', name: 'user', displayName: 'RiSoCa User'},
+        challenge: 'risoca_challenge_' + Date.now(),
+        pubKeyCredParams: [{type: 'public-key', alg: -7}],
+        authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required',
+        },
+        timeout: 60000,
+        attestation: 'none',
+      });
+      
+      localStorage.setItem(WEBAUTHN_LS_KEY_REGISTERED, 'true');
+      localStorage.setItem(WEBAUTHN_LS_KEY_CREDENTIAL_ID, reg.id);
+      setIsBiometricRegistered(true);
+      toast({
+          variant: 'success',
+          title: 'Fingerprint Enabled',
+          description: 'You can now use your fingerprint to log in.',
+      });
+      onSuccess();
+    } catch (err: any) {
+        console.error('Biometric registration error:', err);
+        const errorMessage = err.name === 'InvalidStateError' ? 'This device is already registered.' : 'Biometric registration failed. Please try again.';
+        setError(errorMessage);
+        setShowRegisterPrompt(false); // Go back to password screen
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+  
+  const handleSkipRegistration = () => {
+      setShowRegisterPrompt(false);
+      onSuccess();
+  }
+
+  const handleBiometricLogin = async () => {
+    setIsVerifying(true);
+    setError('');
+    try {
+        const credentialID = localStorage.getItem(WEBAUTHN_LS_KEY_CREDENTIAL_ID);
+        if (!credentialID) {
+            throw new Error('No credential ID found.');
+        }
+
+        await startAuthentication({
+            challenge: 'risoca_auth_challenge_' + Date.now(),
+            allowCredentials: [{
+                id: credentialID,
+                type: 'public-key'
+            }],
+            userVerification: 'required',
+        });
+
+      onSuccess();
+    } catch (err) {
+      console.error('Biometric authentication error:', err);
+      setError('Fingerprint authentication failed.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  if (showRegisterPrompt) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Card className="w-full max-w-sm shadow-2xl animate-enter">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4 text-primary">
+                <Fingerprint className="w-16 h-16" />
+            </div>
+            <CardTitle>Enable Fingerprint Login?</CardTitle>
+            <CardDescription>
+              Would you like to use your fingerprint for faster access next time?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {error && (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Registration Failed</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="flex flex-col gap-2">
+                <Button onClick={handleRegisterBiometrics} disabled={isVerifying}>
+                   {isVerifying ? <Loader2 className="mr-2 animate-spin" /> : <Fingerprint className="mr-2"/>}
+                    Enable Fingerprint
+                </Button>
+                <Button variant="ghost" onClick={handleSkipRegistration} disabled={isVerifying}>
+                    Not Now
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm shadow-2xl animate-enter">
         <CardHeader className="text-center">
-           <div className="flex justify-center mb-4">
-             <Image
-                src="/logo.png"
-                alt="RISOCA Logo"
-                width={120}
-                height={37}
-                priority
-                data-ai-hint="logo"
-                className="w-auto h-9 logo-glow"
-              />
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/logo.png"
+              alt="RISOCA Logo"
+              width={120}
+              height={37}
+              priority
+              data-ai-hint="logo"
+              className="w-auto h-9 logo-glow"
+            />
           </div>
           <CardTitle>Protected Area</CardTitle>
           <CardDescription>
-            Please enter the password to access this site.
+            Please enter the password or use your fingerprint to unlock.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+        <CardContent className="space-y-4">
+          {isBiometricRegistered && isBiometricSupported && (
+            <>
+              <Button
+                variant="outline"
+                className="w-full h-14 text-base"
+                onClick={handleBiometricLogin}
+                disabled={isVerifying}
+              >
+                {isVerifying && <Loader2 className="mr-2 animate-spin" />}
+                {!isVerifying && <Fingerprint className="mr-2" />}
+                Unlock with Fingerprint
+              </Button>
+              <div className="relative">
+                <Separator />
+                <span className="absolute px-2 text-xs -translate-x-1/2 bg-card left-1/2 -top-2 text-muted-foreground">OR</span>
+              </div>
+            </>
+          )}
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="relative">
+              <KeyRound className="absolute w-5 h-5 -translate-y-1/2 text-muted-foreground left-3 top-1/2" />
               <Input
                 id="password"
                 type="password"
@@ -69,10 +231,10 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="text-center"
+                className="text-center pl-10"
               />
             </div>
-            {error && (
+            {error && !isBiometricRegistered && (
               <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>Access Denied</AlertTitle>
@@ -83,10 +245,13 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
               {isVerifying ? (
                 <Loader2 className="mr-2 animate-spin" />
               ) : (
-                <LogIn className="mr-2"/>
+                <LogIn className="mr-2" />
               )}
               {isVerifying ? 'Verifying...' : 'Unlock'}
             </Button>
+            {error && isBiometricRegistered && (
+                <p className="text-xs text-center text-destructive">{error}</p>
+            )}
           </form>
         </CardContent>
       </Card>
