@@ -51,15 +51,15 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 
     *   In the Firebase Console, go to the **Firestore Database** section.
     *   Click on the **Rules** tab.
-    *   Replace the existing rules with the following. Using a single wildcard rule (`match /{document=**}`) is the simplest and recommended way for this app, as it is protected by a single site-wide password. It ensures all current and future features will work without needing to update the rules again.
+    *   **Delete all existing text** in the editor and replace it with the following rules. Using a single wildcard rule (`match /{document=**}`) is the simplest and recommended way for this app. It ensures all current and future features will work without needing to update the rules again.
 
     ```
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
-        // This rule allows your app to read and write to all collections.
+        // This single rule allows your app to read and write to all collections.
         // It is secure in this context because your entire app is protected
-        // by a site-wide password.
+        // by a site-wide password. It works for all current and future features.
         match /{document=**} {
           allow read, write: if true;
         }
