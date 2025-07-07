@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import {useState, useEffect, useMemo} from 'react';
 import {
   collection,
@@ -10,72 +9,79 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import type {Customer, LedgerTransaction} from '@/lib/schemas';
+import type {Customer, LedgerTransaction, InventoryItem} from '@/lib/schemas';
 
 import {
   Wallet,
   BookUser,
-  CreditCard,
-  ShoppingBag,
-  SquareTerminal,
-  ReceiptText,
-  ShoppingCart,
-  BarChart,
-  User,
+  Boxes,
+  Users,
+  ReceiptText
 } from 'lucide-react';
 
-import {Card, CardContent} from '@/components/ui/card';
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Skeleton} from '@/components/ui/skeleton';
 
-const NavIcon = ({
-  href,
+const StatCard = ({
+  title,
+  value,
   icon: Icon,
-  label,
+  isLoading,
 }: {
-  href: string;
+  title: string;
+  value: string | number;
   icon: React.ElementType;
-  label: string;
+  isLoading?: boolean;
 }) => (
-  <Link
-    href={href}
-    className="flex flex-col items-center justify-center space-y-2 p-2 text-center rounded-lg hover:bg-muted transition-colors"
-  >
-    <div className="w-12 h-12 flex items-center justify-center bg-primary/10 rounded-full">
-      <Icon className="w-6 h-6 text-primary" />
-    </div>
-    <span className="text-xs font-medium text-foreground/80">{label}</span>
-  </Link>
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="w-4 h-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      {isLoading ? (
+        <Skeleton className="h-8 w-3/4" />
+      ) : (
+        <div className="text-2xl font-bold">{value}</div>
+      )}
+    </CardContent>
+  </Card>
 );
+
 
 export default function HomePage() {
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [receipts, setReceipts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    const transactionsQuery = query(
-      collection(db, 'ledger'),
-      orderBy('createdAt', 'desc')
-    );
+    
+    const unsubscribers = [
+      onSnapshot(query(collection(db, 'ledger'), orderBy('createdAt', 'desc')), (snapshot) => {
+        setTransactions(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as LedgerTransaction));
+      }),
+      onSnapshot(query(collection(db, 'customers')), (snapshot) => {
+        setCustomers(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Customer));
+      }),
+      onSnapshot(query(collection(db, 'inventory')), (snapshot) => {
+        setInventory(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as InventoryItem));
+      }),
+      onSnapshot(query(collection(db, 'receipts')), (snapshot) => {
+        setReceipts(snapshot.docs.map(doc => ({id: doc.id, ...doc.data()})));
+      }),
+    ];
 
-    const unsubscribeTransactions = onSnapshot(
-      transactionsQuery,
-      (snapshot) => {
-        const transactionsData = snapshot.docs.map(
-          (doc) => ({id: doc.id, ...doc.data()}) as LedgerTransaction
-        );
-        setTransactions(transactionsData);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching transactions:', error);
-        setIsLoading(false);
-      }
-    );
+    Promise.all(unsubscribers).then(() => setIsLoading(false)).catch(err => {
+      console.error(err);
+      setIsLoading(false);
+    });
 
     return () => {
-      unsubscribeTransactions();
+      unsubscribers.forEach(unsub => unsub());
     };
   }, []);
 
@@ -84,6 +90,10 @@ export default function HomePage() {
       return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
     }, 0);
   }, [transactions]);
+  
+  const totalExpenses = useMemo(() => {
+    return receipts.reduce((acc, receipt) => acc + receipt.total, 0);
+  }, [receipts]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -91,54 +101,60 @@ export default function HomePage() {
       maximumFractionDigits: 2,
     })}`;
 
-  const navItems = [
-    {href: '/store/pos', icon: Wallet, label: 'Cash'},
-    {href: '/store/ledger', icon: BookUser, label: 'Credit'},
-    {href: '/store/pos', icon: CreditCard, label: 'Payment'},
-    {href: '/store/receipts', icon: ShoppingBag, label: 'Expenses'},
-    {href: '/store', icon: SquareTerminal, label: 'POS'},
-    {href: '/store/receipts', icon: ReceiptText, label: 'Receipts'},
-    {href: '/store/inventory', icon: ShoppingCart, label: 'Purchases'},
-    {href: '/store/history', icon: BarChart, label: 'Reports'},
-  ];
-
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       <header className="flex justify-between items-center">
-        <Image
-          src="/logo.png"
-          alt="RISOCA Logo"
-          width={90}
-          height={28}
-          className="w-auto h-7"
-          priority
-        />
-        <Button variant="outline">
-          <User className="mr-2 h-4 w-4" /> Account
-        </Button>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
       </header>
-
-      <Card className="bg-primary text-primary-foreground shadow-lg">
-        <CardContent className="p-4">
-          <p className="text-sm opacity-80">Your Balance</p>
-          {isLoading ? (
-            <Skeleton className="h-10 w-40 mt-1 bg-white/30" />
-          ) : (
-            <p className="text-4xl font-bold tracking-tighter">
-              {formatCurrency(totalBalance)}
-            </p>
-          )}
-          <p className="text-xs opacity-60 mt-1">Powered by Netbank</p>
-        </CardContent>
-      </Card>
-
-      <main>
-        <div className="grid grid-cols-4 gap-2">
-          {navItems.map((item) => (
-            <NavIcon key={item.label} {...item} />
-          ))}
-        </div>
+      
+      <main className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Total Credit Balance" value={formatCurrency(totalBalance)} icon={Wallet} isLoading={isLoading}/>
+        <StatCard title="Total Customers" value={customers.length} icon={Users} isLoading={isLoading}/>
+        <StatCard title="Inventory Items" value={inventory.length} icon={Boxes} isLoading={isLoading}/>
+        <StatCard title="Total Expenses" value={formatCurrency(totalExpenses)} icon={ReceiptText} isLoading={isLoading}/>
       </main>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+            <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+                <Button asChild size="lg"><Link href="/store">New Sale</Link></Button>
+                <Button asChild size="lg" variant="outline"><Link href="/store/receipts">Add Expense</Link></Button>
+                <Button asChild size="lg" variant="outline"><Link href="/store/inventory">Manage Inventory</Link></Button>
+                <Button asChild size="lg" variant="outline"><Link href="/store/ledger">Credit Ledger</Link></Button>
+            </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-full"/>
+                <Skeleton className="h-6 w-full"/>
+                <Skeleton className="h-6 w-full"/>
+              </div>
+            ) : transactions.length > 0 ? (
+               <ul className="space-y-2">
+                {transactions.slice(0, 5).map(tx => (
+                  <li key={tx.id} className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {customers.find(c => c.id === tx.customerId)?.name || 'Unknown Customer'}
+                    </span>
+                    {' '}
+                    made a <span className={tx.type === 'credit' ? 'text-destructive' : 'text-green-600'}>{tx.type}</span> of {formatCurrency(tx.amount)}.
+                  </li>
+                ))}
+               </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No recent transactions.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -13,9 +13,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'RISOCA',
+  title: 'Sales Dashboard',
   description:
-    'An application for scanning receipts and managing a store inventory.',
+    'An application for tracking sales and managing a store inventory.',
 };
 
 export default function RootLayout({
@@ -30,18 +30,13 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
-        <meta name="application-name" content="RISOCA" />
+        <meta name="application-name" content="Sales Dashboard" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="RISOCA" />
+        <meta name="apple-mobile-web-app-title" content="Sales Dashboard" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#fafafa" />
-
-        <link
-          rel="apple-touch-icon"
-          href="/logo.png"
-        />
+        <meta name="theme-color" content="#ffffff" />
       </head>
       <body className="font-body antialiased h-full bg-background">
         <SiteProtection>

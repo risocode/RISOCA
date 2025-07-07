@@ -6,7 +6,6 @@ import {Button} from '@/components/ui/button';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {ShieldAlert, LogIn, Loader2} from 'lucide-react';
-import Image from 'next/image';
 import {verifyPassword} from '@/app/actions';
 
 interface PasswordProtectProps {
@@ -43,17 +42,6 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm shadow-2xl animate-enter">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-             <Image
-                src="/logo.png"
-                alt="RISOCA Logo"
-                width={120}
-                height={37}
-                className="w-auto h-9 logo-glow"
-                data-ai-hint="logo"
-                priority
-            />
-          </div>
           <CardTitle>Protected Area</CardTitle>
           <CardDescription>
             Please enter the password to access this site.
