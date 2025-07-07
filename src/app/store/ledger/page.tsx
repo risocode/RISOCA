@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect, useMemo} from 'react';
@@ -47,7 +48,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {useToast} from '@/hooks/use-toast';
 import {
   UserPlus,
@@ -68,7 +68,6 @@ export default function LedgerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [filter, setFilter] = useState('all');
   const {toast} = useToast();
 
   const form = useForm<CustomerInput>({
@@ -154,49 +153,35 @@ export default function LedgerPage() {
     setIsSubmitting(false);
   };
 
-  const {
-    customersWithBalance,
-    totalBalance,
-    totalCredit,
-    totalPayment,
-  } = useMemo(() => {
-    const customerBalances: Record<string, number> = {};
+  const {customersWithBalance, totalBalance, totalCredit, totalPayment} =
+    useMemo(() => {
+      const customerBalances: Record<string, number> = {};
 
-    transactions.forEach((tx) => {
-      if (tx.type === 'credit') {
-        customerBalances[tx.customerId] =
-          (customerBalances[tx.customerId] || 0) + tx.amount;
-      } else {
-        customerBalances[tx.customerId] =
-          (customerBalances[tx.customerId] || 0) - tx.amount;
-      }
-    });
+      transactions.forEach((tx) => {
+        if (tx.type === 'credit') {
+          customerBalances[tx.customerId] =
+            (customerBalances[tx.customerId] || 0) + tx.amount;
+        } else {
+          customerBalances[tx.customerId] =
+            (customerBalances[tx.customerId] || 0) - tx.amount;
+        }
+      });
 
-    const customersWithBalance = customers.map((c) => ({
-      ...c,
-      balance: customerBalances[c.id] || 0,
-    }));
+      const customersWithBalance = customers.map((c) => ({
+        ...c,
+        balance: customerBalances[c.id] || 0,
+      }));
 
-    const totalCredit = transactions
-      .filter((tx) => tx.type === 'credit')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    const totalPayment = transactions
-      .filter((tx) => tx.type === 'payment')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    const totalBalance = totalCredit - totalPayment;
+      const totalCredit = transactions
+        .filter((tx) => tx.type === 'credit')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const totalPayment = transactions
+        .filter((tx) => tx.type === 'payment')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+      const totalBalance = totalCredit - totalPayment;
 
-    return {customersWithBalance, totalBalance, totalCredit, totalPayment};
-  }, [customers, transactions]);
-
-  const filteredCustomers = useMemo(() => {
-    if (filter === 'paid') {
-      return customersWithBalance.filter((c) => c.balance <= 0);
-    }
-    if (filter === 'unpaid') {
-      return customersWithBalance.filter((c) => c.balance > 0);
-    }
-    return customersWithBalance;
-  }, [customersWithBalance, filter]);
+      return {customersWithBalance, totalBalance, totalCredit, totalPayment};
+    }, [customers, transactions]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -263,17 +248,6 @@ export default function LedgerPage() {
         <Card>
           <CardHeader>
             <CardTitle>Customer List</CardTitle>
-            <Tabs
-              defaultValue="all"
-              className="w-full sm:w-auto"
-              onValueChange={setFilter}
-            >
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="unpaid">With Balance</TabsTrigger>
-                <TabsTrigger value="paid">Fully Paid</TabsTrigger>
-              </TabsList>
-            </Tabs>
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-2">
@@ -287,8 +261,8 @@ export default function LedgerPage() {
                     <Skeleton className="h-6 w-20" />
                   </div>
                 ))
-              ) : filteredCustomers.length > 0 ? (
-                filteredCustomers.map((customer) => (
+              ) : customersWithBalance.length > 0 ? (
+                customersWithBalance.map((customer) => (
                   <Link
                     key={customer.id}
                     href={`/store/ledger/${customer.id}`}
@@ -310,7 +284,7 @@ export default function LedgerPage() {
               ) : (
                 <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
                   <Info className="w-8 h-8 mb-2" />
-                  <p>No customers found for this filter.</p>
+                  <p>No customers yet. Add one to get started.</p>
                 </div>
               )}
             </div>
