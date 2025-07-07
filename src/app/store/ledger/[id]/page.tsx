@@ -125,13 +125,17 @@ export default function CustomerLedgerPage() {
 
     const transQuery = query(
       collection(db, 'ledger'),
-      where('customerId', '==', customerId),
-      orderBy('createdAt', 'desc')
+      where('customerId', '==', customerId)
     );
     const unsubTransactions = onSnapshot(transQuery, (snapshot) => {
       const transData = snapshot.docs.map(
         (doc) => ({id: doc.id, ...doc.data()} as LedgerTransaction)
       );
+       // Sort transactions by date on the client-side to avoid composite index
+      transData.sort((a, b) => {
+        if (!a.createdAt || !b.createdAt) return 0;
+        return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
+      });
       setTransactions(transData);
     });
 
