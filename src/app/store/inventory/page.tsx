@@ -1,7 +1,6 @@
 'use client';
 
-import {useState, useEffect} from 'react';
-import Link from 'next/link';
+import {useState, useEffect, useMemo} from 'react';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {
@@ -9,7 +8,6 @@ import {
   query,
   onSnapshot,
   orderBy,
-  type Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {
@@ -71,12 +69,11 @@ import {
 import {Skeleton} from '@/components/ui/skeleton';
 import {useToast} from '@/hooks/use-toast';
 import {
-  ArrowLeft,
   PackageSearch,
   Plus,
-  Pencil,
   Trash2,
   Loader2,
+  Search,
 } from 'lucide-react';
 
 export default function InventoryPage() {
@@ -87,6 +84,7 @@ export default function InventoryPage() {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const {toast} = useToast();
 
   const form = useForm<InventoryItemInput>({
@@ -120,11 +118,11 @@ export default function InventoryPage() {
         setIsLoading(false);
       },
       (error) => {
-        console.error('Error fetching inventory from Firestore:', error);
+        console.error('Error fetching products from Firestore:', error);
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: 'Could not fetch inventory data.',
+          description: 'Could not fetch products data.',
         });
         setIsLoading(false);
       }
@@ -132,6 +130,16 @@ export default function InventoryPage() {
 
     return () => unsubscribe();
   }, [toast]);
+  
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) {
+      return items;
+    }
+    return items.filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [items, searchTerm]);
+
 
   const handleOpenDialog = (item: InventoryItem | null = null) => {
     setEditingItem(item);
@@ -158,8 +166,8 @@ export default function InventoryPage() {
 
     if (response.success) {
       toast({
-        title: `Item ${editingItem ? 'Updated' : 'Added'}`,
-        description: `The item has been successfully ${
+        title: `Product ${editingItem ? 'Updated' : 'Added'}`,
+        description: `The product has been successfully ${
           editingItem ? 'updated' : 'added'
         }.`,
       });
@@ -186,8 +194,8 @@ export default function InventoryPage() {
 
     if (response.success) {
       toast({
-        title: 'Item Deleted',
-        description: 'The item has been successfully deleted.',
+        title: 'Product Deleted',
+        description: 'The product has been successfully deleted.',
       });
     } else {
       toast({
@@ -203,22 +211,22 @@ export default function InventoryPage() {
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventory</h1>
+        <h1 className="text-2xl font-bold">Products</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2" /> Add Item
+              <Plus className="mr-2" /> Add Product
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>
-                {editingItem ? 'Edit Item' : 'Add New Item'}
+                {editingItem ? 'Edit Product' : 'Add New Product'}
               </DialogTitle>
               <DialogDescription>
                 {editingItem
-                  ? "Update the item's details below."
-                  : 'Fill in the details for the new item.'}
+                  ? "Update the product's details below."
+                  : 'Fill in the details for the new product.'}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -231,7 +239,7 @@ export default function InventoryPage() {
                   name="name"
                   render={({field}) => (
                     <FormItem>
-                      <FormLabel>Item Name</FormLabel>
+                      <FormLabel>Product Name</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g., T-Shirt" {...field} />
                       </FormControl>
@@ -298,7 +306,7 @@ export default function InventoryPage() {
                   </DialogClose>
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                    {editingItem ? 'Save Changes' : 'Add Item'}
+                    {editingItem ? 'Save Changes' : 'Add Product'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -308,25 +316,37 @@ export default function InventoryPage() {
       </header>
 
       <Card className="shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <PackageSearch className="w-5 h-5" /> All Items
-            </CardTitle>
-            <CardDescription>
-              A list of all items currently in your inventory.
-            </CardDescription>
-          </div>
+        <CardHeader>
+           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <PackageSearch className="w-5 h-5" /> All Products
+                  </CardTitle>
+                  <CardDescription>
+                    A list of all products currently in your inventory.
+                  </CardDescription>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search products..."
+                  className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Item Name</TableHead>
+                <TableHead>Product Name</TableHead>
                 <TableHead>Cost</TableHead>
                 <TableHead>Selling Price</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead className="text-center">Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -346,13 +366,13 @@ export default function InventoryPage() {
                       <Skeleton className="h-5 w-1/3" />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Skeleton className="h-8 w-20 mx-auto" />
+                      <Skeleton className="h-8 w-10 ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))
-              ) : items.length > 0 ? (
-                items.map((item) => (
-                  <TableRow key={item.id}>
+              ) : filteredItems.length > 0 ? (
+                filteredItems.map((item) => (
+                  <TableRow key={item.id} onClick={() => handleOpenDialog(item)} className="cursor-pointer">
                     <TableCell className="p-2 md:p-4 font-medium">
                       {item.name}
                     </TableCell>
@@ -363,32 +383,28 @@ export default function InventoryPage() {
                       ₱{item.price.toFixed(2)}
                     </TableCell>
                     <TableCell className="p-2 md:p-4">{item.stock}</TableCell>
-                    <TableCell className="p-2 md:p-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenDialog(item)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenAlert(item.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
+                    <TableCell className="p-2 md:p-4 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenAlert(item.id);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No items in inventory. Add your first item to get started.
+                    {searchTerm 
+                        ? `No products found for "${searchTerm}"`
+                        : "No products yet. Add your first one to get started."
+                    }
                   </TableCell>
                 </TableRow>
               )}
@@ -403,7 +419,7 @@ export default function InventoryPage() {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              item from your inventory.
+              product.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
