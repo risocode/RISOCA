@@ -342,9 +342,9 @@ export default function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product Name</TableHead>
+                <TableHead className="w-2/5">Product Name</TableHead>
                 <TableHead>Cost</TableHead>
-                <TableHead>Selling Price</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
