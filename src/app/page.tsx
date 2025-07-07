@@ -102,28 +102,7 @@ export default function HomePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-center justify-center">
-        <Image
-          src="/logo.png?v=3"
-          alt="App Logo"
-          width={40}
-          height={40}
-          priority
-          data-ai-hint="abstract logo"
-          className="w-auto h-9"
-        />
-        <Image
-          src="/risoca.png"
-          alt="RiSoCa Logo Text"
-          width={120}
-          height={37}
-          priority
-          data-ai-hint="text logo"
-          className="w-auto h-8"
-        />
-      </header>
-
-      <main className="space-y-6">
+      <div className="space-y-6">
         <Card>
           <CardContent className="pt-6 flex items-center justify-around">
             <div className="text-center space-y-1">
@@ -277,7 +256,7 @@ export default function HomePage() {
             </CardFooter>
         </Card>
 
-      </main>
+      </div>
     </div>
   );
 }

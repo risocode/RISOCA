@@ -3,6 +3,7 @@
 
 import {useState, useEffect} from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   startRegistration,
   startAuthentication,
@@ -186,26 +187,28 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm shadow-2xl animate-enter">
         <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <Image
-              src="/logo.png?v=3"
-              alt="App Logo"
-              width={40}
-              height={40}
-              priority
-              data-ai-hint="abstract logo"
-              className="w-auto h-9"
-            />
-            <Image
-              src="/risoca.png"
-              alt="RiSoCa Logo Text"
-              width={120}
-              height={37}
-              priority
-              data-ai-hint="text logo"
-              className="w-auto h-8"
-            />
-          </div>
+          <Link href="/">
+            <div className="flex items-center justify-center mb-4">
+              <Image
+                src="/logo.png?v=3"
+                alt="App Logo"
+                width={40}
+                height={40}
+                priority
+                data-ai-hint="abstract logo"
+                className="w-auto h-9"
+              />
+              <Image
+                src="/risoca.png"
+                alt="RiSoCa Logo Text"
+                width={120}
+                height={37}
+                priority
+                data-ai-hint="text logo"
+                className="w-auto h-8"
+              />
+            </div>
+          </Link>
           <CardTitle>Protected Area</CardTitle>
           <CardDescription>
             Please enter the password or use your fingerprint to unlock.

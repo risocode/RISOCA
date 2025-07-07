@@ -5,6 +5,7 @@ import {ReceiptsProvider} from '@/contexts/ReceiptContext';
 import {Toaster} from '@/components/ui/toaster';
 import {SiteProtection} from './components/site-protection';
 import {BottomNav} from './components/bottom-nav';
+import {SiteHeader} from '@/app/components/site-header';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -13,10 +14,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
   title: 'Sales Dashboard',
   description:
     'An application for tracking sales and managing a store inventory.',
-  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -42,7 +43,8 @@ export default function RootLayout({
         <SiteProtection>
           <ReceiptsProvider>
             <div className="relative flex flex-col h-full">
-              <main className="flex-1 pb-24">{children}</main>
+              <SiteHeader />
+              <main className="flex-1 pb-24 overflow-y-auto">{children}</main>
               <BottomNav />
             </div>
           </ReceiptsProvider>
