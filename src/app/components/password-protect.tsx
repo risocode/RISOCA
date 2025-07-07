@@ -185,8 +185,8 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-full max-w-sm shadow-2xl animate-enter">
-        <CardHeader>
-          <div className="flex items-center justify-start mb-4">
+        <CardHeader className="text-center">
+          <div className="flex items-center justify-center mb-4">
             <Image
               src="/logo.png?v=3"
               alt="App Logo"
