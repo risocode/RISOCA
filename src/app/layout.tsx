@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   title: 'Risoca',
   description:
     'An application for tracking sales, expenses, and managing a store inventory.',
-  manifest: '/manifest.webmanifest',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
-    apple: '/icon-192x192.png',
+    apple: [{ url: "/icon-192x192.png", sizes: "192x192" }],
   },
 };
 
