@@ -18,12 +18,15 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
   type DocumentReference,
   type Timestamp,
 } from 'firebase/firestore';
 import type {
   InventoryItemInput,
   LedgerTransactionInput,
+  SaleTransactionInput,
+  SaleItem,
 } from '@/lib/schemas';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -189,37 +192,33 @@ export async function submitManualReceipt(
   return {diagnosis: data, notificationStatus};
 }
 
-// Types for Sales Report
-export type SaleItem = {
-  itemId?: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-};
-
-export type SalesReportInput = {
-  items: SaleItem[];
-};
-
-// Action to submit a sales report
-export async function submitSalesReport(
-  report: SalesReportInput
-): Promise<{success: boolean; message?: string}> {
-  if (!report.items || report.items.length === 0) {
+// Action to submit a sales transaction
+export async function submitSaleTransaction(
+  saleData: SaleTransactionInput
+): Promise<{success: boolean; message?: string; transactionId?: string}> {
+  if (!saleData.items || saleData.items.length === 0) {
     return {success: false, message: 'No items in the report.'};
   }
 
   try {
+    let transactionId: string | undefined = undefined;
     await runTransaction(db, async (transaction) => {
-      const inventoryCollection = collection(db, 'inventory');
+      // 1. Create the main transaction document
+      const transactionRef = doc(collection(db, 'saleTransactions'));
+      transactionId = transactionRef.id;
+      transaction.set(transactionRef, {
+        ...saleData,
+        createdAt: serverTimestamp(),
+        status: 'active',
+      });
 
-      // Create a map of inventory items to fetch to avoid duplicate reads
+      // 2. Update inventory stock
+      const inventoryCollection = collection(db, 'inventory');
       const inventoryToFetch = new Map<
         string,
         {itemRef: DocumentReference; quantity: number}
       >();
-      for (const item of report.items) {
+      for (const item of saleData.items) {
         if (item.itemId) {
           const existing = inventoryToFetch.get(item.itemId);
           inventoryToFetch.set(item.itemId, {
@@ -229,61 +228,93 @@ export async function submitSalesReport(
         }
       }
 
-      // Read all necessary inventory documents
       const itemRefs = Array.from(inventoryToFetch.values()).map(
         (i) => i.itemRef
       );
 
-      const inventoryDocPromises = itemRefs.map((itemRef) =>
-        transaction.get(itemRef)
-      );
-      const inventoryDocs = await Promise.all(inventoryDocPromises);
-
-      // Validate stock and prepare updates
-      for (const inventoryDoc of inventoryDocs) {
-        if (!inventoryDoc.exists()) {
-          const failedItem = report.items.find(
-            (i) => i.itemId === inventoryDoc.id
-          );
-          throw new Error(
-            `Item "${failedItem?.itemName}" with ID ${inventoryDoc.id} not found in inventory.`
-          );
+      if (itemRefs.length > 0) {
+        const inventoryDocPromises = itemRefs.map((itemRef) =>
+          transaction.get(itemRef)
+        );
+        const inventoryDocs = await Promise.all(inventoryDocPromises);
+        for (const inventoryDoc of inventoryDocs) {
+          if (!inventoryDoc.exists()) continue;
+          const required = inventoryToFetch.get(inventoryDoc.id)!;
+          const currentStock = inventoryDoc.data().stock as number;
+          if (currentStock < required.quantity) {
+            throw new Error(
+              `Insufficient stock for "${
+                inventoryDoc.data().name
+              }". Available: ${currentStock}, Requested: ${required.quantity}.`
+            );
+          }
+          transaction.update(inventoryDoc.ref, {
+            stock: currentStock - required.quantity,
+          });
         }
-
-        const required = inventoryToFetch.get(inventoryDoc.id)!;
-        const currentStock = inventoryDoc.data().stock as number;
-
-        if (currentStock < required.quantity) {
-          throw new Error(
-            `Insufficient stock for "${inventoryDoc.data().name}". Available: ${currentStock}, Requested: ${required.quantity}.`
-          );
-        }
-
-        // Prepare the stock update
-        transaction.update(inventoryDoc.ref, {
-          stock: currentStock - required.quantity,
-        });
-      }
-
-      // Record all sales
-      for (const item of report.items) {
-        transaction.set(doc(collection(db, 'sales')), {
-          ...item,
-          status: 'active',
-          createdAt: serverTimestamp(),
-        });
       }
     });
 
-    return {success: true};
+    return {success: true, transactionId};
   } catch (error) {
-    console.error('Error in sales report transaction: ', error);
+    console.error('Error in sales transaction: ', error);
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {
       success: false,
       message: `Transaction failed: ${message}`,
     };
+  }
+}
+
+export async function voidSaleTransaction(
+  transactionId: string
+): Promise<{success: boolean; message?: string}> {
+  if (!transactionId) {
+    return {success: false, message: 'Transaction ID is missing.'};
+  }
+
+  const transactionRef = doc(db, 'saleTransactions', transactionId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const transactionDoc = await transaction.get(transactionRef);
+      if (!transactionDoc.exists()) {
+        throw new Error('Transaction not found.');
+      }
+      if (transactionDoc.data().status === 'voided') {
+        throw new Error('This transaction has already been voided.');
+      }
+
+      const items = transactionDoc.data().items as SaleItem[];
+
+      // Restore inventory stock
+      for (const item of items) {
+        if (item.itemId) {
+          const inventoryRef = doc(db, 'inventory', item.itemId);
+          const inventoryDoc = await transaction.get(inventoryRef);
+          if (inventoryDoc.exists()) {
+            const currentStock = inventoryDoc.data().stock as number;
+            transaction.update(inventoryRef, {
+              stock: currentStock + item.quantity,
+            });
+          }
+        }
+      }
+
+      // Mark transaction as voided
+      transaction.update(transactionRef, {
+        status: 'voided',
+        voidedAt: serverTimestamp(),
+      });
+    });
+
+    return {success: true};
+  } catch (error) {
+    console.error('Error voiding transaction:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Transaction failed: ${message}`};
   }
 }
 
@@ -307,13 +338,11 @@ export async function addInventoryItem(
 
 export async function updateInventoryItem(
   id: string,
-  item: InventoryItemInput
+  item: Partial<InventoryItemInput>
 ): Promise<{success: boolean; message?: string}> {
   try {
     const itemRef = doc(db, 'inventory', id);
-    await updateDoc(itemRef, {
-      ...item,
-    });
+    await updateDoc(itemRef, item);
     return {success: true};
   } catch (error) {
     console.error('Error updating inventory item in Firestore: ', error);
@@ -334,55 +363,6 @@ export async function deleteInventoryItem(
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {success: false, message: `Could not delete item: ${message}`};
-  }
-}
-
-export async function voidSale(
-  sale: SaleItem & {id: string}
-): Promise<{success: boolean; message?: string}> {
-  if (!sale.id) {
-    return {success: false, message: 'Sale ID is missing.'};
-  }
-
-  const saleRef = doc(db, 'sales', sale.id);
-  const saleSnap = await getDoc(saleRef);
-  if (saleSnap.exists() && saleSnap.data().status === 'voided') {
-    return {success: false, message: 'Sale is already voided.'};
-  }
-
-  try {
-    await runTransaction(db, async (transaction) => {
-      if (sale.itemId) {
-        const inventoryRef = doc(db, 'inventory', sale.itemId);
-        const inventoryDoc = await transaction.get(inventoryRef);
-
-        if (inventoryDoc.exists()) {
-          const currentStock = inventoryDoc.data().stock as number;
-          transaction.update(inventoryRef, {
-            stock: currentStock + sale.quantity,
-          });
-        } else {
-          console.warn(
-            `Could not restore stock for inventory item ${sale.itemId} because it no longer exists. The sale will still be voided.`
-          );
-        }
-      }
-
-      transaction.update(saleRef, {
-        status: 'voided',
-        voidedAt: serverTimestamp(),
-      });
-    });
-
-    return {success: true};
-  } catch (error) {
-    console.error('Error voiding sale:', error);
-    const message =
-      error instanceof Error ? error.message : 'An unknown error occurred.';
-    return {
-      success: false,
-      message: `Transaction failed: ${message}`,
-    };
   }
 }
 

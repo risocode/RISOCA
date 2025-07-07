@@ -11,13 +11,17 @@ import {
   query,
   onSnapshot,
   orderBy,
-  Timestamp,
   limit,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {submitSalesReport, type SaleItem, voidSale} from '@/app/actions';
-import type {InventoryItem} from '@/lib/schemas';
+import {submitSaleTransaction, voidSaleTransaction} from '@/app/actions';
+import type {
+  InventoryItem,
+  SaleItem,
+  SaleTransaction,
+} from '@/lib/schemas';
 import {format} from 'date-fns';
+import {BarcodeScannerDialog} from '@/components/barcode-scanner-dialog';
 
 import {
   Card,
@@ -54,6 +58,8 @@ import {
   ChevronsUpDown,
   History,
   FileWarning,
+  ScanLine,
+  Printer,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
 import {
@@ -87,19 +93,18 @@ const SaleItemFormSchema = z.object({
 
 type SaleItemFormData = z.infer<typeof SaleItemFormSchema>;
 
-export type SaleDoc = SaleItem & {
-  id: string;
-  createdAt: Timestamp;
-  status?: 'active' | 'voided';
-};
-
 export default function StorePage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [receiptItems, setReceiptItems] = useState<SaleItem[]>([]);
-  const [recentSales, setRecentSales] = useState<SaleDoc[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<
+    SaleTransaction[]
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
-  const [voidingSale, setVoidingSale] = useState<SaleDoc | null>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [voidingTransaction, setVoidingTransaction] =
+    useState<SaleTransaction | null>(null);
   const {toast} = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -123,8 +128,8 @@ export default function StorePage() {
       orderBy('name', 'asc')
     );
 
-    const salesQuery = query(
-      collection(db, 'sales'),
+    const transactionQuery = query(
+      collection(db, 'saleTransactions'),
       orderBy('createdAt', 'desc'),
       limit(5)
     );
@@ -137,15 +142,17 @@ export default function StorePage() {
       );
     });
 
-    const unsubSales = onSnapshot(salesQuery, (snapshot) => {
-      setRecentSales(
-        snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}) as SaleDoc)
+    const unsubTransactions = onSnapshot(transactionQuery, (snapshot) => {
+      setRecentTransactions(
+        snapshot.docs.map(
+          (doc) => ({id: doc.id, ...doc.data()}) as SaleTransaction
+        )
       );
     });
 
     return () => {
       unsubInventory();
-      unsubSales();
+      unsubTransactions();
     };
   }, []);
 
@@ -174,7 +181,13 @@ export default function StorePage() {
       return;
     }
     setIsSubmitting(true);
-    const response = await submitSalesReport({items: receiptItems});
+    const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
+    const response = await submitSaleTransaction({
+      items: receiptItems,
+      customerName: customerName || undefined,
+      total: grandTotal,
+      status: 'active',
+    });
 
     if (response.success) {
       toast({
@@ -182,6 +195,7 @@ export default function StorePage() {
         description: 'Sales report submitted and inventory updated.',
       });
       setReceiptItems([]);
+      setCustomerName('');
     } else {
       toast({
         variant: 'destructive',
@@ -192,25 +206,17 @@ export default function StorePage() {
     setIsSubmitting(false);
   };
 
-  const handleVoidSale = async () => {
-    if (!voidingSale) return;
+  const handleVoidTransaction = async () => {
+    if (!voidingTransaction) return;
     setIsVoiding(true);
 
-    // Manually create a plain object to pass to the server action,
-    // ensuring no complex objects like Timestamps are included.
-    const plainSaleObject = {
-      id: voidingSale.id,
-      itemId: voidingSale.itemId,
-      itemName: voidingSale.itemName,
-      quantity: voidingSale.quantity,
-      unitPrice: voidingSale.unitPrice,
-      total: voidingSale.total,
-    };
-
-    const response = await voidSale(plainSaleObject);
+    const response = await voidSaleTransaction(voidingTransaction.id);
 
     if (response.success) {
-      toast({title: 'Sale Voided', description: 'The sale has been removed.'});
+      toast({
+        title: 'Transaction Voided',
+        description: 'The transaction has been removed.',
+      });
     } else {
       toast({
         variant: 'destructive',
@@ -218,8 +224,28 @@ export default function StorePage() {
         description: response.message || 'An unknown error occurred.',
       });
     }
-    setVoidingSale(null);
+    setVoidingTransaction(null);
     setIsVoiding(false);
+  };
+
+  const handleBarcodeScanned = (result: string) => {
+    setIsScannerOpen(false);
+    const foundItem = inventory.find((item) => item.barcode === result);
+    if (foundItem) {
+      form.setValue('itemName', foundItem.name);
+      form.setValue('unitPrice', foundItem.price);
+      form.setValue('itemId', foundItem.id);
+      toast({
+        title: 'Item Found',
+        description: `${foundItem.name} added to the form.`,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Item Not Found',
+        description: 'No product with this barcode exists in your inventory.',
+      });
+    }
   };
 
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
@@ -240,6 +266,22 @@ export default function StorePage() {
                 onSubmit={form.handleSubmit(handleAddItem)}
                 className="space-y-4 p-4 border rounded-lg bg-background"
               >
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Customer Name (Optional)"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="flex-grow"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsScannerOpen(true)}
+                  >
+                    <ScanLine className="mr-2" /> Scan Barcode
+                  </Button>
+                </div>
+
                 <FormField
                   control={form.control}
                   name="itemName"
@@ -434,40 +476,66 @@ export default function StorePage() {
           <CardHeader>
             <CardTitle>Sales History</CardTitle>
             <CardDescription>
-              Here are the 5 most recent sales. You can void them if needed.
+              Here are the 5 most recent sales. You can void or print them.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {recentSales.length > 0 ? (
-                recentSales.map((sale) => (
+              {recentTransactions.length > 0 ? (
+                recentTransactions.map((tx) => (
                   <li
-                    key={sale.id}
+                    key={tx.id}
                     className={cn(
                       'flex items-center justify-between p-2 rounded-md bg-background',
-                      sale.status === 'voided' && 'opacity-60 bg-muted/50'
+                      tx.status === 'voided' && 'opacity-60 bg-muted/50'
                     )}
                   >
                     <div
-                      className={cn(sale.status === 'voided' && 'line-through')}
+                      className={cn(
+                        'flex-grow',
+                        tx.status === 'voided' && 'line-through'
+                      )}
                     >
-                      <p className="font-medium">{sale.itemName}</p>
+                      <p className="font-medium">
+                        Receipt #{tx.id.substring(0, 6)}
+                        {tx.customerName && (
+                          <span className="text-sm text-muted-foreground">
+                            {' '}
+                            - {tx.customerName}
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱
-                        {sale.total.toFixed(2)}
+                        {tx.items.length} items &bull; Total: ₱
+                        {tx.total.toFixed(2)}
                       </p>
                     </div>
-                    {sale.status === 'voided' ? (
+                    {tx.status === 'voided' ? (
                       <Badge variant="destructive">Voided</Badge>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setVoidingSale(sale)}
-                      >
-                        <Trash2 className="mr-2 w-4 h-4 text-destructive" />
-                        Void
-                      </Button>
+                      <div className="flex items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="text-primary"
+                        >
+                          <Link
+                            href={`/print/receipt/${tx.id}`}
+                            target="_blank"
+                          >
+                            <Printer className="mr-2 w-4 h-4" /> Print
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setVoidingTransaction(tx)}
+                        >
+                          <Trash2 className="mr-2 w-4 h-4 text-destructive" />
+                          Void
+                        </Button>
+                      </div>
                     )}
                   </li>
                 ))
@@ -483,7 +551,7 @@ export default function StorePage() {
           </CardContent>
           <CardFooter>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/store/history">
+              <Link href="/transactions">
                 <History className="mr-2" />
                 View Full History
               </Link>
@@ -492,28 +560,34 @@ export default function StorePage() {
         </Card>
       </div>
 
+      <BarcodeScannerDialog
+        open={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onScan={handleBarcodeScanned}
+      />
+
       <AlertDialog
-        open={!!voidingSale}
-        onOpenChange={(open) => !open && setVoidingSale(null)}
+        open={!!voidingTransaction}
+        onOpenChange={(open) => !open && setVoidingTransaction(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently void the sale for "{voidingSale?.itemName}
-              ". The stock for this item will be restored. This action cannot be
-              undone.
+              This will permanently void transaction #
+              {voidingTransaction?.id.substring(0, 6)}. The stock for all items
+              will be restored. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleVoidSale}
+              onClick={handleVoidTransaction}
               disabled={isVoiding}
               className="bg-destructive hover:bg-destructive/90"
             >
               {isVoiding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Yes, Void Sale
+              Yes, Void Transaction
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

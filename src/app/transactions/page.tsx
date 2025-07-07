@@ -12,13 +12,7 @@ import {
 import {db} from '@/lib/firebase';
 import {cn} from '@/lib/utils';
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
+import {Card} from '@/components/ui/card';
 import {Skeleton} from '@/components/ui/skeleton';
 import {useToast} from '@/hooks/use-toast';
 import {
@@ -30,17 +24,11 @@ import {
 } from 'lucide-react';
 import type {DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {Badge} from '@/components/ui/badge';
-import type {LedgerTransaction, Customer} from '@/lib/schemas';
-
-type SaleDoc = {
-  id: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  createdAt: Timestamp;
-  status?: 'active' | 'voided';
-};
+import type {
+  LedgerTransaction,
+  Customer,
+  SaleTransaction,
+} from '@/lib/schemas';
 
 type ReceiptDoc = DiagnoseReceiptOutput & {
   id: string;
@@ -55,7 +43,7 @@ type UnifiedTransaction = {
   id: string;
   type: 'sale' | 'receipt' | 'ledger';
   date: Date;
-  data: SaleDoc | ReceiptDoc | LedgerTransactionDoc;
+  data: SaleTransaction | ReceiptDoc | LedgerTransactionDoc;
   status?: 'voided' | 'deleted' | 'active';
 };
 
@@ -86,10 +74,10 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
   let badge: React.ReactNode;
 
   if (isSale) {
-    const saleData = data as SaleDoc;
+    const saleData = data as SaleTransaction;
     icon = <ShoppingCart className="w-6 h-6 text-primary" />;
-    title = saleData.itemName;
-    description = date;
+    title = `Sale #${saleData.id.substring(0, 6)}`;
+    description = saleData.customerName || date;
     amountDisplay = (
       <p className="font-bold text-lg text-primary">
         + {formatCurrency(saleData.total)}
@@ -151,11 +139,13 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
       )}
     >
       <div className="flex-shrink-0 bg-muted rounded-lg w-12 h-12 flex items-center justify-center">
-        {icon}
+        {icon!}
       </div>
       <div className="flex-grow grid grid-cols-2 gap-x-4 items-center">
         <div>
-          <p className={cn('font-semibold truncate', isDeleted && 'line-through')}>
+          <p
+            className={cn('font-semibold truncate', isDeleted && 'line-through')}
+          >
             {title!}
           </p>
           <p className="text-sm text-muted-foreground">{description!}</p>
@@ -170,7 +160,7 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
 }
 
 export default function TransactionsPage() {
-  const [sales, setSales] = useState<SaleDoc[]>([]);
+  const [sales, setSales] = useState<SaleTransaction[]>([]);
   const [receipts, setReceipts] = useState<ReceiptDoc[]>([]);
   const [ledger, setLedger] = useState<LedgerTransaction[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -181,7 +171,10 @@ export default function TransactionsPage() {
     const queries = [
       {
         name: 'sales',
-        query: query(collection(db, 'sales'), orderBy('createdAt', 'desc')),
+        query: query(
+          collection(db, 'saleTransactions'),
+          orderBy('createdAt', 'desc')
+        ),
         setter: setSales,
       },
       {

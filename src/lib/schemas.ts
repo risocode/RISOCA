@@ -6,11 +6,34 @@ export const InventoryItemSchema = z.object({
   cost: z.coerce.number().min(0, 'Cost must be non-negative.'),
   price: z.coerce.number().min(0, 'Price must be non-negative.'),
   stock: z.coerce.number().min(0, 'Stock must be non-negative.'),
+  barcode: z.string().optional(),
 });
 
 export type InventoryItemInput = z.infer<typeof InventoryItemSchema>;
 
 export type InventoryItem = InventoryItemInput & {
+  id: string;
+  createdAt: Timestamp;
+};
+
+export const SaleItemSchema = z.object({
+  itemId: z.string().optional(),
+  itemName: z.string(),
+  quantity: z.number(),
+  unitPrice: z.number(),
+  total: z.number(),
+});
+export type SaleItem = z.infer<typeof SaleItemSchema>;
+
+export const SaleTransactionSchema = z.object({
+  customerName: z.string().optional(),
+  items: z.array(SaleItemSchema),
+  total: z.number(),
+  status: z.enum(['active', 'voided']),
+});
+export type SaleTransactionInput = z.infer<typeof SaleTransactionSchema>;
+
+export type SaleTransaction = SaleTransactionInput & {
   id: string;
   createdAt: Timestamp;
 };

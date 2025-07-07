@@ -25,6 +25,7 @@ import {Button} from '@/components/ui/button';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
+import type { SaleTransaction } from '@/lib/schemas';
 
 type SaleDoc = {
   id: string;
@@ -40,15 +41,16 @@ export default function HomePage() {
   const [totalSales, setTotalSales] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dailySales, setDailySales] = useState(0);
-  const [todaysSalesList, setTodaysSalesList] = useState<SaleDoc[]>([]);
-  const [recentSales, setRecentSales] = useState<SaleDoc[]>([]);
+  const [todaysSalesList, setTodaysSalesList] = useState<SaleTransaction[]>([]);
+  const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
   
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
 
   useEffect(() => {
-    const salesQuery = query(collection(db, 'sales'));
+    // This now queries the new saleTransactions collection for totals
+    const salesQuery = query(collection(db, 'saleTransactions'));
     const unsubSales = onSnapshot(salesQuery, (snapshot) => {
       const total = snapshot.docs
         .filter(doc => doc.data().status !== 'voided')
@@ -66,12 +68,12 @@ export default function HomePage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dailyQuery = query(
-      collection(db, 'sales'),
+      collection(db, 'saleTransactions'),
       where('createdAt', '>=', Timestamp.fromDate(today)),
       orderBy('createdAt', 'desc')
     );
     const unsubDaily = onSnapshot(dailyQuery, (snapshot) => {
-      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleDoc));
+      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleTransaction));
       const total = salesData
         .filter(sale => sale.status !== 'voided')
         .reduce((acc, sale) => acc + sale.total, 0);
@@ -79,9 +81,9 @@ export default function HomePage() {
       setTodaysSalesList(salesData);
     });
 
-    const historyQuery = query(collection(db, 'sales'), orderBy('createdAt', 'desc'), limit(5));
+    const historyQuery = query(collection(db, 'saleTransactions'), orderBy('createdAt', 'desc'), limit(5));
     const unsubHistory = onSnapshot(historyQuery, (snapshot) => {
-      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleDoc));
+      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleTransaction));
       setRecentSales(salesData);
       if(isLoadingHistory) setIsLoadingHistory(false);
     });
@@ -143,7 +145,7 @@ export default function HomePage() {
                  <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Item</TableHead>
+                            <TableHead>Receipt</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
@@ -161,7 +163,7 @@ export default function HomePage() {
                            todaysSalesList.map((sale) => (
                                <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
                                    <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
-                                       <p className="font-medium">{sale.itemName}</p>
+                                       <p className="font-medium">#{sale.id.substring(0, 6)}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                        </p>
@@ -200,7 +202,7 @@ export default function HomePage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Item</TableHead>
+                            <TableHead>Receipt</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
@@ -218,7 +220,7 @@ export default function HomePage() {
                            recentSales.map((sale) => (
                                <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
                                    <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
-                                       <p className="font-medium">{sale.itemName}</p>
+                                       <p className="font-medium">#{sale.id.substring(0,6)}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleDateString()}
                                        </p>
