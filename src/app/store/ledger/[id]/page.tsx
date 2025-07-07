@@ -1,4 +1,3 @@
-
 'use client';
 
 import {useState, useEffect, useMemo} from 'react';
@@ -255,7 +254,11 @@ export default function CustomerLedgerPage() {
     }
     
     if (response?.success) {
-      toast({title: 'Success', description: 'The action was completed successfully.'});
+      toast({
+        variant: 'destructive',
+        title: alertAction === 'deleteCustomer' ? 'Customer Deleted' : 'Transaction Deleted',
+        description: 'The item has been successfully deleted.'
+      });
       if(alertAction === 'deleteCustomer') router.push('/store/ledger');
     } else {
       toast({variant: 'destructive', title: 'Action Failed', description: response?.message || 'An error occurred.'});

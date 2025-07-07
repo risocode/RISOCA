@@ -195,6 +195,7 @@ export default function InventoryPage() {
 
     if (response.success) {
       toast({
+        variant: 'destructive',
         title: 'Product Deleted',
         description: 'The product has been successfully deleted.',
       });

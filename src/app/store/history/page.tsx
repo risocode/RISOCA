@@ -99,6 +99,7 @@ export default function SalesHistoryPage() {
 
     if (response.success) {
       toast({
+        variant: 'destructive',
         title: 'Sale Voided',
         description:
           'The sale has been removed and stock has been restored to inventory.',
