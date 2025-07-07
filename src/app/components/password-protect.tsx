@@ -141,7 +141,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
       onSuccess();
     } catch (err) {
       console.error('Biometric authentication error:', err);
-      setError('Fingerprint authentication failed.');
+      setError('Fingerprint authentication failed. Please try your password.');
     } finally {
       setIsVerifying(false);
     }
@@ -155,9 +155,9 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
             <div className="flex justify-center mb-4 text-primary">
                 <Fingerprint className="w-16 h-16" />
             </div>
-            <CardTitle>Enable Fingerprint Login?</CardTitle>
+            <CardTitle>Enable Faster Login?</CardTitle>
             <CardDescription>
-              Would you like to use your fingerprint for faster access next time?
+              Use your fingerprint or face recognition to unlock the app instantly.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -171,7 +171,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
             <div className="flex flex-col gap-2">
                 <Button onClick={handleRegisterBiometrics} disabled={isVerifying}>
                    {isVerifying ? <Loader2 className="mr-2 animate-spin" /> : <Fingerprint className="mr-2"/>}
-                    Enable Fingerprint
+                    Enable Biometric Login
                 </Button>
                 <Button variant="ghost" onClick={handleSkipRegistration} disabled={isVerifying}>
                     Not Now
@@ -211,14 +211,16 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
           </Link>
           <CardTitle>Protected Area</CardTitle>
           <CardDescription>
-            Please enter the password or use your fingerprint to unlock.
+            {isBiometricRegistered && isBiometricSupported 
+              ? "Unlock with your fingerprint or enter the password."
+              : "Please enter the password to unlock."
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {isBiometricRegistered && isBiometricSupported && (
             <>
               <Button
-                variant="outline"
                 className="w-full h-14 text-base"
                 onClick={handleBiometricLogin}
                 disabled={isVerifying}
@@ -247,23 +249,20 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 className="text-center pl-10"
               />
             </div>
-            {error && !isBiometricRegistered && (
-              <Alert variant="destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" className="w-full" disabled={isVerifying}>
+             <Button type="submit" variant={isBiometricRegistered ? "outline" : "default"} className="w-full" disabled={isVerifying}>
               {isVerifying ? (
                 <Loader2 className="mr-2 animate-spin" />
               ) : (
                 <LogIn className="mr-2" />
               )}
-              {isVerifying ? 'Verifying...' : 'Unlock'}
+              {isVerifying ? 'Verifying...' : 'Unlock with Password'}
             </Button>
-            {error && isBiometricRegistered && (
-                <p className="text-xs text-center text-destructive">{error}</p>
+            {error && (
+               <Alert variant="destructive" className="text-center">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Access Denied</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
           </form>
         </CardContent>
