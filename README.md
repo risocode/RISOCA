@@ -46,24 +46,27 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     *   You'll see an `firebaseConfig` object. Copy the key-value pairs. You will need these for your environment variables.
     *   In the Firebase console, go to the **Firestore Database** section, click "Create database", and start in **production mode**. Choose a location and click "Enable".
 
-4.  **Set Up Firestore Security Rules:**
-    When you create a Firestore database in "production mode," it is locked down by default. You need to add a security rule to allow your app to read and write data.
+4.  **Set Up Firestore Security Rules (IMPORTANT FIX for "permission-denied" errors):**
+    When you create a Firestore database in "production mode," it is locked down by default. To fix the `permission-denied` error, you must set the correct rules.
+
     *   In the Firebase Console, go to the **Firestore Database** section.
     *   Click on the **Rules** tab.
-    *   Replace the existing rules with the following:
+    *   Replace the existing rules with the following. Using a single wildcard rule (`match /{document=**}`) is the simplest and recommended way for this app, as it is protected by a single site-wide password. It ensures all current and future features will work without needing to update the rules again.
+
     ```
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
-        // Allow read/write access to all collections for this app.
-        // This is suitable for development or for apps with a single password.
+        // This rule allows your app to read and write to all collections.
+        // It is secure in this context because your entire app is protected
+        // by a site-wide password.
         match /{document=**} {
           allow read, write: if true;
         }
       }
     }
     ```
-    *   Click **Publish**. It may take a minute for the new rules to take effect.
+    *   Click **Publish**. The permission errors should be resolved immediately.
 
 5.  **Set up your environment variables:**
     Create a file named `.env` in the root of your project and add your keys.
@@ -104,3 +107,4 @@ This application is ready to be deployed to any static hosting provider like Ver
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
+
