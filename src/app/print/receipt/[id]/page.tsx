@@ -1,6 +1,7 @@
 'use client';
 
 import {useState, useEffect} from 'react';
+import Image from 'next/image';
 import {useParams} from 'next/navigation';
 import {doc, getDoc} from 'firebase/firestore';
 import {db} from '@/lib/firebase';
@@ -55,15 +56,16 @@ export default function PrintReceiptPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-12 w-12 animate-spin" />
+      <div className="flex items-center justify-center bg-white">
+        <Loader2 className="h-12 w-12 animate-spin text-black" />
+        <p className="ml-4 text-black">Loading Receipt...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-red-600 font-bold">
+      <div className="flex items-center justify-center bg-white text-red-600 font-bold">
         {error}
       </div>
     );
@@ -72,50 +74,76 @@ export default function PrintReceiptPage() {
   if (!transaction) {
     return null;
   }
-  
+
   const receiptDate = transaction.createdAt.toDate();
 
   return (
-    <div className="p-4 bg-white text-black font-mono text-xs max-w-xs mx-auto">
-      <header className="text-center mb-4">
-        <h1 className="font-bold text-sm">RiSoCa Store</h1>
-        <p>228 Divisoria Enrile Cagayan</p>
-      </header>
-      <div className="flex justify-between border-t border-b border-dashed border-black py-1">
-         <span>{format(receiptDate, 'MM/dd/yyyy')}</span>
-         <span>{format(receiptDate, 'hh:mm a')}</span>
-      </div>
-      <div className="my-2">
-        <p>Receipt #: {transaction.id.substring(0,8).toUpperCase()}</p>
-        {transaction.customerName && <p>Customer: {transaction.customerName}</p>}
-      </div>
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-dashed border-black">
-            <th className="text-left py-1">Item</th>
-            <th className="text-center">Qty</th>
-            <th className="text-right">Price</th>
-            <th className="text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transaction.items.map((item, index) => (
-            <tr key={index}>
-              <td className="py-0.5">{item.itemName}</td>
-              <td className="text-center">{item.quantity}</td>
-              <td className="text-right">{item.unitPrice.toFixed(2)}</td>
-              <td className="text-right">{item.total.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="mt-4 pt-2 border-t border-black">
-        <div className="flex justify-between font-bold text-sm">
-            <span>Total:</span>
-            <span>{formatCurrency(transaction.total)}</span>
+    <div className="printable-receipt bg-white text-black font-mono text-xs max-w-xs mx-auto p-4">
+      <header className="text-center mb-4 space-y-2">
+        <div className="flex items-center justify-center gap-1">
+          <Image
+            src="/logo.png?v=3"
+            alt="App Logo"
+            width={32}
+            height={32}
+            priority
+            className="w-auto h-8"
+          />
+          <Image
+            src="/risoca.png"
+            alt="RiSoCa Logo Text"
+            width={96}
+            height={29}
+            priority
+            className="w-auto h-7"
+          />
         </div>
+        <p className="text-xs">228 Divisoria Enrile Cagayan</p>
+      </header>
+
+      <div className="border-t border-b border-dashed border-black py-1 text-xs flex justify-between">
+        <span>Date: {format(receiptDate, 'MM/dd/yyyy')}</span>
+        <span>Time: {format(receiptDate, 'hh:mm a')}</span>
       </div>
-      <footer className="text-center mt-6">
+
+      <div className="my-2 text-xs">
+        <p>Receipt #: {transaction.id.substring(0, 8).toUpperCase()}</p>
+        {transaction.customerName && (
+          <p>Customer: {transaction.customerName}</p>
+        )}
+      </div>
+
+      <div className="border-t border-dashed border-black">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-dashed border-black">
+              <th className="text-left py-1 font-semibold">Item</th>
+              <th className="text-center font-semibold">Qty</th>
+              <th className="text-right font-semibold">Price</th>
+              <th className="text-right py-1 font-semibold">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transaction.items.map((item, index) => (
+              <tr key={index}>
+                <td className="py-0.5 pr-1">{item.itemName}</td>
+                <td className="text-center px-1">{item.quantity}</td>
+                <td className="text-right px-1">{item.unitPrice.toFixed(2)}</td>
+                <td className="text-right py-0.5 pl-1">
+                  {item.total.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-4 pt-2 border-t border-black flex justify-between font-semibold">
+        <span className="text-base">Total:</span>
+        <span className="text-base">{formatCurrency(transaction.total)}</span>
+      </div>
+
+      <footer className="text-center mt-6 text-xs">
         <p>Thank you for your business!</p>
       </footer>
     </div>
