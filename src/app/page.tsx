@@ -22,6 +22,8 @@ import {Skeleton} from '@/components/ui/skeleton';
 import {Separator} from '@/components/ui/separator';
 import {Button} from '@/components/ui/button';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
+import {Badge} from '@/components/ui/badge';
+import {cn} from '@/lib/utils';
 
 type SaleDoc = {
   id: string;
@@ -30,6 +32,7 @@ type SaleDoc = {
   unitPrice: number;
   total: number;
   createdAt: Timestamp;
+  status?: 'active' | 'voided';
 };
 
 export default function HomePage() {
@@ -46,7 +49,9 @@ export default function HomePage() {
   useEffect(() => {
     const salesQuery = query(collection(db, 'sales'));
     const unsubSales = onSnapshot(salesQuery, (snapshot) => {
-      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+      const total = snapshot.docs
+        .filter(doc => doc.data().status !== 'voided')
+        .reduce((acc, doc) => acc + (doc.data().total || 0), 0);
       setTotalSales(total);
       if(isLoadingTotals) setIsLoadingTotals(false);
     });
@@ -66,7 +71,9 @@ export default function HomePage() {
     );
     const unsubDaily = onSnapshot(dailyQuery, (snapshot) => {
       const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleDoc));
-      const total = salesData.reduce((acc, sale) => acc + sale.total, 0);
+      const total = salesData
+        .filter(sale => sale.status !== 'voided')
+        .reduce((acc, sale) => acc + sale.total, 0);
       setDailySales(total);
       setTodaysSalesList(salesData);
     });
@@ -148,6 +155,7 @@ export default function HomePage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Item</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -156,26 +164,34 @@ export default function HomePage() {
                             Array.from({length: 3}).map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
                                 </TableRow>
                             ))
                         ) : todaysSalesList.length > 0 ? (
                            todaysSalesList.map((sale) => (
-                               <TableRow key={sale.id}>
-                                   <TableCell>
+                               <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
+                                   <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
                                        <p className="font-medium">{sale.itemName}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                        </p>
                                    </TableCell>
-                                   <TableCell className="text-right font-mono">
+                                   <TableCell>
+                                      {sale.status === 'voided' ? (
+                                        <Badge variant="destructive">Voided</Badge>
+                                      ) : (
+                                        <Badge variant="secondary">Active</Badge>
+                                      )}
+                                   </TableCell>
+                                   <TableCell className={cn("text-right font-mono", sale.status === 'voided' && 'line-through')}>
                                         {formatCurrency(sale.total)}
                                    </TableCell>
                                </TableRow>
                            ))
                         ) : (
                              <TableRow>
-                                <TableCell colSpan={2} className="h-24 text-center">
+                                <TableCell colSpan={3} className="h-24 text-center">
                                     <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2"/>
                                     No sales recorded today.
                                 </TableCell>
@@ -196,6 +212,7 @@ export default function HomePage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Item</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -204,26 +221,34 @@ export default function HomePage() {
                             Array.from({length: 5}).map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                    <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
                                 </TableRow>
                             ))
                         ) : recentSales.length > 0 ? (
                            recentSales.map((sale) => (
-                               <TableRow key={sale.id}>
-                                   <TableCell>
+                               <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
+                                   <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
                                        <p className="font-medium">{sale.itemName}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleDateString()}
                                        </p>
                                    </TableCell>
-                                   <TableCell className="text-right font-mono">
+                                   <TableCell>
+                                        {sale.status === 'voided' ? (
+                                          <Badge variant="destructive">Voided</Badge>
+                                        ) : (
+                                          <Badge variant="secondary">Active</Badge>
+                                        )}
+                                   </TableCell>
+                                   <TableCell className={cn("text-right font-mono", sale.status === 'voided' && 'line-through')}>
                                         {formatCurrency(sale.total)}
                                    </TableCell>
                                </TableRow>
                            ))
                         ) : (
                              <TableRow>
-                                <TableCell colSpan={2} className="h-24 text-center">
+                                <TableCell colSpan={3} className="h-24 text-center">
                                     <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2"/>
                                     No recent sales found.
                                 </TableCell>
