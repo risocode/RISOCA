@@ -41,9 +41,13 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
 
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const [isBiometricRegistered, setIsBiometricRegistered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const {toast} = useToast();
 
   useEffect(() => {
+    // This check runs on the client to determine if it's a mobile device.
+    setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+
     const checkSupport = async () => {
       const supported = await browserSupportsWebAuthn();
       setIsBiometricSupported(supported);
@@ -62,7 +66,8 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     try {
       const result = await verifyPassword(password);
       if (result.success) {
-        if (isBiometricSupported && !isBiometricRegistered) {
+        // Only show the biometric registration prompt on mobile devices, as requested.
+        if (isBiometricSupported && !isBiometricRegistered && isMobile) {
           setShowRegisterPrompt(true);
         } else {
           onSuccess();
