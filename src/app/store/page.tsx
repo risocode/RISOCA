@@ -11,7 +11,6 @@ import {
   onSnapshot,
   orderBy,
   Timestamp,
-  where,
   limit,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
@@ -21,6 +20,7 @@ import type {InventoryItem} from '@/lib/schemas';
 import {
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
   CardDescription,
@@ -139,13 +139,10 @@ export default function StorePage() {
       orderBy('name', 'asc')
     );
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const salesQuery = query(
       collection(db, 'sales'),
-      where('createdAt', '>=', today),
       orderBy('createdAt', 'desc'),
-      limit(10)
+      limit(5)
     );
 
     const unsubInventory = onSnapshot(inventoryQuery, (snapshot) => {
@@ -223,12 +220,12 @@ export default function StorePage() {
     <>
       <div className="p-4 md:p-6 space-y-4">
         <header>
-          <h1 className="text-2xl font-bold">New Sale (POS)</h1>
+          <h1 className="text-2xl font-bold">Daily Sales</h1>
         </header>
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Daily Sales</CardTitle>
+            <CardTitle>Add New Sale</CardTitle>
             <CardDescription>
               Add items sold today. Stock will be updated automatically.
             </CardDescription>
@@ -424,69 +421,57 @@ export default function StorePage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle>Void a Sale</CardTitle>
-              <CardDescription>
-                Correct a mistake by voiding a recent sale from today.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {recentSales.length > 0 ? (
-                  recentSales.map((sale) => (
-                    <li
-                      key={sale.id}
-                      className="flex items-center justify-between p-2 rounded-md bg-background"
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Sales History</CardTitle>
+            <CardDescription>
+              Here are the 5 most recent sales. You can void them if needed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {recentSales.length > 0 ? (
+                recentSales.map((sale) => (
+                  <li
+                    key={sale.id}
+                    className="flex items-center justify-between p-2 rounded-md bg-background"
+                  >
+                    <div>
+                      <p className="font-medium">{sale.itemName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱
+                        {sale.total.toFixed(2)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setVoidingSale(sale)}
                     >
-                      <div>
-                        <p className="font-medium">{sale.itemName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱
-                          {sale.total.toFixed(2)}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setVoidingSale(sale)}
-                      >
-                        <Trash2 className="mr-2 w-4 h-4" />
-                        Void
-                      </Button>
-                    </li>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
-                    <FileWarning className="w-10 h-10 mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium">
-                      No sales recorded today.
-                    </p>
-                  </div>
-                )}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle>Sales History</CardTitle>
-              <CardDescription>
-                View and manage all past sales transactions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center text-center h-full">
-              <History className="w-12 h-12 mb-4 text-primary" />
-              <p className="mb-4 text-muted-foreground">
-                Access detailed reports and a full history of all your sales.
-              </p>
-              <Button asChild>
-                <Link href="/store/history">View Full History</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+                      <Trash2 className="mr-2 w-4 h-4 text-destructive" />
+                      Void
+                    </Button>
+                  </li>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
+                  <FileWarning className="w-10 h-10 mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    No sales recorded yet.
+                  </p>
+                </div>
+              )}
+            </ul>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/store/history">
+                View Full History
+                <History />
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
 
       <AlertDialog
