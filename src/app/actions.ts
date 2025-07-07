@@ -260,9 +260,8 @@ export async function submitSalesReport(
 
       // Record all sales
       for (const item of report.items) {
-        const {itemId, ...saleData} = item;
         transaction.set(doc(collection(db, 'sales')), {
-          ...saleData,
+          ...item,
           createdAt: serverTimestamp(),
         });
       }
@@ -328,6 +327,48 @@ export async function deleteInventoryItem(
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {success: false, message: `Could not delete item: ${message}`};
+  }
+}
+
+export async function voidSale(
+  sale: SaleItem & {id: string}
+): Promise<{success: boolean; message?: string}> {
+  if (!sale.id) {
+    return {success: false, message: 'Sale ID is missing.'};
+  }
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const saleRef = doc(db, 'sales', sale.id);
+
+      if (sale.itemId) {
+        const inventoryRef = doc(db, 'inventory', sale.itemId);
+        const inventoryDoc = await transaction.get(inventoryRef);
+
+        if (inventoryDoc.exists()) {
+          const currentStock = inventoryDoc.data().stock as number;
+          transaction.update(inventoryRef, {
+            stock: currentStock + sale.quantity,
+          });
+        } else {
+          console.warn(
+            `Could not restore stock for inventory item ${sale.itemId} because it no longer exists. The sale will still be voided.`
+          );
+        }
+      }
+      
+      transaction.delete(saleRef);
+    });
+
+    return {success: true};
+  } catch (error) {
+    console.error('Error voiding sale:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      message: `Transaction failed: ${message}`,
+    };
   }
 }
 
