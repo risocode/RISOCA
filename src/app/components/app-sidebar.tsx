@@ -9,7 +9,7 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import {LayoutDashboard, ScanLine, Store} from 'lucide-react';
+import {Store} from 'lucide-react';
 
 export function AppSidebar() {
   return (
@@ -28,22 +28,6 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarMenu className="p-4 pt-0">
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link href="/">
-              <ScanLine />
-              <span>Receipts</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-        <SidebarMenuItem>
-          <SidebarMenuButton asChild>
-            <Link href="/dashboard">
-              <LayoutDashboard />
-              <span>Dashboard</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
             <Link href="/store">

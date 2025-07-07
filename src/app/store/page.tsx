@@ -54,6 +54,7 @@ import {
   PackageSearch,
   Check,
   ChevronsUpDown,
+  ScanLine,
 } from 'lucide-react';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -247,16 +248,24 @@ export default function StorePage() {
           <div>
             <h1 className="text-3xl font-bold">RiSoCa Store</h1>
             <p className="text-muted-foreground">
-              Log your daily sales and track your history.
+              Log your daily sales, scan receipts, and manage inventory.
             </p>
           </div>
         </div>
-        <Button asChild variant="outline">
-          <Link href="/store/inventory">
-            <PackageSearch className="mr-2" />
-            Manage Inventory
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/store/receipts">
+              <ScanLine className="mr-2" />
+              Scan Receipts
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/store/inventory">
+              <PackageSearch className="mr-2" />
+              Manage Inventory
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
