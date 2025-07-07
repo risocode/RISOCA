@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {
-  LayoutDashboard,
+  Home,
   Boxes,
   History,
   Plus,
@@ -23,7 +23,7 @@ import {
 import {Button} from '@/components/ui/button';
 
 const navItems = [
-  {href: '/', icon: LayoutDashboard, label: 'Home'},
+  {href: '/', icon: Home, label: 'Home'},
   {href: '/store/inventory', icon: Boxes, label: 'Products'},
   {href: '/store/ledger', icon: Landmark, label: 'Ledger'},
   {href: '/transactions', icon: History, label: 'Transactions'},

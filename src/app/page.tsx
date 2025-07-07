@@ -102,7 +102,7 @@ export default function HomePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-center justify-start">
+      <header className="flex items-center justify-center">
         <Image
           src="/logo.png?v=3"
           alt="App Logo"
