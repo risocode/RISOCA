@@ -118,10 +118,16 @@ const SalesFormTotals = ({control}: {control: Control<SalesFormData>}) => {
   }, 0);
 
   return (
-    <div className="mt-6 text-right">
+    <div className="sm:mt-0 text-right">
       <p className="text-lg font-semibold">
         Grand Total:{' '}
-        <span className="font-mono">₱{grandTotal.toFixed(2)}</span>
+        <span className="font-mono">
+          ₱
+          {grandTotal.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
       </p>
     </div>
   );
@@ -299,24 +305,24 @@ export default function StorePage() {
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Store className="w-8 h-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">RiSoCa Store</h1>
+              <h1 className="text-2xl md:text-3xl font-bold">RiSoCa Store</h1>
               <p className="text-muted-foreground">
                 Log your daily sales, scan receipts, and manage inventory.
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <Button asChild variant="outline" className="justify-center">
               <Link href="/store/receipts">
                 <ScanLine className="mr-2" />
                 Scan Receipts
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" className="justify-center">
               <Link href="/store/inventory">
                 <PackageSearch className="mr-2" />
                 Manage Inventory
@@ -371,11 +377,18 @@ export default function StorePage() {
                                   </p>
                                   <p className="text-xs text-muted-foreground">
                                     {sale.quantity} x ₱
-                                    {sale.unitPrice.toFixed(2)}
+                                    {sale.unitPrice.toLocaleString('en-US', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}
                                   </p>
                                 </TableCell>
                                 <TableCell className="text-right font-mono">
-                                  ₱{sale.total.toFixed(2)}
+                                  ₱
+                                  {sale.total.toLocaleString('en-US', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Button
@@ -421,7 +434,7 @@ export default function StorePage() {
                           control={form.control}
                           name={`items.${index}.itemName`}
                           render={({field}) => (
-                            <FormItem className="flex-1">
+                            <FormItem className="flex-1 w-full">
                               <FormLabel>Item Name</FormLabel>
                               <Popover
                                 open={openPopovers[index]}
@@ -525,12 +538,12 @@ export default function StorePage() {
                             </FormItem>
                           )}
                         />
-                        <div className="flex gap-4 w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                           <FormField
                             control={form.control}
                             name={`items.${index}.quantity`}
                             render={({field}) => (
-                              <FormItem className="flex-1 sm:w-24">
+                              <FormItem className="w-full sm:w-24">
                                 <FormLabel>Qty</FormLabel>
                                 <div className="relative">
                                   <FormControl>
@@ -595,7 +608,7 @@ export default function StorePage() {
                             control={form.control}
                             name={`items.${index}.unitPrice`}
                             render={({field}) => (
-                              <FormItem className="flex-1 sm:w-32">
+                              <FormItem className="w-full sm:w-32">
                                 <FormLabel>Unit Price (₱)</FormLabel>
                                 <FormControl>
                                   <Input
@@ -616,7 +629,7 @@ export default function StorePage() {
                           size="icon"
                           onClick={() => remove(index)}
                           disabled={fields.length <= 1}
-                          className="mt-0 sm:mt-7 text-destructive hover:bg-destructive/10"
+                          className="mt-0 sm:mt-7 text-destructive hover:bg-destructive/10 self-center sm:self-auto"
                         >
                           <Trash2 className="w-4 h-4" />
                           <span className="sr-only">Remove Item</span>
@@ -625,7 +638,7 @@ export default function StorePage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <Button
                       type="button"
                       variant="outline"
@@ -633,6 +646,7 @@ export default function StorePage() {
                       onClick={() =>
                         append({itemName: '', quantity: 1, unitPrice: 0})
                       }
+                      className="w-full sm:w-auto"
                     >
                       <PlusCircle className="mr-2" /> Add Another Item
                     </Button>
@@ -664,7 +678,11 @@ export default function StorePage() {
                 <CardDescription>
                   Total for today:{' '}
                   <span className="font-bold text-primary font-mono">
-                    ₱{todaysTotal.toFixed(2)}
+                    ₱
+                    {todaysTotal.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </span>
                 </CardDescription>
               </CardHeader>
@@ -684,11 +702,19 @@ export default function StorePage() {
                             <TableCell>
                               <p className="font-medium">{sale.itemName}</p>
                               <p className="text-xs text-muted-foreground">
-                                {sale.quantity} x ₱{sale.unitPrice.toFixed(2)}
+                                {sale.quantity} x ₱
+                                {sale.unitPrice.toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
                               </p>
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              ₱{sale.total.toFixed(2)}
+                              ₱
+                              {sale.total.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </TableCell>
                           </TableRow>
                         ))
@@ -755,7 +781,11 @@ export default function StorePage() {
                               </p>
                             </TableCell>
                             <TableCell className="text-right font-mono">
-                              ₱{sale.total.toFixed(2)}
+                              ₱
+                              {sale.total.toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </TableCell>
                           </TableRow>
                         ))
