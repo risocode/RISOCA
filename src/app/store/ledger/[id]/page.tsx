@@ -442,7 +442,11 @@ export default function CustomerLedgerPage() {
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {alertAction === 'deleteCustomer'
+                ? 'Confirm Customer Deletion'
+                : 'Confirm Transaction Deletion'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {alertAction === 'deleteCustomer' 
                 ? "This will permanently delete this customer and all of their associated transactions. This action cannot be undone."
