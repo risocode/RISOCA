@@ -11,6 +11,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   runTransaction,
@@ -268,6 +269,7 @@ export async function submitSalesReport(
       for (const item of report.items) {
         transaction.set(doc(collection(db, 'sales')), {
           ...item,
+          status: 'active',
           createdAt: serverTimestamp(),
         });
       }
@@ -342,10 +344,14 @@ export async function voidSale(
     return {success: false, message: 'Sale ID is missing.'};
   }
 
+  const saleRef = doc(db, 'sales', sale.id);
+  const saleSnap = await getDoc(saleRef);
+  if (saleSnap.exists() && saleSnap.data().status === 'voided') {
+    return {success: false, message: 'Sale is already voided.'};
+  }
+
   try {
     await runTransaction(db, async (transaction) => {
-      const saleRef = doc(db, 'sales', sale.id);
-
       if (sale.itemId) {
         const inventoryRef = doc(db, 'inventory', sale.itemId);
         const inventoryDoc = await transaction.get(inventoryRef);
@@ -362,7 +368,10 @@ export async function voidSale(
         }
       }
 
-      transaction.delete(saleRef);
+      transaction.update(saleRef, {
+        status: 'voided',
+        voidedAt: serverTimestamp(),
+      });
     });
 
     return {success: true};
@@ -382,8 +391,6 @@ export async function verifyPassword(
 ): Promise<{success: boolean}> {
   if (!process.env.SITE_PASSWORD) {
     console.error('SITE_PASSWORD environment variable is not set.');
-    // In a real-world scenario, you might want to prevent any access
-    // if the password isn't configured. For now, we'll just fail the check.
     return {success: false};
   }
   const isCorrect = password === process.env.SITE_PASSWORD;
@@ -398,14 +405,13 @@ export async function addCustomer(data: {
 }): Promise<{success: boolean; message?: string}> {
   try {
     await runTransaction(db, async (transaction) => {
-      // 1. Create the new customer document to get an ID
       const customerRef = doc(collection(db, 'customers'));
       transaction.set(customerRef, {
         name: data.name,
+        status: 'active',
         createdAt: serverTimestamp(),
       });
 
-      // 2. If an amount is provided, create the initial ledger transaction
       if (data.amount > 0) {
         const ledgerRef = doc(collection(db, 'ledger'));
         transaction.set(ledgerRef, {
@@ -413,6 +419,7 @@ export async function addCustomer(data: {
           type: 'credit',
           amount: data.amount,
           description: data.description || 'Initial balance',
+          status: 'active',
           createdAt: serverTimestamp(),
         });
       }
@@ -427,11 +434,12 @@ export async function addCustomer(data: {
 }
 
 export async function addLedgerTransaction(
-  transaction: LedgerTransactionInput
+  transactionData: LedgerTransactionInput
 ): Promise<{success: boolean; message?: string}> {
   try {
     await addDoc(collection(db, 'ledger'), {
-      ...transaction,
+      ...transactionData,
+      status: 'active',
       createdAt: serverTimestamp(),
     });
     return {success: true};
@@ -450,7 +458,18 @@ export async function deleteLedgerTransaction(
   id: string
 ): Promise<{success: boolean; message?: string}> {
   try {
-    await deleteDoc(doc(db, 'ledger', id));
+    const transactionRef = doc(db, 'ledger', id);
+    const transactionSnap = await getDoc(transactionRef);
+    if (
+      transactionSnap.exists() &&
+      transactionSnap.data().status === 'deleted'
+    ) {
+      return {success: false, message: 'Transaction already deleted.'};
+    }
+    await updateDoc(transactionRef, {
+      status: 'deleted',
+      deletedAt: serverTimestamp(),
+    });
     return {success: true};
   } catch (error) {
     console.error('Error deleting ledger transaction: ', error);
@@ -467,8 +486,12 @@ export async function deleteCustomer(
   id: string
 ): Promise<{success: boolean; message?: string}> {
   try {
-    // First, verify the customer's balance. This cannot be done inside the
-    // transaction as it requires reading documents before deciding to write.
+    const customerRef = doc(db, 'customers', id);
+    const customerSnap = await getDoc(customerRef);
+    if (customerSnap.exists() && customerSnap.data().status === 'deleted') {
+      return {success: false, message: 'Customer already deleted.'};
+    }
+
     const ledgerQuery = query(
       collection(db, 'ledger'),
       where('customerId', '==', id)
@@ -477,6 +500,7 @@ export async function deleteCustomer(
 
     const balance = ledgerSnapshot.docs.reduce((acc, doc) => {
       const data = doc.data();
+      if (data.status === 'deleted') return acc;
       return acc + (data.type === 'credit' ? data.amount : -data.amount);
     }, 0);
 
@@ -487,16 +511,18 @@ export async function deleteCustomer(
       };
     }
 
-    // If balance is zero, proceed with deletion in a transaction.
     await runTransaction(db, async (transaction) => {
-      const customerRef = doc(db, 'customers', id);
-
-      // The snapshot is already fetched, so we can just iterate and delete.
       ledgerSnapshot.forEach((doc) => {
-        transaction.delete(doc.ref);
+        transaction.update(doc.ref, {
+          status: 'deleted',
+          deletedAt: serverTimestamp(),
+        });
       });
 
-      transaction.delete(customerRef);
+      transaction.update(customerRef, {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+      });
     });
 
     return {success: true};

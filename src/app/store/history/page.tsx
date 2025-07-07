@@ -40,10 +40,13 @@ import {Button} from '@/components/ui/button';
 import {useToast} from '@/hooks/use-toast';
 import {History, Trash2, Loader2} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
+import {cn} from '@/lib/utils';
+import {Badge} from '@/components/ui/badge';
 
 type SaleDoc = SaleItem & {
   id: string;
   createdAt: Timestamp;
+  status?: 'active' | 'voided';
 };
 
 export default function SalesHistoryPage() {
@@ -101,8 +104,7 @@ export default function SalesHistoryPage() {
       toast({
         variant: 'destructive',
         title: 'Sale Voided',
-        description:
-          'The sale has been removed and stock has been restored to inventory.',
+        description: 'The sale has been voided and stock has been restored.',
       });
     } else {
       toast({
@@ -117,7 +119,9 @@ export default function SalesHistoryPage() {
     setVoidingSale(null);
   };
 
-  const totalRevenue = allSales.reduce((acc, sale) => acc + sale.total, 0);
+  const totalRevenue = allSales
+    .filter((sale) => sale.status !== 'voided')
+    .reduce((acc, sale) => acc + sale.total, 0);
 
   return (
     <>
@@ -136,7 +140,7 @@ export default function SalesHistoryPage() {
               <span className="font-mono font-semibold text-primary">
                 ₱{totalRevenue.toFixed(2)}
               </span>
-              .
+              . Voided sales are excluded from revenue.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -145,6 +149,7 @@ export default function SalesHistoryPage() {
                 <TableRow>
                   <TableHead>Item</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -159,6 +164,9 @@ export default function SalesHistoryPage() {
                         <TableCell>
                           <Skeleton className="h-5 w-1/2" />
                         </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-16" />
+                        </TableCell>
                         <TableCell className="text-right">
                           <Skeleton className="h-5 w-1/4 ml-auto" />
                         </TableCell>
@@ -169,14 +177,25 @@ export default function SalesHistoryPage() {
                     ))
                   : allSales.length > 0
                   ? allSales.map((sale) => (
-                      <TableRow key={sale.id}>
-                        <TableCell>
+                      <TableRow
+                        key={sale.id}
+                        className={cn(sale.status === 'voided' && 'opacity-60')}
+                      >
+                        <TableCell
+                          className={cn(
+                            sale.status === 'voided' && 'line-through'
+                          )}
+                        >
                           <p className="font-medium">{sale.itemName}</p>
                           <p className="text-xs text-muted-foreground">
                             {sale.quantity} x ₱{sale.unitPrice.toFixed(2)}
                           </p>
                         </TableCell>
-                        <TableCell>
+                        <TableCell
+                          className={cn(
+                            sale.status === 'voided' && 'line-through'
+                          )}
+                        >
                           {sale.createdAt
                             .toDate()
                             .toLocaleDateString(undefined, {
@@ -185,7 +204,19 @@ export default function SalesHistoryPage() {
                               day: 'numeric',
                             })}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell>
+                          {sale.status === 'voided' ? (
+                            <Badge variant="destructive">Voided</Badge>
+                          ) : (
+                            <Badge variant="secondary">Active</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right font-mono',
+                            sale.status === 'voided' && 'line-through'
+                          )}
+                        >
                           ₱{sale.total.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right">
@@ -194,6 +225,7 @@ export default function SalesHistoryPage() {
                             size="icon"
                             onClick={() => handleOpenAlert(sale)}
                             aria-label="Void Sale"
+                            disabled={sale.status === 'voided'}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
@@ -203,7 +235,7 @@ export default function SalesHistoryPage() {
                   : !isLoading && (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={5}
                           className="text-center text-muted-foreground h-24"
                         >
                           No sales history yet.

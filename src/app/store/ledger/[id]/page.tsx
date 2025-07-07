@@ -119,7 +119,15 @@ export default function CustomerLedgerPage() {
       doc(db, 'customers', customerId),
       (doc) => {
         if (doc.exists()) {
-          setCustomer({id: doc.id, ...doc.data()} as Customer);
+          const customerData = {id: doc.id, ...doc.data()} as Customer;
+          setCustomer(customerData);
+          if (customerData.status === 'deleted') {
+             toast({
+              variant: 'destructive',
+              title: 'This customer has been deleted.',
+              duration: 2000,
+            });
+          }
         } else {
           toast({
             variant: 'destructive',
@@ -154,9 +162,11 @@ export default function CustomerLedgerPage() {
   }, [customerId, router, toast]);
 
   const balance = useMemo(() => {
-    return transactions.reduce((acc, tx) => {
-      return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
-    }, 0);
+    return transactions
+      .filter(tx => tx.status !== 'deleted')
+      .reduce((acc, tx) => {
+        return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
+      }, 0);
   }, [transactions]);
   
   const paidCreditIds = useMemo(() => {
@@ -171,7 +181,7 @@ export default function CustomerLedgerPage() {
 
   const outstandingCreditTransactions = useMemo(() => {
     return transactions
-      .filter((tx) => tx.type === 'credit' && !paidCreditIds.has(tx.id))
+      .filter((tx) => tx.type === 'credit' && !paidCreditIds.has(tx.id) && tx.status !== 'deleted')
       .sort((a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime());
   }, [transactions, paidCreditIds]);
 
@@ -287,7 +297,7 @@ export default function CustomerLedgerPage() {
       maximumFractionDigits: 2,
     })}`;
 
-  const cannotDeleteCustomer = balance !== 0;
+  const cannotDeleteCustomer = balance !== 0 || customer?.status === 'deleted';
 
   if (isLoading) {
     return (
@@ -334,7 +344,7 @@ export default function CustomerLedgerPage() {
               </TooltipTrigger>
               {cannotDeleteCustomer && (
                 <TooltipContent>
-                  <p>Cannot delete a customer with an outstanding balance.</p>
+                  <p>{customer?.status === 'deleted' ? 'Customer is already deleted.' : 'Cannot delete customer with an outstanding balance.'}</p>
                 </TooltipContent>
               )}
             </Tooltip>
@@ -447,13 +457,15 @@ export default function CustomerLedgerPage() {
                         <TableBody>
                             {transactions.length > 0 ? (
                                 transactions.map((tx) => (
-                                    <TableRow key={tx.id}>
-                                        <TableCell>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
-                                        <TableCell className="text-center"><Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge></TableCell>
-                                        <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
-                                        <TableCell className="text-right font-mono">{formatCurrency(tx.amount)}</TableCell>
+                                    <TableRow key={tx.id} className={cn(tx.status === 'deleted' && "opacity-50")}>
+                                        <TableCell className={cn(tx.status === 'deleted' && 'line-through')}>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
                                         <TableCell className="text-center">
-                                            <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)}>
+                                            {tx.status === 'deleted' ? <Badge variant="destructive">Deleted</Badge> : <Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge>}
+                                        </TableCell>
+                                        <TableCell className={cn("max-w-[200px] truncate", tx.status === 'deleted' && 'line-through')}>{tx.description}</TableCell>
+                                        <TableCell className={cn("text-right font-mono", tx.status === 'deleted' && 'line-through')}>{formatCurrency(tx.amount)}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)} disabled={tx.status === 'deleted'}>
                                                 <Trash2 className="w-4 h-4 text-destructive"/>
                                             </Button>
                                         </TableCell>

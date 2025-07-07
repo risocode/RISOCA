@@ -24,6 +24,7 @@ export type CustomerInput = z.infer<typeof CustomerSchema>;
 export type Customer = CustomerInput & {
   id: string;
   createdAt: Timestamp;
+  status?: 'active' | 'deleted';
 };
 
 export const LedgerTransactionSchema = z.object({
@@ -39,4 +40,5 @@ export type LedgerTransactionInput = z.infer<typeof LedgerTransactionSchema>;
 export type LedgerTransaction = LedgerTransactionInput & {
   id: string;
   createdAt: Timestamp;
+  status?: 'active' | 'deleted';
 };

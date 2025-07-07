@@ -167,6 +167,7 @@ export default function LedgerPage() {
       const customerBalances: Record<string, number> = {};
 
       transactions.forEach((tx) => {
+        if (tx.status === 'deleted') return;
         if (tx.type === 'credit') {
           customerBalances[tx.customerId] =
             (customerBalances[tx.customerId] || 0) + tx.amount;
@@ -176,16 +177,18 @@ export default function LedgerPage() {
         }
       });
 
-      const customersWithBalance = customers.map((c) => ({
-        ...c,
-        balance: customerBalances[c.id] || 0,
+      const customersWithBalance = customers
+        .filter(c => c.status !== 'deleted')
+        .map((c) => ({
+          ...c,
+          balance: customerBalances[c.id] || 0,
       }));
 
       const totalCredit = transactions
-        .filter((tx) => tx.type === 'credit')
+        .filter((tx) => tx.type === 'credit' && tx.status !== 'deleted')
         .reduce((sum, tx) => sum + tx.amount, 0);
       const totalPayment = transactions
-        .filter((tx) => tx.type === 'payment')
+        .filter((tx) => tx.type === 'payment' && tx.status !== 'deleted')
         .reduce((sum, tx) => sum + tx.amount, 0);
       const totalBalance = totalCredit - totalPayment;
 

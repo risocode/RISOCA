@@ -10,6 +10,7 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
+import {cn} from '@/lib/utils';
 
 import {
   Card,
@@ -38,6 +39,7 @@ type SaleDoc = {
   unitPrice: number;
   total: number;
   createdAt: Timestamp;
+  status?: 'active' | 'voided';
 };
 
 type ReceiptDoc = DiagnoseReceiptOutput & {
@@ -54,6 +56,7 @@ type UnifiedTransaction = {
   type: 'sale' | 'receipt' | 'ledger';
   date: Date;
   data: SaleDoc | ReceiptDoc | LedgerTransactionDoc;
+  status?: 'voided' | 'deleted' | 'active';
 };
 
 function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
@@ -61,6 +64,8 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
   const isReceipt = transaction.type === 'receipt';
   const isLedger = transaction.type === 'ledger';
   const data = transaction.data;
+  const isDeleted =
+    transaction.status === 'deleted' || transaction.status === 'voided';
 
   const date = transaction.date.toLocaleDateString(undefined, {
     year: 'numeric',
@@ -90,7 +95,11 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
         + {formatCurrency(saleData.total)}
       </p>
     );
-    badge = <Badge variant="secondary">Sale</Badge>;
+    badge = isDeleted ? (
+      <Badge variant="destructive">Voided</Badge>
+    ) : (
+      <Badge variant="secondary">Sale</Badge>
+    );
   } else if (isReceipt) {
     const receiptData = data as ReceiptDoc;
     icon = <ReceiptText className="w-6 h-6 text-accent" />;
@@ -122,10 +131,12 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
           isCredit ? 'text-destructive' : 'text-success'
         }`}
       >
-        {formatCurrency(ledgerData.amount)}
+        {isCredit ? '+' : '-'} {formatCurrency(ledgerData.amount)}
       </p>
     );
-    badge = (
+    badge = isDeleted ? (
+      <Badge variant="destructive">Deleted</Badge>
+    ) : (
       <Badge variant={isCredit ? 'destructive' : 'success'}>
         {ledgerData.type}
       </Badge>
@@ -133,17 +144,24 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
   }
 
   return (
-    <Card className="flex items-center p-4 gap-4">
+    <Card
+      className={cn(
+        'flex items-center p-4 gap-4',
+        isDeleted && 'opacity-60 bg-muted/50'
+      )}
+    >
       <div className="flex-shrink-0 bg-muted rounded-lg w-12 h-12 flex items-center justify-center">
         {icon}
       </div>
       <div className="flex-grow grid grid-cols-2 gap-x-4 items-center">
         <div>
-          <p className="font-semibold truncate">{title!}</p>
+          <p className={cn('font-semibold truncate', isDeleted && 'line-through')}>
+            {title!}
+          </p>
           <p className="text-sm text-muted-foreground">{description!}</p>
         </div>
         <div className="text-right">
-          {amountDisplay}
+          <div className={cn(isDeleted && 'line-through')}>{amountDisplay}</div>
           {badge}
         </div>
       </div>
@@ -228,6 +246,7 @@ export default function TransactionsPage() {
       type: 'sale',
       date: s.createdAt.toDate(),
       data: s,
+      status: s.status,
     }));
 
     const receiptsTx: UnifiedTransaction[] = receipts.map((r) => ({
@@ -235,6 +254,7 @@ export default function TransactionsPage() {
       type: 'receipt',
       date: r.createdAt.toDate(),
       data: r,
+      status: 'active',
     }));
 
     const ledgerTx: UnifiedTransaction[] = ledger.map((l) => ({
@@ -245,6 +265,7 @@ export default function TransactionsPage() {
         ...l,
         customerName: customerMap.get(l.customerId) || 'Unknown Customer',
       } as LedgerTransactionDoc,
+      status: l.status,
     }));
 
     const allData = [...salesTx, ...receiptsTx, ...ledgerTx];
@@ -279,7 +300,7 @@ export default function TransactionsPage() {
           ))
         ) : transactions.length > 0 ? (
           transactions.map((tx) => (
-            <TransactionCard key={tx.id} transaction={tx} />
+            <TransactionCard key={`${tx.type}-${tx.id}`} transaction={tx} />
           ))
         ) : (
           <div className="flex flex-col items-center justify-center text-center p-10 border-2 border-dashed rounded-lg min-h-[400px]">
