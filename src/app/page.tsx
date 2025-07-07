@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {useState, useEffect} from 'react';
+import Image from 'next/image';
 import {
   collection,
   query,
@@ -94,31 +95,15 @@ export default function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <header className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <svg
-            width="32"
-            height="32"
-            viewBox="0 0 125 125"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M110.5 40.5C110.5 40.5 88.5 61.5 88.5 77.5C88.5 93.5 102 101.5 110.5 103.5C110.5 103.5 96 111 81.5 103.5C67 96 62.5 80.5 62.5 62.5C62.5 44.5 48 37.5 35 37.5C22 37.5 14.5 48.5 14.5 62.5C14.5 76.5 22 88.5 35 88.5"
-              stroke="hsl(var(--primary))"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M93 22C93 22 71 43 71 59C71 75 84.5 83 93 85C93 85 78.5 92.5 64 85C49.5 77.5 45 62 45 44C45 26 30.5 19 17.5 19C4.5 19 -3 30 -3 44C-3 58 4.5 70 17.5 70"
-              stroke="hsl(var(--accent))"
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <h1 className="text-2xl font-bold text-primary">RiSoCa</h1>
-        </div>
+        <Image
+          src="/logo.png"
+          alt="RiSoCa Logo"
+          width={120}
+          height={37}
+          priority
+          data-ai-hint="logo"
+          className="w-auto h-9 logo-glow"
+        />
       </header>
 
       <main className="space-y-6">
