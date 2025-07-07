@@ -1,138 +1,91 @@
 'use client';
 
 import Link from 'next/link';
-import {useState, useEffect, useMemo} from 'react';
+import {useState, useEffect} from 'react';
 import {
   collection,
   query,
   onSnapshot,
+  orderBy,
+  where,
+  limit,
+  Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {cn} from '@/lib/utils';
-
 import {
-  ReceiptText,
-  Store as StoreIcon,
-  BarChart3,
-  Landmark,
+  History,
+  FileWarning
 } from 'lucide-react';
-
-import {Card, CardContent} from '@/components/ui/card';
+import {Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter} from '@/components/ui/card';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Separator} from '@/components/ui/separator';
+import {Button} from '@/components/ui/button';
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table';
 
-const ActionButton = ({
-  href,
-  icon: Icon,
-  label,
-  colorClass,
-}: {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  colorClass: string;
-}) => (
-  <Link
-    href={href}
-    className="flex flex-col items-center justify-center space-y-2 group"
-  >
-    <div
-      className={cn(
-        'flex items-center justify-center w-16 h-16 rounded-2xl transition-all group-hover:scale-105 shadow-md',
-        colorClass
-      )}
-    >
-      <Icon className="w-8 h-8 text-white" />
-    </div>
-    <p className="text-xs font-semibold text-foreground">{label}</p>
-  </Link>
-);
+type SaleDoc = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: Timestamp;
+};
 
 export default function HomePage() {
-  const [sales, setSales] = useState<{ total: number }[]>([]);
-  const [receipts, setReceipts] = useState<{ total: number }[]>([]);
-  const [isLoadingSales, setIsLoadingSales] = useState(true);
-  const [isLoadingExpenses, setIsLoadingExpenses] = useState(true);
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [dailySales, setDailySales] = useState(0);
+  const [recentSales, setRecentSales] = useState<SaleDoc[]>([]);
+  
+  const [isLoadingTotals, setIsLoadingTotals] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
 
   useEffect(() => {
     const salesQuery = query(collection(db, 'sales'));
-    const unsubSales = onSnapshot(
-      salesQuery,
-      (snapshot) => {
-        const salesData = snapshot.docs.map(
-          (doc) => doc.data() as { total: number }
-        );
-        setSales(salesData);
-        setIsLoadingSales(false);
-      },
-      (err) => {
-        console.error('Firebase sales snapshot error:', err);
-        setIsLoadingSales(false);
-      }
-    );
+    const unsubSales = onSnapshot(salesQuery, (snapshot) => {
+      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+      setTotalSales(total);
+      if(isLoadingTotals) setIsLoadingTotals(false);
+    });
 
     const receiptsQuery = query(collection(db, 'receipts'));
-    const unsubReceipts = onSnapshot(
-      receiptsQuery,
-      (snapshot) => {
-        const receiptsData = snapshot.docs.map(
-          (doc) => doc.data() as { total: number }
-        );
-        setReceipts(receiptsData);
-        setIsLoadingExpenses(false);
-      },
-      (err) => {
-        console.error('Firebase receipts snapshot error:', err);
-        setIsLoadingExpenses(false);
-      }
+    const unsubReceipts = onSnapshot(receiptsQuery, (snapshot) => {
+      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+      setTotalExpenses(total);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dailyQuery = query(
+      collection(db, 'sales'),
+      where('createdAt', '>=', Timestamp.fromDate(today))
     );
+    const unsubDaily = onSnapshot(dailyQuery, (snapshot) => {
+      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+      setDailySales(total);
+    });
+
+    const historyQuery = query(collection(db, 'sales'), orderBy('createdAt', 'desc'), limit(5));
+    const unsubHistory = onSnapshot(historyQuery, (snapshot) => {
+      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleDoc));
+      setRecentSales(salesData);
+      if(isLoadingHistory) setIsLoadingHistory(false);
+    });
 
     return () => {
       unsubSales();
       unsubReceipts();
+      unsubDaily();
+      unsubHistory();
     };
-  }, []);
-
-  const totalSales = useMemo(() => {
-    return sales.reduce((acc, sale) => acc + sale.total, 0);
-  }, [sales]);
-
-  const totalExpenses = useMemo(() => {
-    return receipts.reduce((acc, receipt) => acc + receipt.total, 0);
-  }, [receipts]);
+  }, [isLoadingTotals, isLoadingHistory]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
-
-  const quickActions = [
-    {
-      href: '/store/ledger',
-      icon: Landmark,
-      label: 'Credit',
-      color: 'bg-gradient-to-br from-purple-500 to-indigo-600',
-    },
-    {
-      href: '/store/receipts',
-      icon: ReceiptText,
-      label: 'Expenses',
-      color: 'bg-gradient-to-br from-pink-500 to-rose-500',
-    },
-    {
-      href: '/store',
-      icon: StoreIcon,
-      label: 'POS',
-      color: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-    },
-    {
-      href: '/store/history',
-      icon: BarChart3,
-      label: 'Reports',
-      color: 'bg-gradient-to-br from-green-500 to-emerald-500',
-    },
-  ];
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -169,7 +122,7 @@ export default function HomePage() {
           <CardContent className="pt-6 flex items-center justify-around">
             <div className="text-center space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
-              {isLoadingSales ? (
+              {isLoadingTotals ? (
                 <Skeleton className="h-8 w-32" />
               ) : (
                 <p className="text-3xl font-bold tracking-tighter text-primary">{formatCurrency(totalSales)}</p>
@@ -178,7 +131,7 @@ export default function HomePage() {
             <Separator orientation="vertical" className="h-16" />
             <div className="text-center space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
-              {isLoadingExpenses ? (
+              {isLoadingTotals ? (
                 <Skeleton className="h-8 w-32" />
               ) : (
                 <p className="text-3xl font-bold tracking-tighter text-accent">{formatCurrency(totalExpenses)}</p>
@@ -188,12 +141,75 @@ export default function HomePage() {
         </Card>
 
         <Card>
-          <CardContent className="pt-6 grid grid-cols-4 gap-4">
-            {quickActions.map((action) => (
-              <ActionButton key={action.href} {...action} />
-            ))}
-          </CardContent>
+            <CardHeader>
+                <CardTitle>Today's Sales</CardTitle>
+                <CardDescription>Total revenue for today.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 {isLoadingTotals ? (
+                    <Skeleton className="h-10 w-40" />
+                  ) : (
+                    <p className="text-4xl font-bold tracking-tighter text-primary">{formatCurrency(dailySales)}</p>
+                  )}
+            </CardContent>
         </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Recent Sales History</CardTitle>
+                <CardDescription>Your last 5 transactions.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoadingHistory ? (
+                            Array.from({length: 5}).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                </TableRow>
+                            ))
+                        ) : recentSales.length > 0 ? (
+                           recentSales.map((sale) => (
+                               <TableRow key={sale.id}>
+                                   <TableCell>
+                                       <p className="font-medium">{sale.itemName}</p>
+                                       <p className="text-xs text-muted-foreground">
+                                           {new Date(sale.createdAt.toDate()).toLocaleDateString()}
+                                       </p>
+                                   </TableCell>
+                                   <TableCell className="text-right font-mono">
+                                        {formatCurrency(sale.total)}
+                                   </TableCell>
+                               </TableRow>
+                           ))
+                        ) : (
+                             <TableRow>
+                                <TableCell colSpan={2} className="h-24 text-center">
+                                    <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2"/>
+                                    No recent sales found.
+                                </TableCell>
+                             </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+            <CardFooter className="pt-4">
+                <Button asChild variant="outline" className="w-full">
+                    <Link href="/store/history">
+                        <History className="mr-2" />
+                        View Full Sales History
+                    </Link>
+                </Button>
+            </CardFooter>
+        </Card>
+
       </main>
     </div>
   );
