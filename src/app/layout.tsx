@@ -6,7 +6,8 @@ import {Toaster} from '@/components/ui/toaster';
 import {SiteProtection} from './components/site-protection';
 import {BottomNav} from './components/bottom-nav';
 import {SiteHeader} from '@/app/components/site-header';
-import { InstallPwa } from './components/install-pwa';
+import {InstallPwa} from './components/install-pwa';
+import {headers} from 'next/headers';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
-    apple: [{ url: "/icon-192x192.png", sizes: "192x192" }],
+    apple: [{url: '/icon-192x192.png', sizes: '192x192'}],
   },
 };
 
@@ -48,6 +49,24 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = headers();
+  const pathname = headersList.get('x-next-pathname') || '';
+  const isPrintRoute = pathname.startsWith('/print');
+
+  // For print routes, render a completely minimal HTML document.
+  // This prevents the main app's UI, providers, and scripts from
+  // loading on the print page, which resolves all errors.
+  if (isPrintRoute) {
+    return (
+      <html lang="en" className="h-full">
+        <body className="font-body antialiased h-full bg-white text-black">
+          {children}
+        </body>
+      </html>
+    );
+  }
+
+  // For all other routes, render the full application layout.
   return (
     <html lang="en" className="dark h-full">
       <head>
