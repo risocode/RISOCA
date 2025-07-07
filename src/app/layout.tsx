@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: [{url: '/icon-192x192.png', sizes: '192x192'}],
+    icon: '/logo.png?v=3',
+    shortcut: '/logo.png?v=3',
+    apple: '/logo.png?v=3',
   },
 };
 
