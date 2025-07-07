@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -103,7 +104,7 @@ export default function HomePage() {
     <div className="p-4 md:p-6 space-y-6">
       <header className="flex justify-center items-center">
         <Image
-          src="/logo.png"
+          src="/logo.png?v=2"
           alt="RiSoCa Logo"
           width={120}
           height={37}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect} from 'react';
@@ -187,7 +188,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Image
-              src="/logo.png"
+              src="/logo.png?v=2"
               alt="RISOCA Logo"
               width={120}
               height={37}
