@@ -39,8 +39,8 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showRegisterPrompt, setShowRegisterPrompt] = useState(false);
 
-  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
-  const [isBiometricRegistered, setIsBiometricRegistered] = useState(false);
+  const [isPasskeySupported, setIsPasskeySupported] = useState(false);
+  const [isPasskeyRegistered, setIsPasskeyRegistered] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const {toast} = useToast();
 
@@ -50,9 +50,9 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
 
     const checkSupport = async () => {
       const supported = await browserSupportsWebAuthn();
-      setIsBiometricSupported(supported);
+      setIsPasskeySupported(supported);
       if (supported && localStorage.getItem(WEBAUTHN_LS_KEY_REGISTERED) === 'true') {
-        setIsBiometricRegistered(true);
+        setIsPasskeyRegistered(true);
       }
     };
     checkSupport();
@@ -66,8 +66,8 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     try {
       const result = await verifyPassword(password);
       if (result.success) {
-        // Only show the biometric registration prompt on mobile devices, as requested.
-        if (isBiometricSupported && !isBiometricRegistered && isMobile) {
+        // Show the registration prompt on any supported device, not just mobile.
+        if (isPasskeySupported && !isPasskeyRegistered) {
           setShowRegisterPrompt(true);
         } else {
           onSuccess();
@@ -84,7 +84,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
     }
   };
 
-  const handleRegisterBiometrics = async () => {
+  const handleRegisterPasskey = async () => {
     setIsVerifying(true);
     setError('');
     try {
@@ -103,16 +103,18 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
       
       localStorage.setItem(WEBAUTHN_LS_KEY_REGISTERED, 'true');
       localStorage.setItem(WEBAUTHN_LS_KEY_CREDENTIAL_ID, reg.id);
-      setIsBiometricRegistered(true);
+      setIsPasskeyRegistered(true);
       toast({
           variant: 'success',
-          title: 'Fingerprint Enabled',
-          description: 'You can now use your fingerprint to log in.',
+          title: isMobile ? 'Fingerprint Enabled' : 'Passkey Created',
+          description: isMobile ? 'You can now use your fingerprint to log in.' : 'You can now use your passkey for faster logins.',
       });
       onSuccess();
     } catch (err: any) {
-        console.error('Biometric registration error:', err);
-        const errorMessage = err.name === 'InvalidStateError' ? 'This device is already registered.' : 'Biometric registration failed. Please try again.';
+        console.error('Passkey registration error:', err);
+        const errorMessage = err.name === 'InvalidStateError' 
+          ? 'This device is already registered.' 
+          : (isMobile ? 'Fingerprint registration failed. Please try again.' : 'Passkey creation failed. Please try again.');
         setError(errorMessage);
         setShowRegisterPrompt(false); // Go back to password screen
     } finally {
@@ -125,7 +127,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
       onSuccess();
   }
 
-  const handleBiometricLogin = async () => {
+  const handlePasskeyLogin = async () => {
     setIsVerifying(true);
     setError('');
     try {
@@ -145,8 +147,8 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
 
       onSuccess();
     } catch (err) {
-      console.error('Biometric authentication error:', err);
-      setError('Fingerprint authentication failed. Please try your password.');
+      console.error('Passkey authentication error:', err);
+      setError(isMobile ? 'Fingerprint authentication failed. Please try your password.' : 'Passkey authentication failed. Please use your password.');
     } finally {
       setIsVerifying(false);
     }
@@ -158,11 +160,13 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
         <Card className="w-full max-w-sm shadow-2xl animate-enter">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4 text-primary">
-                <Fingerprint className="w-16 h-16" />
+                {isMobile ? <Fingerprint className="w-16 h-16" /> : <KeyRound className="w-16 h-16" />}
             </div>
-            <CardTitle>Enable Faster Login?</CardTitle>
+            <CardTitle>{isMobile ? 'Enable Fingerprint Login?' : 'Create a Passkey?'}</CardTitle>
             <CardDescription>
-              Use your fingerprint or face recognition to unlock the app instantly.
+              {isMobile
+                ? 'Use your fingerprint or face recognition to unlock the app instantly.'
+                : 'Use a passkey for faster, more secure logins without needing your password.'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -174,9 +178,9 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
               </Alert>
             )}
             <div className="flex flex-col gap-2">
-                <Button onClick={handleRegisterBiometrics} disabled={isVerifying}>
-                   {isVerifying ? <Loader2 className="mr-2 animate-spin" /> : <Fingerprint className="mr-2"/>}
-                    Enable Biometric Login
+                <Button onClick={handleRegisterPasskey} disabled={isVerifying}>
+                   {isVerifying ? <Loader2 className="mr-2 animate-spin" /> : (isMobile ? <Fingerprint className="mr-2"/> : <KeyRound className="mr-2"/>)}
+                    {isMobile ? 'Enable Fingerprint Login' : 'Create Passkey'}
                 </Button>
                 <Button variant="ghost" onClick={handleSkipRegistration} disabled={isVerifying}>
                     Not Now
@@ -216,23 +220,23 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
           </Link>
           <CardTitle>Protected Area</CardTitle>
           <CardDescription>
-            {isBiometricRegistered && isBiometricSupported 
-              ? "Unlock with your fingerprint or enter the password."
+            {isPasskeyRegistered && isPasskeySupported 
+              ? (isMobile ? "Unlock with your fingerprint or enter the password." : "Unlock with your passkey or enter the password.")
               : "Please enter the password to unlock."
             }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isBiometricRegistered && isBiometricSupported && (
+          {isPasskeyRegistered && isPasskeySupported && (
             <>
               <Button
                 className="w-full h-14 text-base"
-                onClick={handleBiometricLogin}
+                onClick={handlePasskeyLogin}
                 disabled={isVerifying}
               >
                 {isVerifying && <Loader2 className="mr-2 animate-spin" />}
-                {!isVerifying && <Fingerprint className="mr-2" />}
-                Unlock with Fingerprint
+                {!isVerifying && (isMobile ? <Fingerprint className="mr-2" /> : <KeyRound className="mr-2" />)}
+                {isMobile ? 'Unlock with Fingerprint' : 'Unlock with Passkey'}
               </Button>
               <div className="relative">
                 <Separator />
@@ -254,7 +258,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 className="text-center pl-10"
               />
             </div>
-             <Button type="submit" variant={isBiometricRegistered ? "outline" : "default"} className="w-full" disabled={isVerifying}>
+             <Button type="submit" variant={isPasskeyRegistered ? "outline" : "default"} className="w-full" disabled={isVerifying}>
               {isVerifying ? (
                 <Loader2 className="mr-2 animate-spin" />
               ) : (
