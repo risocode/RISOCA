@@ -317,8 +317,18 @@ export default function CustomerLedgerPage() {
                         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
                             <Tabs defaultValue="credit" onValueChange={(value) => form.setValue('type', value as 'credit' | 'payment')} className="w-full">
                                 <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
-                                    <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
+                                    <TabsTrigger
+                                        value="credit"
+                                        className="gap-2 data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive data-[state=active]:shadow-inner"
+                                    >
+                                        <Plus className="h-4 w-4" />Credit
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="payment"
+                                        className="gap-2 data-[state=active]:bg-success/20 data-[state=active]:text-success data-[state=active]:shadow-inner"
+                                    >
+                                        <Minus className="h-4 w-4" />Payment
+                                    </TabsTrigger>
                                 </TabsList>
                             </Tabs>
                             
@@ -345,11 +355,7 @@ export default function CustomerLedgerPage() {
                                             outstandingCreditTransactions.map(tx => (
                                                 <div
                                                   key={tx.id}
-                                                  className={cn(
-                                                    'flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted',
-                                                    selectedCredits.has(tx.id) &&
-                                                      'bg-destructive/10 border border-destructive/30'
-                                                  )}
+                                                  className="flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted has-[:checked]:bg-destructive/10"
                                                 >
                                                     <Checkbox
                                                         id={`credit-${tx.id}`}
