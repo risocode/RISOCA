@@ -653,13 +653,13 @@ export default function ReceiptPage() {
                       {fields.map((field, index) => (
                         <div
                           key={field.id}
-                          className="flex items-start gap-4"
+                          className="flex flex-col sm:flex-row items-start sm:items-end gap-2"
                         >
                           <FormField
                             control={form.control}
                             name={`items.${index}.name`}
                             render={({field}) => (
-                              <FormItem className="flex-1">
+                              <FormItem className="flex-grow w-full">
                                 <FormControl>
                                   <Input placeholder="Item name" {...field} />
                                 </FormControl>
@@ -667,18 +667,16 @@ export default function ReceiptPage() {
                               </FormItem>
                             )}
                           />
-                          <div className="flex gap-4 w-auto">
                           <FormField
                             control={form.control}
                             name={`items.${index}.price`}
                             render={({field}) => (
-                              <FormItem>
+                              <FormItem className="w-full sm:w-32">
                                 <FormControl>
                                   <Input
                                     type="number"
                                     step="0.01"
                                     placeholder="Price"
-                                    className="w-32"
                                     {...field}
                                   />
                                 </FormControl>
@@ -686,13 +684,13 @@ export default function ReceiptPage() {
                               </FormItem>
                             )}
                           />
-                          </div>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             onClick={() => remove(index)}
                             disabled={fields.length <= 1}
+                            className="self-end"
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>
@@ -708,7 +706,8 @@ export default function ReceiptPage() {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" size="lg">
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                    {isLoading ? (<Loader2 className="mr-2 animate-spin" />) : null}
                     Submit Receipt
                   </Button>
                 </form>
@@ -1048,10 +1047,10 @@ export default function ReceiptPage() {
               <TableBody>
                 {receipts.map((receipt) => (
                   <TableRow key={receipt.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="p-2 md:p-4 font-medium">
                       {receipt.merchantName}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4 whitespace-nowrap">
                       {new Date(
                         receipt.transactionDate + 'T00:00:00'
                       ).toLocaleDateString(undefined, {
@@ -1060,10 +1059,10 @@ export default function ReceiptPage() {
                         year: 'numeric',
                       })}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4">
                       <Badge variant="outline">{receipt.category}</Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="p-2 md:p-4 text-right font-mono whitespace-nowrap">
                       ₱
                       {receipt.total.toLocaleString('en-US', {
                         minimumFractionDigits: 2,

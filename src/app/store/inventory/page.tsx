@@ -262,7 +262,7 @@ export default function InventoryPage() {
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="cost"
@@ -366,13 +366,13 @@ export default function InventoryPage() {
               ) : items.length > 0 ? (
                 items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4 font-medium">{item.name}</TableCell>
+                    <TableCell className="p-2 md:p-4 whitespace-nowrap">
                       ₱{item.cost ? item.cost.toFixed(2) : '0.00'}
                     </TableCell>
-                    <TableCell>₱{item.price.toFixed(2)}</TableCell>
-                    <TableCell>{item.stock}</TableCell>
-                    <TableCell className="text-right space-x-2">
+                    <TableCell className="p-2 md:p-4 whitespace-nowrap">₱{item.price.toFixed(2)}</TableCell>
+                    <TableCell className="p-2 md:p-4">{item.stock}</TableCell>
+                    <TableCell className="p-2 md:p-4 text-right space-x-2">
                       <Button
                         variant="ghost"
                         size="icon"
