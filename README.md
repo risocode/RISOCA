@@ -46,7 +46,26 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     *   You'll see an `firebaseConfig` object. Copy the key-value pairs. You will need these for your environment variables.
     *   In the Firebase console, go to the **Firestore Database** section, click "Create database", and start in **production mode**. Choose a location and click "Enable".
 
-4.  **Set up your environment variables:**
+4.  **Set Up Firestore Security Rules:**
+    When you create a Firestore database in "production mode," it is locked down by default. You need to add a security rule to allow your app to read and write data.
+    *   In the Firebase Console, go to the **Firestore Database** section.
+    *   Click on the **Rules** tab.
+    *   Replace the existing rules with the following:
+    ```
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        // Allow read/write access to all collections for this app.
+        // This is suitable for development or for apps with a single password.
+        match /{document=**} {
+          allow read, write: if true;
+        }
+      }
+    }
+    ```
+    *   Click **Publish**. It may take a minute for the new rules to take effect.
+
+5.  **Set up your environment variables:**
     Create a file named `.env` in the root of your project and add your keys.
 
     ```
@@ -66,7 +85,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     NEXT_PUBLIC_FIREBASE_APP_ID=FROM_FIREBASE_CONFIG
     ```
 
-5.  **Run the development server:**
+6.  **Run the development server:**
     ```bash
     npm run dev
     ```
