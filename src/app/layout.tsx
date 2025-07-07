@@ -6,6 +6,7 @@ import {Toaster} from '@/components/ui/toaster';
 import {SiteProtection} from './components/site-protection';
 import {BottomNav} from './components/bottom-nav';
 import {SiteHeader} from '@/app/components/site-header';
+import { InstallPwa } from './components/install-pwa';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -28,9 +29,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/logo.png',
-    shortcut: '/logo.png',
-    apple: '/logo.png',
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/icon-192x192.png',
   },
 };
 
@@ -62,6 +63,7 @@ export default function RootLayout({
             </div>
           </ReceiptsProvider>
           <Toaster />
+          <InstallPwa />
         </SiteProtection>
       </body>
     </html>
