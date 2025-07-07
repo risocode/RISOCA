@@ -35,6 +35,7 @@ export default function HomePage() {
   const [totalSales, setTotalSales] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [dailySales, setDailySales] = useState(0);
+  const [todaysSalesList, setTodaysSalesList] = useState<SaleDoc[]>([]);
   const [recentSales, setRecentSales] = useState<SaleDoc[]>([]);
   
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
@@ -59,11 +60,14 @@ export default function HomePage() {
     today.setHours(0, 0, 0, 0);
     const dailyQuery = query(
       collection(db, 'sales'),
-      where('createdAt', '>=', Timestamp.fromDate(today))
+      where('createdAt', '>=', Timestamp.fromDate(today)),
+      orderBy('createdAt', 'desc')
     );
     const unsubDaily = onSnapshot(dailyQuery, (snapshot) => {
-      const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
+      const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleDoc));
+      const total = salesData.reduce((acc, sale) => acc + sale.total, 0);
       setDailySales(total);
+      setTodaysSalesList(salesData);
     });
 
     const historyQuery = query(collection(db, 'sales'), orderBy('createdAt', 'desc'), limit(5));
@@ -142,15 +146,58 @@ export default function HomePage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Today's Sales</CardTitle>
-                <CardDescription>Total revenue for today.</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Today's Sales</CardTitle>
+                        <CardDescription>Total revenue for today.</CardDescription>
+                    </div>
+                     {isLoadingTotals ? (
+                        <Skeleton className="h-8 w-32" />
+                      ) : (
+                        <div className="text-2xl font-bold text-primary">{formatCurrency(dailySales)}</div>
+                      )}
+                </div>
             </CardHeader>
-            <CardContent>
-                 {isLoadingTotals ? (
-                    <Skeleton className="h-10 w-40" />
-                  ) : (
-                    <p className="text-4xl font-bold tracking-tighter text-primary">{formatCurrency(dailySales)}</p>
-                  )}
+            <CardContent className="p-0">
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoadingTotals ? (
+                            Array.from({length: 3}).map((_, i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-1/4 ml-auto" /></TableCell>
+                                </TableRow>
+                            ))
+                        ) : todaysSalesList.length > 0 ? (
+                           todaysSalesList.map((sale) => (
+                               <TableRow key={sale.id}>
+                                   <TableCell>
+                                       <p className="font-medium">{sale.itemName}</p>
+                                       <p className="text-xs text-muted-foreground">
+                                           {new Date(sale.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                                       </p>
+                                   </TableCell>
+                                   <TableCell className="text-right font-mono">
+                                        {formatCurrency(sale.total)}
+                                   </TableCell>
+                               </TableRow>
+                           ))
+                        ) : (
+                             <TableRow>
+                                <TableCell colSpan={2} className="h-24 text-center">
+                                    <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2"/>
+                                    No sales recorded today.
+                                </TableCell>
+                             </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
 
@@ -202,9 +249,9 @@ export default function HomePage() {
             </CardContent>
             <CardFooter className="pt-4">
                 <Button asChild variant="outline" className="w-full">
-                    <Link href="/store/history">
+                    <Link href="/transactions">
                         <History className="mr-2" />
-                        View Full Sales History
+                        View Full Transaction History
                     </Link>
                 </Button>
             </CardFooter>
