@@ -93,6 +93,7 @@ export default function InventoryPage() {
     resolver: zodResolver(InventoryItemSchema),
     defaultValues: {
       name: '',
+      cost: 0,
       price: 0,
       stock: 0,
     },
@@ -137,11 +138,12 @@ export default function InventoryPage() {
     if (item) {
       form.reset({
         name: item.name,
+        cost: item.cost || 0,
         price: item.price,
         stock: item.stock,
       });
     } else {
-      form.reset({name: '', price: 0, stock: 0});
+      form.reset({name: '', cost: 0, price: 0, stock: 0});
     }
     setIsDialogOpen(true);
   };
@@ -260,24 +262,44 @@ export default function InventoryPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Price (₱)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="150.00"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="cost"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Cost (₱)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="100.00"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({field}) => (
+                        <FormItem>
+                          <FormLabel>Selling Price (₱)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="150.00"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="stock"
@@ -314,7 +336,8 @@ export default function InventoryPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Item Name</TableHead>
-                <TableHead>Price</TableHead>
+                <TableHead>Cost</TableHead>
+                <TableHead>Selling Price</TableHead>
                 <TableHead>Stock</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -325,6 +348,9 @@ export default function InventoryPage() {
                   <TableRow key={i}>
                     <TableCell>
                       <Skeleton className="h-5 w-3/4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-5 w-1/2" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-5 w-1/2" />
@@ -341,6 +367,9 @@ export default function InventoryPage() {
                 items.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell>
+                      ₱{item.cost ? item.cost.toFixed(2) : '0.00'}
+                    </TableCell>
                     <TableCell>₱{item.price.toFixed(2)}</TableCell>
                     <TableCell>{item.stock}</TableCell>
                     <TableCell className="text-right space-x-2">
@@ -365,7 +394,7 @@ export default function InventoryPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No items in inventory. Add your first item to get started.
                   </TableCell>
                 </TableRow>
