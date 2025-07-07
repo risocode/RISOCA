@@ -14,6 +14,7 @@ export function MobileHeader() {
           width={90}
           height={28}
           className="w-auto h-7 logo-glow"
+          priority
         />
       </div>
     </header>

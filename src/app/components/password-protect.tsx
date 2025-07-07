@@ -51,6 +51,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 height={37}
                 className="w-auto h-9 logo-glow"
                 data-ai-hint="logo"
+                priority
             />
           </div>
           <CardTitle>Protected Area</CardTitle>
