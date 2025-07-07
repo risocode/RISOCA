@@ -5,7 +5,7 @@ import {usePathname} from 'next/navigation';
 import {
   LayoutDashboard,
   Boxes,
-  Settings,
+  History,
   Plus,
   Store,
   ReceiptText,
@@ -26,7 +26,7 @@ const navItems = [
   {href: '/', icon: LayoutDashboard, label: 'Home'},
   {href: '/store/inventory', icon: Boxes, label: 'Products'},
   {href: '/store/ledger', icon: Landmark, label: 'Ledger'},
-  {href: '/settings', icon: Settings, label: 'Settings'},
+  {href: '/transactions', icon: History, label: 'Transactions'},
 ];
 
 export function BottomNav() {
