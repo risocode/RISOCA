@@ -194,8 +194,18 @@ export default function StorePage() {
     if (!voidingSale) return;
     setIsVoiding(true);
 
-    const {createdAt, ...saleToVoid} = voidingSale;
-    const response = await voidSale(saleToVoid);
+    // Manually create a plain object to pass to the server action,
+    // ensuring no complex objects like Timestamps are included.
+    const plainSaleObject = {
+      id: voidingSale.id,
+      itemId: voidingSale.itemId,
+      itemName: voidingSale.itemName,
+      quantity: voidingSale.quantity,
+      unitPrice: voidingSale.unitPrice,
+      total: voidingSale.total,
+    };
+
+    const response = await voidSale(plainSaleObject);
 
     if (response.success) {
       toast({title: 'Sale Voided', description: 'The sale has been removed.'});
