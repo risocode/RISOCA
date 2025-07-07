@@ -51,16 +51,26 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 
     *   In the Firebase Console, go to the **Firestore Database** section.
     *   Click on the **Rules** tab.
-    *   **Delete all existing text** in the editor and replace it with the following rules. Using a single wildcard rule (`match /{document=**}`) is the simplest and recommended way for this app. It ensures all current and future features will work without needing to update the rules again.
+    *   **Delete all existing text** in the editor and replace it with the following rules. This version explicitly grants access to each collection your app uses.
 
     ```
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
-        // This single rule allows your app to read and write to all collections.
-        // It is secure in this context because your entire app is protected
-        // by a site-wide password. It works for all current and future features.
-        match /{document=**} {
+        // Allow access to specific collections used by the app.
+        match /receipts/{document=**} {
+          allow read, write: if true;
+        }
+        match /saleTransactions/{document=**} {
+          allow read, write: if true;
+        }
+        match /inventory/{document=**} {
+          allow read, write: if true;
+        }
+        match /customers/{document=**} {
+          allow read, write: if true;
+        }
+        match /ledger/{document=**} {
           allow read, write: if true;
         }
       }
