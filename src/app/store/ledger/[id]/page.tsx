@@ -49,6 +49,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {Button} from '@/components/ui/button';
 import {useToast} from '@/hooks/use-toast';
 import {
@@ -117,8 +123,7 @@ export default function CustomerLedgerPage() {
         } else {
           toast({
             variant: 'destructive',
-            title: 'Customer Not Found',
-            description: 'This customer may have been deleted. Redirecting...',
+            title: 'This customer may have been deleted. Redirecting...',
             duration: 1000,
           });
           router.push('/store/ledger');
@@ -254,12 +259,18 @@ export default function CustomerLedgerPage() {
     }
     
     if (response?.success) {
-      toast({
-        variant: 'destructive',
-        title: alertAction === 'deleteCustomer' ? 'Customer Deleted' : 'Transaction Deleted',
-        description: 'The item has been successfully deleted.'
-      });
-      if(alertAction === 'deleteCustomer') router.push('/store/ledger');
+      if (alertAction === 'deleteCustomer') {
+        toast({
+          variant: 'destructive',
+          title: 'Customer deleted',
+        });
+        router.push('/store/ledger');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Transaction Deleted',
+        });
+      }
     } else {
       toast({variant: 'destructive', title: 'Action Failed', description: response?.message || 'An error occurred.'});
     }
@@ -276,6 +287,7 @@ export default function CustomerLedgerPage() {
       maximumFractionDigits: 2,
     })}`;
 
+  const cannotDeleteCustomer = balance !== 0;
 
   if (isLoading) {
     return (
@@ -301,13 +313,32 @@ export default function CustomerLedgerPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold truncate">{customer?.name}</h1>
             <p className="text-muted-foreground">
-              Balance: <span className={`font-bold ${balance > 0 ? 'text-destructive' : 'text-success'}`}>{formatCurrency(balance)}</span>
+              Balance: <span className={cn('font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</span>
             </p>
           </div>
         </div>
-        <Button variant="destructive" size="sm" onClick={() => openDeleteAlert('deleteCustomer')}>
-            <Trash2 className="mr-2 h-4 w-4"/> Delete
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => openDeleteAlert('deleteCustomer')}
+                    disabled={cannotDeleteCustomer}
+                    className={cannotDeleteCustomer ? 'pointer-events-none' : ''}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {cannotDeleteCustomer && (
+                <TooltipContent>
+                  <p>Cannot delete a customer with an outstanding balance.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
       </header>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

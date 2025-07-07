@@ -467,23 +467,38 @@ export async function deleteCustomer(
   id: string
 ): Promise<{success: boolean; message?: string}> {
   try {
+    // First, verify the customer's balance. This cannot be done inside the
+    // transaction as it requires reading documents before deciding to write.
+    const ledgerQuery = query(
+      collection(db, 'ledger'),
+      where('customerId', '==', id)
+    );
+    const ledgerSnapshot = await getDocs(ledgerQuery);
+
+    const balance = ledgerSnapshot.docs.reduce((acc, doc) => {
+      const data = doc.data();
+      return acc + (data.type === 'credit' ? data.amount : -data.amount);
+    }, 0);
+
+    if (balance !== 0) {
+      return {
+        success: false,
+        message: 'Cannot delete customer with an outstanding balance.',
+      };
+    }
+
+    // If balance is zero, proceed with deletion in a transaction.
     await runTransaction(db, async (transaction) => {
       const customerRef = doc(db, 'customers', id);
 
-      const ledgerQuery = query(
-        collection(db, 'ledger'),
-        where('customerId', '==', id)
-      );
-
-      // Firestore SDK v9+ getDocs is not part of the transaction object.
-      // It must be performed outside.
-      const ledgerSnapshot = await getDocs(ledgerQuery);
+      // The snapshot is already fetched, so we can just iterate and delete.
       ledgerSnapshot.forEach((doc) => {
         transaction.delete(doc.ref);
       });
 
       transaction.delete(customerRef);
     });
+
     return {success: true};
   } catch (error) {
     console.error('Error deleting customer and their transactions: ', error);
