@@ -26,6 +26,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/c
 import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type { SaleTransaction } from '@/lib/schemas';
+import { useToast } from '@/hooks/use-toast';
 
 type SaleDoc = {
   id: string;
@@ -46,6 +47,17 @@ export default function HomePage() {
   
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const { toast } = useToast();
+
+  const handleFirestoreError = (error: Error, collectionName: string) => {
+    console.error(`Error fetching ${collectionName}:`, error);
+    toast({
+      variant: 'destructive',
+      title: 'Database Permission Error',
+      description: `Could not fetch data from '${collectionName}'. Please check your Firestore security rules in the Firebase console.`,
+      duration: 10000,
+    });
+  }
 
 
   useEffect(() => {
@@ -57,13 +69,13 @@ export default function HomePage() {
         .reduce((acc, doc) => acc + (doc.data().total || 0), 0);
       setTotalSales(total);
       if(isLoadingTotals) setIsLoadingTotals(false);
-    });
+    }, (error) => handleFirestoreError(error, 'saleTransactions'));
 
     const receiptsQuery = query(collection(db, 'receipts'));
     const unsubReceipts = onSnapshot(receiptsQuery, (snapshot) => {
       const total = snapshot.docs.reduce((acc, doc) => acc + (doc.data().total || 0), 0);
       setTotalExpenses(total);
-    });
+    }, (error) => handleFirestoreError(error, 'receipts'));
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -79,14 +91,14 @@ export default function HomePage() {
         .reduce((acc, sale) => acc + sale.total, 0);
       setDailySales(total);
       setTodaysSalesList(salesData);
-    });
+    }, (error) => handleFirestoreError(error, 'saleTransactions (daily)'));
 
     const historyQuery = query(collection(db, 'saleTransactions'), orderBy('createdAt', 'desc'), limit(5));
     const unsubHistory = onSnapshot(historyQuery, (snapshot) => {
       const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SaleTransaction));
       setRecentSales(salesData);
       if(isLoadingHistory) setIsLoadingHistory(false);
-    });
+    }, (error) => handleFirestoreError(error, 'saleTransactions (history)'));
 
     return () => {
       unsubSales();
@@ -94,7 +106,7 @@ export default function HomePage() {
       unsubDaily();
       unsubHistory();
     };
-  }, [isLoadingTotals, isLoadingHistory]);
+  }, []);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
