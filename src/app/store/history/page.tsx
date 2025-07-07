@@ -1,15 +1,16 @@
 'use client';
 
 import {useState, useEffect} from 'react';
+import Link from 'next/link';
 import {
   collection,
   query,
   onSnapshot,
   orderBy,
-  type Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {voidSaleTransaction, type SaleTransaction} from '@/app/actions';
+import {voidSaleTransaction} from '@/app/actions';
+import type {SaleTransaction} from '@/lib/schemas';
 
 import {
   Card,
@@ -38,38 +39,35 @@ import {
 } from '@/components/ui/alert-dialog';
 import {Button} from '@/components/ui/button';
 import {useToast} from '@/hooks/use-toast';
-import {History, Trash2, Loader2} from 'lucide-react';
+import {History, Trash2, Loader2, Printer} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {cn} from '@/lib/utils';
 import {Badge} from '@/components/ui/badge';
-import type { SaleItem } from '@/lib/schemas';
-
-type SaleDoc = SaleItem & {
-  id: string;
-  createdAt: Timestamp;
-  status?: 'active' | 'voided';
-};
 
 export default function SalesHistoryPage() {
-  const [allSales, setAllSales] = useState<SaleDoc[]>([]);
+  const [allSales, setAllSales] = useState<SaleTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
-  const [voidingSale, setVoidingSale] = useState<SaleDoc | null>(null);
+  const [voidingSale, setVoidingSale] = useState<SaleTransaction | null>(null);
   const {toast} = useToast();
 
   useEffect(() => {
     setIsLoading(true);
-    const q = query(collection(db, 'sales'), orderBy('createdAt', 'desc'));
+    // Corrected query for 'saleTransactions' collection
+    const q = query(
+      collection(db, 'saleTransactions'),
+      orderBy('createdAt', 'desc')
+    );
 
     const unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
-        const salesFromDb: SaleDoc[] = [];
+        const salesFromDb: SaleTransaction[] = [];
         querySnapshot.forEach((doc) => {
           salesFromDb.push({
             id: doc.id,
-            ...(doc.data() as Omit<SaleDoc, 'id'>),
+            ...(doc.data() as Omit<SaleTransaction, 'id'>),
           });
         });
         setAllSales(salesFromDb);
@@ -80,7 +78,8 @@ export default function SalesHistoryPage() {
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: 'Could not fetch sales data.',
+          description:
+            'Could not fetch sales data. Check your Firestore security rules.',
         });
         setIsLoading(false);
       }
@@ -89,7 +88,7 @@ export default function SalesHistoryPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleOpenAlert = (sale: SaleDoc) => {
+  const handleOpenAlert = (sale: SaleTransaction) => {
     setVoidingSale(sale);
     setIsAlertOpen(true);
   };
@@ -98,16 +97,20 @@ export default function SalesHistoryPage() {
     if (!voidingSale) return;
 
     setIsVoiding(true);
-    // This page voids single items, which is legacy.
-    // The new flow uses voidSaleTransaction.
-    // We would need a way to find the parent transaction to void it.
-    // For now, this will fail if it's part of a new transaction.
-    // A proper fix would require migrating all sales to the new model.
-    toast({
-      variant: 'destructive',
-      title: 'Action Not Supported',
-      description: 'Voiding from this page is not supported for new transactions.',
-    });
+    const response = await voidSaleTransaction(voidingSale.id);
+
+    if (response.success) {
+      toast({
+        title: 'Transaction Voided',
+        description: 'The transaction has been successfully voided.',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: response.message || 'An unknown error occurred.',
+      });
+    }
 
     setIsVoiding(false);
     setIsAlertOpen(false);
@@ -117,6 +120,12 @@ export default function SalesHistoryPage() {
   const totalRevenue = allSales
     .filter((sale) => sale.status !== 'voided')
     .reduce((acc, sale) => acc + sale.total, 0);
+
+  const formatCurrency = (value: number) =>
+    `₱${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   return (
     <>
@@ -128,12 +137,12 @@ export default function SalesHistoryPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" /> All Transactions
+              <History className="w-5 h-5" /> All Sales Transactions
             </CardTitle>
             <CardDescription>
               Showing {allSales.length} total transactions with a revenue of{' '}
               <span className="font-mono font-semibold text-primary">
-                ₱{totalRevenue.toFixed(2)}
+                {formatCurrency(totalRevenue)}
               </span>
               . Voided sales are excluded from revenue.
             </CardDescription>
@@ -142,8 +151,8 @@ export default function SalesHistoryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Receipt</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -166,7 +175,7 @@ export default function SalesHistoryPage() {
                           <Skeleton className="h-5 w-1/4 ml-auto" />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Skeleton className="h-8 w-10 ml-auto" />
+                          <Skeleton className="h-8 w-20 ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))
@@ -181,9 +190,17 @@ export default function SalesHistoryPage() {
                             sale.status === 'voided' && 'line-through'
                           )}
                         >
-                          <p className="font-medium">{sale.itemName}</p>
+                          <p className="font-medium">
+                            #{sale.id.substring(0, 6)}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {sale.quantity} x ₱{sale.unitPrice.toFixed(2)}
+                            {sale.createdAt
+                              .toDate()
+                              .toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
                           </p>
                         </TableCell>
                         <TableCell
@@ -191,13 +208,7 @@ export default function SalesHistoryPage() {
                             sale.status === 'voided' && 'line-through'
                           )}
                         >
-                          {sale.createdAt
-                            .toDate()
-                            .toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            })}
+                          {sale.customerName || 'N/A'}
                         </TableCell>
                         <TableCell>
                           {sale.status === 'voided' ? (
@@ -212,18 +223,30 @@ export default function SalesHistoryPage() {
                             sale.status === 'voided' && 'line-through'
                           )}
                         >
-                          ₱{sale.total.toFixed(2)}
+                          {formatCurrency(sale.total)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenAlert(sale)}
-                            aria-label="Void Sale"
-                            disabled={sale.status === 'voided'}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                          {sale.status !== 'voided' && (
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link
+                                  href={`/print/receipt/${sale.id}`}
+                                  target="_blank"
+                                >
+                                  <Printer className="w-4 h-4 mr-2" />
+                                  Print
+                                </Link>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenAlert(sale)}
+                                aria-label="Void Sale"
+                              >
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -249,7 +272,7 @@ export default function SalesHistoryPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently void the sale
-              and restore the sold quantity back to inventory (if applicable).
+              and restore the sold quantity back to inventory.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
