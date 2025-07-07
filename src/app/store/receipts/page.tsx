@@ -181,9 +181,6 @@ export default function ReceiptPage() {
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
-          setError(
-            'Camera access was denied. Please enable camera permissions in your browser settings.'
-          );
         }
       };
 
@@ -398,6 +395,58 @@ export default function ReceiptPage() {
     });
   };
 
+  if (inputMethod === 'camera' && !imagePreview) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+        <video
+          ref={videoRef}
+          className="absolute inset-0 object-cover w-full h-full"
+          autoPlay
+          muted
+          playsInline
+        />
+        <canvas ref={canvasRef} className="hidden" />
+
+        {hasCameraPermission === false && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center text-white bg-black/70">
+            <XCircle className="w-16 h-16 mb-4" />
+            <h2 className="text-xl font-semibold">Camera Access Denied</h2>
+            <p className="max-w-xs mt-2 text-neutral-300">
+              Please enable camera permissions in your browser settings to use
+              this feature.
+            </p>
+          </div>
+        )}
+
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-8 bg-gradient-to-t from-black/80 to-transparent">
+          <Button
+            onClick={handleCapture}
+            disabled={!hasCameraPermission || isProcessingImage}
+            className="w-20 h-20 p-2 bg-white/30 rounded-full border-4 border-white backdrop-blur-sm hover:bg-white/50"
+            size="icon"
+          >
+            {isProcessingImage ? (
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            ) : (
+              <span className="block w-full h-full bg-white rounded-full" />
+            )}
+            <span className="sr-only">Capture Photo</span>
+          </Button>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setInputMethod('upload')}
+          className="absolute z-20 text-white bg-black/30 top-6 right-6 hover:bg-black/50 hover:text-white backdrop-blur-sm"
+        >
+          <X className="w-6 h-6" />
+          <span className="sr-only">Close camera</span>
+        </Button>
+      </div>
+    );
+  }
+
   const renderInitialState = () => (
     <div className="w-full max-w-2xl text-center animate-enter">
       <p className="mb-8 text-lg text-muted-foreground">
@@ -464,34 +513,12 @@ export default function ReceiptPage() {
           className="pt-6 space-y-4 data-[state=active]:animate-in data-[state=active]:fade-in-50 data-[state=active]:duration-500"
         >
           <div className="relative w-full overflow-hidden border rounded-xl bg-muted aspect-video">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              autoPlay
-              muted
-              playsInline
-            />
-            {hasCameraPermission === false && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-white bg-black/70 rounded-xl">
-                <XCircle className="w-12 h-12 mb-4" />
-                <p className="text-lg font-semibold text-center">
-                  Camera Access Denied
-                </p>
-              </div>
-            )}
+            <p className="p-4 text-center text-muted-foreground">
+              Camera will open full-screen.
+            </p>
           </div>
-          <Button
-            onClick={handleCapture}
-            disabled={!hasCameraPermission || isProcessingImage}
-            className="w-full h-12 text-lg"
-            size="lg"
-          >
-            {isProcessingImage ? (
-              <Loader2 className="mr-2 animate-spin" />
-            ) : (
-              <Camera className="mr-2" />
-            )}
-            {isProcessingImage ? 'Processing...' : 'Capture Photo'}
+          <Button disabled className="w-full h-12 text-lg" size="lg">
+            <Camera className="mr-2" /> Launch Camera
           </Button>
         </TabsContent>
         <TabsContent
@@ -690,8 +717,6 @@ export default function ReceiptPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <canvas ref={canvasRef} className="hidden" />
 
       {error && !imagePreview && (
         <Alert variant="destructive" className="mt-6 text-left">
