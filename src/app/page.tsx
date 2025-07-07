@@ -17,33 +17,9 @@ import {
   Landmark,
 } from 'lucide-react';
 
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card';
+import {Card, CardContent} from '@/components/ui/card';
 import {Skeleton} from '@/components/ui/skeleton';
-
-const StatCard = ({
-  title,
-  value,
-  isLoading,
-  className,
-}: {
-  title: string;
-  value: string | number;
-  isLoading?: boolean;
-  className?: string;
-}) => (
-  <Card className={cn('text-center shadow-lg', className)}>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium opacity-80">{title}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      {isLoading ? (
-        <Skeleton className="h-10 w-3/4 mx-auto bg-white/20" />
-      ) : (
-        <div className="text-4xl font-bold tracking-tighter">{value}</div>
-      )}
-    </CardContent>
-  </Card>
-);
+import {Separator} from '@/components/ui/separator';
 
 const ActionButton = ({
   href,
@@ -189,20 +165,27 @@ export default function HomePage() {
       </header>
 
       <main className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard
-            title="Total Sales"
-            value={formatCurrency(totalSales)}
-            isLoading={isLoadingSales}
-            className="bg-primary text-primary-foreground"
-          />
-          <StatCard
-            title="Total Expenses"
-            value={formatCurrency(totalExpenses)}
-            isLoading={isLoadingExpenses}
-            className="bg-accent text-accent-foreground"
-          />
-        </div>
+        <Card>
+          <CardContent className="pt-6 flex items-center justify-around">
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
+              {isLoadingSales ? (
+                <Skeleton className="h-8 w-32" />
+              ) : (
+                <p className="text-3xl font-bold tracking-tighter text-primary">{formatCurrency(totalSales)}</p>
+              )}
+            </div>
+            <Separator orientation="vertical" className="h-16" />
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+              {isLoadingExpenses ? (
+                <Skeleton className="h-8 w-32" />
+              ) : (
+                <p className="text-3xl font-bold tracking-tighter text-accent">{formatCurrency(totalExpenses)}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="pt-6 grid grid-cols-4 gap-4">
