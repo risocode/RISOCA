@@ -825,7 +825,11 @@ export default function ReceiptPage() {
                     Total
                   </p>
                   <p className="text-2xl font-bold text-primary">
-                    ₱{diagnosis.total.toFixed(2)}
+                    ₱
+                    {diagnosis.total.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
                   </p>
                 </div>
                 <div>
@@ -850,7 +854,11 @@ export default function ReceiptPage() {
                         >
                           <span className="pr-2 truncate">{item.name}</span>
                           <span className="flex-shrink-0">
-                            ₱{item.price.toFixed(2)}
+                            ₱
+                            {item.price.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </span>
                         </li>
                       ))}
@@ -948,7 +956,11 @@ export default function ReceiptPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₱{totalSpent.toFixed(2)}
+                ₱
+                {totalSpent.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
               <p className="text-xs text-muted-foreground">
                 from {receipts.length} receipts
@@ -1025,7 +1037,11 @@ export default function ReceiptPage() {
                       <Badge variant="outline">{receipt.category}</Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      ₱{receipt.total.toFixed(2)}
+                      ₱
+                      {receipt.total.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -58,9 +58,19 @@ async function notifyOnTelegram(
     return {success: false, message: 'Telegram not configured.'};
   }
 
+  const formatToPHP = (value: number) => {
+    return (
+      '₱' +
+      value.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    );
+  };
+
   try {
     const caption = [
-      `🧾 *Receipt Processed* 🧾`,
+      `🧾 *Receipt Scanned* 🧾`,
       ``,
       `*Merchant:* ${escapeMarkdownV2(diagnosis.merchantName)}`,
       `*Date:* ${escapeMarkdownV2(
@@ -74,13 +84,13 @@ async function notifyOnTelegram(
         )
       )}`,
       `*Category:* ${escapeMarkdownV2(diagnosis.category)}`,
-      `*Total:* ${escapeMarkdownV2(diagnosis.total.toFixed(2))}`,
+      `*Total:* ${escapeMarkdownV2(formatToPHP(diagnosis.total))}`,
       ``,
       `*Items:*`,
       ...diagnosis.items.map(
         (item) =>
           `\\- ${escapeMarkdownV2(item.name)}: ${escapeMarkdownV2(
-            item.price.toFixed(2)
+            formatToPHP(item.price)
           )}`
       ),
     ].join('\n');
