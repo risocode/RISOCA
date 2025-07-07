@@ -146,6 +146,7 @@ export default function LedgerPage() {
 
     if (response.success) {
       toast({
+        variant: 'success',
         title: 'Customer Added',
         description: 'The new customer has been added to the ledger.',
       });
