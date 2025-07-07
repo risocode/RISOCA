@@ -66,6 +66,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {Separator} from '@/components/ui/separator';
 
 const SaleItemSchema = z.object({
   itemId: z.string().optional(),
@@ -98,16 +99,16 @@ const SalesFormTotals = ({control}: {control: Control<SalesFormData>}) => {
   }, 0);
 
   return (
-    <div className="mt-4 text-right">
-      <p className="text-lg font-semibold">
-        Grand Total:{' '}
-        <span className="font-mono text-2xl">
-          ₱
-          {grandTotal.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </span>
+    <div className="mt-6 text-center">
+      <p className="text-lg font-semibold text-muted-foreground">
+        Grand Total
+      </p>
+      <p className="font-mono text-4xl font-bold tracking-tight">
+        ₱
+        {grandTotal.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
       </p>
     </div>
   );
@@ -132,6 +133,12 @@ export default function StorePage() {
   const {fields, append, remove} = useFieldArray({
     control: form.control,
     name: 'items',
+  });
+
+  const watchedItems = useWatch({
+    control: form.control,
+    name: 'items',
+    defaultValue: [],
   });
 
   useEffect(() => {
@@ -221,10 +228,10 @@ export default function StorePage() {
     <>
       <div className="p-4 md:p-6 space-y-6">
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Daily Sales</CardTitle>
+          <CardHeader className="text-center">
+            <CardTitle>Record Sale</CardTitle>
             <CardDescription>
-              Add items sold today. Stock will be updated automatically.
+              Add items sold to update inventory and track revenue.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -234,185 +241,210 @@ export default function StorePage() {
                 className="space-y-6"
               >
                 <div className="space-y-4">
-                  {fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className="flex flex-col sm:flex-row items-start gap-4 p-4 border rounded-lg bg-background"
-                    >
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.itemName`}
-                        render={({field}) => (
-                          <FormItem className="flex-1 w-full">
-                            <FormLabel className="sr-only sm:not-sr-only">
-                              Item Name
-                            </FormLabel>
-                            <Popover
-                              open={openPopovers[index]}
-                              onOpenChange={(open) =>
-                                setPopoverOpen(index, open)
-                              }
-                            >
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                      'w-full justify-between',
-                                      !field.value && 'text-muted-foreground'
-                                    )}
-                                  >
-                                    {field.value || 'Select or type an item'}
-                                    <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command
-                                  filter={(value, search) =>
-                                    value
-                                      .toLowerCase()
-                                      .includes(search.toLowerCase())
-                                      ? 1
-                                      : 0
-                                  }
-                                >
-                                  <CommandInput
-                                    placeholder="Search inventory..."
-                                    onValueChange={(search) => {
-                                      form.setValue(
-                                        `items.${index}.itemName`,
-                                        search
-                                      );
-                                      form.setValue(
-                                        `items.${index}.itemId`,
-                                        undefined
-                                      );
-                                    }}
-                                  />
-                                  <CommandList>
-                                    <CommandEmpty>
-                                      No inventory item found.
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                      {inventory.map((item) => (
-                                        <CommandItem
-                                          value={item.name}
-                                          key={item.id}
-                                          onSelect={() => {
-                                            form.setValue(
-                                              `items.${index}.itemName`,
-                                              item.name
-                                            );
-                                            form.setValue(
-                                              `items.${index}.unitPrice`,
-                                              item.price
-                                            );
-                                            form.setValue(
-                                              `items.${index}.itemId`,
-                                              item.id
-                                            );
-                                            setPopoverOpen(index, false);
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              'mr-2 h-4 w-4',
-                                              field.value === item.name
-                                                ? 'opacity-100'
-                                                : 'opacity-0'
-                                            )}
-                                          />
-                                          <span>{item.name}</span>
-                                          <span className="ml-auto text-xs text-muted-foreground">
-                                            Stock: {item.stock}
-                                          </span>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
-                                  </CommandList>
-                                </Command>
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex gap-2 w-full sm:w-auto">
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.quantity`}
-                          render={({field}) => (
-                            <FormItem className="flex-1">
-                              <FormLabel className="sr-only sm:not-sr-only">
-                                Qty
-                              </FormLabel>
-                              <FormControl>
-                                <Input type="number" placeholder="Qty" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`items.${index}.unitPrice`}
-                          render={({field}) => (
-                            <FormItem className="flex-1">
-                              <FormLabel className="sr-only sm:not-sr-only">
-                                Price
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="Price"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => remove(index)}
-                        disabled={fields.length <= 1}
-                        className="mt-0 sm:mt-6 text-destructive hover:bg-destructive/10 self-center sm:self-auto"
+                  {fields.map((field, index) => {
+                    const itemData = watchedItems[index] || {};
+                    const quantity = Number(itemData.quantity) || 0;
+                    const unitPrice = Number(itemData.unitPrice) || 0;
+                    const subtotal = quantity * unitPrice;
+
+                    return (
+                      <div
+                        key={field.id}
+                        className="space-y-4 p-4 border rounded-lg bg-background relative"
                       >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="sr-only">Remove</span>
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="absolute top-2 right-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => remove(index)}
+                            disabled={fields.length <= 1}
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="sr-only">Remove</span>
+                          </Button>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.itemName`}
+                          render={({field}) => (
+                            <FormItem>
+                              <FormLabel>Item</FormLabel>
+                              <Popover
+                                open={openPopovers[index]}
+                                onOpenChange={(open) =>
+                                  setPopoverOpen(index, open)
+                                }
+                              >
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className={cn(
+                                        'w-full justify-between',
+                                        !field.value && 'text-muted-foreground'
+                                      )}
+                                    >
+                                      {field.value || 'Select or type an item'}
+                                      <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                  <Command
+                                    filter={(value, search) =>
+                                      value
+                                        .toLowerCase()
+                                        .includes(search.toLowerCase())
+                                        ? 1
+                                        : 0
+                                    }
+                                  >
+                                    <CommandInput
+                                      placeholder="Search inventory..."
+                                      onValueChange={(search) => {
+                                        form.setValue(
+                                          `items.${index}.itemName`,
+                                          search
+                                        );
+                                        form.setValue(
+                                          `items.${index}.itemId`,
+                                          undefined
+                                        );
+                                      }}
+                                    />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        No inventory item found.
+                                      </CommandEmpty>
+                                      <CommandGroup>
+                                        {inventory.map((item) => (
+                                          <CommandItem
+                                            value={item.name}
+                                            key={item.id}
+                                            onSelect={() => {
+                                              form.setValue(
+                                                `items.${index}.itemName`,
+                                                item.name
+                                              );
+                                              form.setValue(
+                                                `items.${index}.unitPrice`,
+                                                item.price
+                                              );
+                                              form.setValue(
+                                                `items.${index}.itemId`,
+                                                item.id
+                                              );
+                                              setPopoverOpen(index, false);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                'mr-2 h-4 w-4',
+                                                field.value === item.name
+                                                  ? 'opacity-100'
+                                                  : 'opacity-0'
+                                              )}
+                                            />
+                                            <span>{item.name}</span>
+                                            <span className="ml-auto text-xs text-muted-foreground">
+                                              Stock: {item.stock}
+                                            </span>
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.quantity`}
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Qty</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="1"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`items.${index}.unitPrice`}
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <Separator />
+
+                        <div className="flex justify-between items-center text-right">
+                          <span className="text-sm font-medium text-muted-foreground">
+                            Subtotal
+                          </span>
+                          <span className="font-mono font-semibold text-lg">
+                            ₱
+                            {subtotal.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row items-stretch gap-4 sm:items-center sm:justify-between pt-4">
+                <div className="flex flex-col items-center gap-4 pt-4">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() =>
                       append({itemName: '', quantity: 1, unitPrice: 0})
                     }
+                    className="w-full sm:w-auto"
                   >
-                    <PlusCircle className="mr-2" /> Add Item
+                    <PlusCircle className="mr-2" /> Add Another Item
                   </Button>
                   <SalesFormTotals control={form.control} />
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                  Submit Sales
-                </Button>
+                <CardFooter className="p-0 pt-6">
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    size="lg"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                    Submit Sale
+                  </Button>
+                </CardFooter>
               </form>
             </Form>
           </CardContent>
@@ -463,7 +495,7 @@ export default function StorePage() {
           <CardFooter>
             <Button asChild variant="outline" className="w-full">
               <Link href="/store/history">
-                <History className="mr-2"/>
+                <History className="mr-2" />
                 View Full History
               </Link>
             </Button>
