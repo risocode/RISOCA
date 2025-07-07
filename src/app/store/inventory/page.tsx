@@ -201,117 +201,110 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
       <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Inventory</h1>
-          <p className="text-muted-foreground">
-            Add, edit, and manage your store's items.
-          </p>
-        </div>
-         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => handleOpenDialog()}>
-                <Plus className="mr-2" /> Add Item
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingItem ? 'Edit Item' : 'Add New Item'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingItem
-                    ? "Update the item's details below."
-                    : 'Fill in the details for the new item.'}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(handleFormSubmit)}
-                  className="space-y-4 py-4"
-                >
+        <h1 className="text-2xl font-bold">Inventory</h1>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="mr-2" /> Add Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem ? 'Edit Item' : 'Add New Item'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingItem
+                  ? "Update the item's details below."
+                  : 'Fill in the details for the new item.'}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(handleFormSubmit)}
+                className="space-y-4 py-4"
+              >
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Item Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., T-Shirt" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="cost"
                     render={({field}) => (
                       <FormItem>
-                        <FormLabel>Item Name</FormLabel>
+                        <FormLabel>Cost (₱)</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., T-Shirt" {...field} />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="100.00"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="cost"
-                      render={({field}) => (
-                        <FormItem>
-                          <FormLabel>Cost (₱)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="100.00"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({field}) => (
-                        <FormItem>
-                          <FormLabel>Selling Price (₱)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder="150.00"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
-                    name="stock"
+                    name="price"
                     render={({field}) => (
                       <FormItem>
-                        <FormLabel>Stock Quantity</FormLabel>
+                        <FormLabel>Selling Price (₱)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="100" {...field} />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="150.00"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button type="button" variant="secondary">
-                        Cancel
-                      </Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting && (
-                        <Loader2 className="mr-2 animate-spin" />
-                      )}
-                      {editingItem ? 'Save Changes' : 'Add Item'}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Stock Quantity</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="100" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="secondary">
+                      Cancel
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                  </DialogClose>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                    {editingItem ? 'Save Changes' : 'Add Item'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </header>
 
       <Card className="shadow-lg">
@@ -360,11 +353,15 @@ export default function InventoryPage() {
               ) : items.length > 0 ? (
                 items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="p-2 md:p-4 font-medium">{item.name}</TableCell>
+                    <TableCell className="p-2 md:p-4 font-medium">
+                      {item.name}
+                    </TableCell>
                     <TableCell className="p-2 md:p-4 whitespace-nowrap">
                       ₱{item.cost ? item.cost.toFixed(2) : '0.00'}
                     </TableCell>
-                    <TableCell className="p-2 md:p-4 whitespace-nowrap">₱{item.price.toFixed(2)}</TableCell>
+                    <TableCell className="p-2 md:p-4 whitespace-nowrap">
+                      ₱{item.price.toFixed(2)}
+                    </TableCell>
                     <TableCell className="p-2 md:p-4">{item.stock}</TableCell>
                     <TableCell className="p-2 md:p-4">
                       <div className="flex items-center justify-center gap-1">

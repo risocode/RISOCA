@@ -65,7 +65,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {format} from 'date-fns';
 
 const SaleItemSchema = z.object({
   itemId: z.string().optional(),
@@ -151,7 +150,9 @@ export default function StorePage() {
 
     const unsubInventory = onSnapshot(inventoryQuery, (snapshot) => {
       setInventory(
-        snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}) as InventoryItem)
+        snapshot.docs.map(
+          (doc) => ({id: doc.id, ...doc.data()}) as InventoryItem
+        )
       );
     });
 
@@ -220,12 +221,9 @@ export default function StorePage() {
 
   return (
     <>
-      <div className="p-4 md:p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <header>
-          <h1 className="text-3xl font-bold">Sales Dashboard</h1>
-          <p className="text-muted-foreground">
-            Record daily sales and manage recent transactions.
-          </p>
+          <h1 className="text-2xl font-bold">New Sale (POS)</h1>
         </header>
 
         <Card className="shadow-sm">
@@ -252,7 +250,9 @@ export default function StorePage() {
                         name={`items.${index}.itemName`}
                         render={({field}) => (
                           <FormItem className="flex-1 w-full">
-                            <FormLabel className="sr-only sm:not-sr-only">Item Name</FormLabel>
+                            <FormLabel className="sr-only sm:not-sr-only">
+                              Item Name
+                            </FormLabel>
                             <Popover
                               open={openPopovers[index]}
                               onOpenChange={(open) =>
@@ -277,33 +277,63 @@ export default function StorePage() {
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command
                                   filter={(value, search) =>
-                                    value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                                    value
+                                      .toLowerCase()
+                                      .includes(search.toLowerCase())
+                                      ? 1
+                                      : 0
                                   }
                                 >
                                   <CommandInput
                                     placeholder="Search inventory..."
                                     onValueChange={(search) => {
-                                      form.setValue(`items.${index}.itemName`, search);
-                                      form.setValue(`items.${index}.itemId`, undefined);
+                                      form.setValue(
+                                        `items.${index}.itemName`,
+                                        search
+                                      );
+                                      form.setValue(
+                                        `items.${index}.itemId`,
+                                        undefined
+                                      );
                                     }}
                                   />
                                   <CommandList>
-                                    <CommandEmpty>No inventory item found.</CommandEmpty>
+                                    <CommandEmpty>
+                                      No inventory item found.
+                                    </CommandEmpty>
                                     <CommandGroup>
                                       {inventory.map((item) => (
                                         <CommandItem
                                           value={item.name}
                                           key={item.id}
                                           onSelect={() => {
-                                            form.setValue(`items.${index}.itemName`, item.name);
-                                            form.setValue(`items.${index}.unitPrice`, item.price);
-                                            form.setValue(`items.${index}.itemId`, item.id);
+                                            form.setValue(
+                                              `items.${index}.itemName`,
+                                              item.name
+                                            );
+                                            form.setValue(
+                                              `items.${index}.unitPrice`,
+                                              item.price
+                                            );
+                                            form.setValue(
+                                              `items.${index}.itemId`,
+                                              item.id
+                                            );
                                             setPopoverOpen(index, false);
                                           }}
                                         >
-                                          <Check className={cn('mr-2 h-4 w-4', field.value === item.name ? 'opacity-100' : 'opacity-0')} />
+                                          <Check
+                                            className={cn(
+                                              'mr-2 h-4 w-4',
+                                              field.value === item.name
+                                                ? 'opacity-100'
+                                                : 'opacity-0'
+                                            )}
+                                          />
                                           <span>{item.name}</span>
-                                          <span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
+                                          <span className="ml-auto text-xs text-muted-foreground">
+                                            Stock: {item.stock}
+                                          </span>
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -321,8 +351,12 @@ export default function StorePage() {
                           name={`items.${index}.quantity`}
                           render={({field}) => (
                             <FormItem className="flex-1">
-                              <FormLabel className="sr-only sm:not-sr-only">Qty</FormLabel>
-                              <FormControl><Input type="number" placeholder="Qty" {...field} /></FormControl>
+                              <FormLabel className="sr-only sm:not-sr-only">
+                                Qty
+                              </FormLabel>
+                              <FormControl>
+                                <Input type="number" placeholder="Qty" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -332,8 +366,17 @@ export default function StorePage() {
                           name={`items.${index}.unitPrice`}
                           render={({field}) => (
                             <FormItem className="flex-1">
-                              <FormLabel className="sr-only sm:not-sr-only">Price</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="Price" {...field} /></FormControl>
+                              <FormLabel className="sr-only sm:not-sr-only">
+                                Price
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Price"
+                                  {...field}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -358,14 +401,21 @@ export default function StorePage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => append({itemName: '', quantity: 1, unitPrice: 0})}
+                    onClick={() =>
+                      append({itemName: '', quantity: 1, unitPrice: 0})
+                    }
                   >
                     <PlusCircle className="mr-2" /> Add Item
                   </Button>
                   <SalesFormTotals control={form.control} />
                 </div>
 
-                <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
                   Submit Sales
                 </Button>
@@ -386,24 +436,34 @@ export default function StorePage() {
               <ul className="space-y-2">
                 {recentSales.length > 0 ? (
                   recentSales.map((sale) => (
-                    <li key={sale.id} className="flex items-center justify-between p-2 rounded-md bg-background">
+                    <li
+                      key={sale.id}
+                      className="flex items-center justify-between p-2 rounded-md bg-background"
+                    >
                       <div>
                         <p className="font-medium">{sale.itemName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱{sale.total.toFixed(2)}
+                          {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱
+                          {sale.total.toFixed(2)}
                         </p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setVoidingSale(sale)}>
-                        <Trash2 className="mr-2 w-4 h-4"/>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setVoidingSale(sale)}
+                      >
+                        <Trash2 className="mr-2 w-4 h-4" />
                         Void
                       </Button>
                     </li>
                   ))
                 ) : (
-                   <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
-                    <FileWarning className="w-10 h-10 mb-2 text-muted-foreground"/>
-                    <p className="text-sm font-medium">No sales recorded today.</p>
-                   </div>
+                  <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
+                    <FileWarning className="w-10 h-10 mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium">
+                      No sales recorded today.
+                    </p>
+                  </div>
                 )}
               </ul>
             </CardContent>
@@ -417,7 +477,7 @@ export default function StorePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center text-center h-full">
-              <History className="w-12 h-12 mb-4 text-primary"/>
+              <History className="w-12 h-12 mb-4 text-primary" />
               <p className="mb-4 text-muted-foreground">
                 Access detailed reports and a full history of all your sales.
               </p>
@@ -429,12 +489,17 @@ export default function StorePage() {
         </div>
       </div>
 
-      <AlertDialog open={!!voidingSale} onOpenChange={(open) => !open && setVoidingSale(null)}>
+      <AlertDialog
+        open={!!voidingSale}
+        onOpenChange={(open) => !open && setVoidingSale(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently void the sale for "{voidingSale?.itemName}". The stock for this item will be restored. This action cannot be undone.
+              This will permanently void the sale for "{voidingSale?.itemName}
+              ". The stock for this item will be restored. This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

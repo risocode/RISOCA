@@ -197,27 +197,25 @@ export default function LedgerPage() {
     }
     return customersWithBalance;
   }, [customersWithBalance, filter]);
-  
+
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
 
-
   return (
     <>
-      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
         <header>
-          <h1 className="text-3xl font-bold">Credit Ledger</h1>
-          <p className="text-muted-foreground">
-            Manage customer credits and payments.
-          </p>
+          <h1 className="text-2xl font-bold">Credit Ledger</h1>
         </header>
 
         <Card className="shadow-lg text-primary-foreground bg-primary">
           <CardHeader>
-            <CardTitle className="text-lg font-normal">Total Outstanding Balance</CardTitle>
+            <CardTitle className="text-lg font-normal">
+              Total Outstanding Balance
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-5xl font-bold tracking-tighter">
@@ -238,11 +236,15 @@ export default function LedgerPage() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Credit</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Credit
+              </CardTitle>
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalCredit)}</div>
+              <div className="text-2xl font-bold">
+                {formatCurrency(totalCredit)}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -251,7 +253,9 @@ export default function LedgerPage() {
               <TrendingDown className="w-4 h-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalPayment)}</div>
+              <div className="text-2xl font-bold">
+                {formatCurrency(totalPayment)}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -259,7 +263,11 @@ export default function LedgerPage() {
         <Card>
           <CardHeader>
             <CardTitle>Customer List</CardTitle>
-            <Tabs defaultValue="all" className="w-full sm:w-auto" onValueChange={setFilter}>
+            <Tabs
+              defaultValue="all"
+              className="w-full sm:w-auto"
+              onValueChange={setFilter}
+            >
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 <TabsTrigger value="unpaid">With Balance</TabsTrigger>
@@ -271,7 +279,10 @@ export default function LedgerPage() {
             <div className="space-y-2">
               {isLoading ? (
                 Array.from({length: 5}).map((_, i) => (
-                  <div key={i} className="flex items-center p-4 space-x-4 border-b">
+                  <div
+                    key={i}
+                    className="flex items-center p-4 space-x-4 border-b"
+                  >
                     <Skeleton className="h-6 flex-1" />
                     <Skeleton className="h-6 w-20" />
                   </div>
@@ -284,7 +295,13 @@ export default function LedgerPage() {
                     className="flex items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
                   >
                     <span className="font-medium flex-1">{customer.name}</span>
-                    <span className={`font-mono text-right mr-2 ${customer.balance > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    <span
+                      className={`font-mono text-right mr-2 ${
+                        customer.balance > 0
+                          ? 'text-destructive'
+                          : 'text-green-600'
+                      }`}
+                    >
                       {formatCurrency(customer.balance)}
                     </span>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -292,8 +309,8 @@ export default function LedgerPage() {
                 ))
               ) : (
                 <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
-                    <Info className="w-8 h-8 mb-2"/>
-                    <p>No customers found for this filter.</p>
+                  <Info className="w-8 h-8 mb-2" />
+                  <p>No customers found for this filter.</p>
                 </div>
               )}
             </div>
