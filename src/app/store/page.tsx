@@ -3,7 +3,7 @@
 
 import {useState, useEffect} from 'react';
 import Link from 'next/link';
-import {useForm} from 'react-hook-form';
+import {useForm, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
 import {
@@ -110,6 +110,11 @@ export default function StorePage() {
     },
   });
 
+  const {control} = form;
+  const quantity = useWatch({control, name: 'quantity'});
+  const unitPrice = useWatch({control, name: 'unitPrice'});
+  const subtotal = (quantity || 0) * (unitPrice || 0);
+
   useEffect(() => {
     const inventoryQuery = query(
       collection(db, 'inventory'),
@@ -151,8 +156,9 @@ export default function StorePage() {
       unitPrice: 0,
       itemId: undefined,
     });
-    // Find the item name input and focus it
-    const input = document.querySelector('input[name="itemName"]') as HTMLInputElement | null;
+    const input = document.querySelector(
+      'input[name="itemName"]'
+    ) as HTMLInputElement | null;
     input?.focus();
   };
 
@@ -331,6 +337,16 @@ export default function StorePage() {
                     )}
                   />
                 </div>
+
+                {subtotal > 0 && (
+                  <div className="text-right text-lg font-medium pr-1 pt-2">
+                    <span className="text-muted-foreground">Subtotal: </span>
+                    <span className="font-mono font-bold text-foreground">
+                      ₱{subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <Button type="submit" className="w-full">
                   <PlusCircle className="mr-2" />
                   Add to Sale
@@ -343,14 +359,8 @@ export default function StorePage() {
         {receiptItems.length > 0 && (
           <Card className="shadow-sm animate-enter">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl font-bold">
-                RiSoCa Market
-              </CardTitle>
+              <CardTitle className="text-xl font-bold">Current Sale</CardTitle>
               <CardDescription className="text-xs">
-                123 Market Street, Suite 101
-                <br />
-                City, State ZIP
-                <br />
                 Date: {format(new Date(), 'MM/dd/yyyy')} | Time:{' '}
                 {format(new Date(), 'p')}
               </CardDescription>
@@ -362,6 +372,7 @@ export default function StorePage() {
                     <TableHead>Item</TableHead>
                     <TableHead className="text-center">Qty</TableHead>
                     <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -372,6 +383,9 @@ export default function StorePage() {
                       </TableCell>
                       <TableCell className="text-center">
                         {item.quantity}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        ₱{item.unitPrice.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         ₱{item.total.toFixed(2)}
@@ -389,7 +403,7 @@ export default function StorePage() {
               </div>
             </CardContent>
             <CardFooter className="flex-col items-center justify-center p-4 text-center text-xs text-muted-foreground">
-              <p>Thank you for shopping with us!</p>
+              <p>Thank you for your business!</p>
             </CardFooter>
           </Card>
         )}
