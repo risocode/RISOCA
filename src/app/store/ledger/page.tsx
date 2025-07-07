@@ -5,6 +5,7 @@ import {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
+import {z} from 'zod';
 import {
   collection,
   query,
@@ -15,9 +16,7 @@ import {
 import {db} from '@/lib/firebase';
 import {addCustomer} from '@/app/actions';
 import {
-  CustomerSchema,
   type Customer,
-  type CustomerInput,
   type LedgerTransaction,
 } from '@/lib/schemas';
 
@@ -48,6 +47,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {Input} from '@/components/ui/input';
+import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {
   UserPlus,
@@ -56,6 +56,15 @@ import {
   Info,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
+
+const AddCustomerFormSchema = z.object({
+  name: z.string().min(1, 'Customer name is required.'),
+  amount: z.coerce
+    .number()
+    .min(0, 'Initial credit must be a positive number.'),
+  description: z.string().optional(),
+});
+type AddCustomerFormData = z.infer<typeof AddCustomerFormSchema>;
 
 type CustomerWithBalance = Customer & {balance: number};
 
@@ -67,10 +76,12 @@ export default function LedgerPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const {toast} = useToast();
 
-  const form = useForm<CustomerInput>({
-    resolver: zodResolver(CustomerSchema),
+  const form = useForm<AddCustomerFormData>({
+    resolver: zodResolver(AddCustomerFormSchema),
     defaultValues: {
       name: '',
+      amount: 0,
+      description: '',
     },
   });
 
@@ -129,7 +140,7 @@ export default function LedgerPage() {
     };
   }, [toast]);
 
-  const handleFormSubmit = async (data: CustomerInput) => {
+  const handleFormSubmit = async (data: AddCustomerFormData) => {
     setIsSubmitting(true);
     const response = await addCustomer(data);
 
@@ -274,7 +285,7 @@ export default function LedgerPage() {
           <DialogHeader>
             <DialogTitle>Add New Customer</DialogTitle>
             <DialogDescription>
-              Enter the name of the new customer to add them to the ledger.
+              Enter the customer's details and their initial credit amount.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -295,6 +306,32 @@ export default function LedgerPage() {
                   </FormItem>
                 )}
               />
+               <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Initial Credit Amount (₱)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="description"
+                  render={({field}) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="e.g., Initial balance" {...field}/>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">

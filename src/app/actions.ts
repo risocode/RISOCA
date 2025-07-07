@@ -22,7 +22,6 @@ import {
 } from 'firebase/firestore';
 import type {
   InventoryItemInput,
-  CustomerInput,
   LedgerTransactionInput,
 } from '@/lib/schemas';
 
@@ -392,17 +391,35 @@ export async function verifyPassword(
 }
 
 // Actions for Credit Ledger
-export async function addCustomer(
-  customer: CustomerInput
-): Promise<{success: boolean; message?: string}> {
+export async function addCustomer(data: {
+  name: string;
+  amount: number;
+  description?: string;
+}): Promise<{success: boolean; message?: string}> {
   try {
-    await addDoc(collection(db, 'customers'), {
-      ...customer,
-      createdAt: serverTimestamp(),
+    await runTransaction(db, async (transaction) => {
+      // 1. Create the new customer document to get an ID
+      const customerRef = doc(collection(db, 'customers'));
+      transaction.set(customerRef, {
+        name: data.name,
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. If an amount is provided, create the initial ledger transaction
+      if (data.amount > 0) {
+        const ledgerRef = doc(collection(db, 'ledger'));
+        transaction.set(ledgerRef, {
+          customerId: customerRef.id,
+          type: 'credit',
+          amount: data.amount,
+          description: data.description || 'Initial balance',
+          createdAt: serverTimestamp(),
+        });
+      }
     });
     return {success: true};
   } catch (error) {
-    console.error('Error adding customer to Firestore: ', error);
+    console.error('Error adding customer with transaction: ', error);
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {success: false, message: `Could not add customer: ${message}`};
