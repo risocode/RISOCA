@@ -255,7 +255,9 @@ export default function StorePage() {
     if (!voidingSale) return;
 
     setIsVoiding(true);
-    const response = await voidSale(voidingSale);
+    // Destructure to remove the non-serializable `createdAt` Timestamp
+    const {createdAt, ...saleToVoid} = voidingSale;
+    const response = await voidSale(saleToVoid);
 
     if (response.success) {
       toast({
@@ -339,7 +341,7 @@ export default function StorePage() {
                 >
                   <DialogTrigger asChild>
                     <Button variant="outline">
-                      <Trash2 className="mr-2" /> Void a Sale
+                      <Trash2 className="mr-2" /> Void
                     </Button>
                   </DialogTrigger>
                   <DialogContent>

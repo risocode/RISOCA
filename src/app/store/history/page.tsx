@@ -95,7 +95,9 @@ export default function SalesHistoryPage() {
     if (!voidingSale) return;
 
     setIsVoiding(true);
-    const response = await voidSale(voidingSale);
+    // Destructure to remove the non-serializable `createdAt` Timestamp
+    const {createdAt, ...saleToVoid} = voidingSale;
+    const response = await voidSale(saleToVoid);
 
     if (response.success) {
       toast({
