@@ -1,15 +1,15 @@
+
 'use client';
 
 import {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
-import {useForm} from 'react-hook-form';
+import {useForm, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {
   collection,
   query,
   onSnapshot,
-  orderBy,
   doc,
   where,
 } from 'firebase/firestore';
@@ -29,7 +29,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -73,6 +72,7 @@ import {
 } from '@/components/ui/form';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Badge} from '@/components/ui/badge';
+import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
 
 const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true});
@@ -92,6 +92,7 @@ export default function CustomerLedgerPage() {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertAction, setAlertAction] = useState<'deleteTransaction' | 'deleteCustomer' | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -101,6 +102,8 @@ export default function CustomerLedgerPage() {
       description: '',
     },
   });
+
+  const formType = useWatch({ control: form.control, name: 'type' });
 
   useEffect(() => {
     if (!customerId) return;
@@ -131,7 +134,6 @@ export default function CustomerLedgerPage() {
       const transData = snapshot.docs.map(
         (doc) => ({id: doc.id, ...doc.data()} as LedgerTransaction)
       );
-       // Sort transactions by date on the client-side to avoid composite index
       transData.sort((a, b) => {
         if (!a.createdAt || !b.createdAt) return 0;
         return b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime();
@@ -150,6 +152,44 @@ export default function CustomerLedgerPage() {
       return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
     }, 0);
   }, [transactions]);
+  
+  const creditTransactions = useMemo(() => {
+    return transactions
+      .filter((tx) => tx.type === 'credit')
+      .sort((a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime());
+  }, [transactions]);
+
+
+  useEffect(() => {
+    if (formType === 'credit') {
+      if (selectedCredits.size > 0) {
+        setSelectedCredits(new Set());
+      }
+      return;
+    }
+
+    const selectedTxs = creditTransactions.filter(tx => selectedCredits.has(tx.id));
+    const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+    if (selectedTxs.length > 0) {
+      form.setValue('amount', total, { shouldValidate: true });
+      const description = `Payment for: ${selectedTxs.map(tx => tx.description || `Credit on ${format(tx.createdAt.toDate(), 'PP')}`).join(', ')}`;
+      form.setValue('description', description);
+    }
+  }, [selectedCredits, creditTransactions, form, formType]);
+
+
+  const handleCreditSelection = (txId: string) => {
+    setSelectedCredits(prev => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(txId)) {
+            newSelection.delete(txId);
+        } else {
+            newSelection.add(txId);
+        }
+        return newSelection;
+    });
+  };
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
@@ -161,10 +201,11 @@ export default function CustomerLedgerPage() {
         description: 'The transaction has been successfully recorded.',
       });
       form.reset({
-        type: 'credit',
+        type: data.type,
         amount: 0,
         description: '',
       });
+      setSelectedCredits(new Set());
     } else {
       toast({
         variant: 'destructive',
@@ -232,7 +273,7 @@ export default function CustomerLedgerPage() {
               <span className="sr-only">Back to Ledger</span>
             </Link>
           </Button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold truncate">{customer?.name}</h1>
             <p className="text-muted-foreground">
               Balance: <span className={`font-bold ${balance > 0 ? 'text-destructive' : 'text-green-600'}`}>{formatCurrency(balance)}</span>
@@ -253,26 +294,62 @@ export default function CustomerLedgerPage() {
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-                            <FormField control={form.control} name="type" render={({field}) => (
-                                <FormItem><FormControl>
-                                   <Tabs defaultValue="credit" onValueChange={field.onChange} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2">
-                                            <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
-                                            <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
-                                </FormControl><FormMessage/></FormItem>
-                            )}/>
+                            <Tabs defaultValue="credit" onValueChange={(value) => form.setValue('type', value as 'credit' | 'payment')} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
+                                    <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                            
                              <FormField control={form.control} name="amount" render={({field}) => (
                                 <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                    <Input type="number" step="0.01" {...field} />
+                                    <Input type="number" step="0.01" {...field} onChange={(e) => {
+                                        field.onChange(e);
+                                        setSelectedCredits(new Set());
+                                    }}/>
                                 </FormControl><FormMessage/></FormItem>
                             )}/>
                              <FormField control={form.control} name="description" render={({field}) => (
-                                <FormItem><FormLabel>Description (Optional)</FormLabel><FormControl>
+                                <FormItem><FormLabel>Description</FormLabel><FormControl>
                                     <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
                                 </FormControl><FormMessage/></FormItem>
                             )}/>
+                            
+                            {formType === 'payment' && (
+                                <div className="space-y-2">
+                                    <FormLabel>Pay off specific credits (optional)</FormLabel>
+                                    <Card className="max-h-60 overflow-y-auto">
+                                        <CardContent className="p-2">
+                                        {creditTransactions.length > 0 ? (
+                                            creditTransactions.map(tx => (
+                                                <div key={tx.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted">
+                                                    <Checkbox
+                                                        id={`credit-${tx.id}`}
+                                                        checked={selectedCredits.has(tx.id)}
+                                                        onCheckedChange={() => handleCreditSelection(tx.id)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`credit-${tx.id}`}
+                                                        className="flex justify-between items-center w-full text-sm font-normal cursor-pointer"
+                                                    >
+                                                        <div>
+                                                            <p className="font-medium">{tx.description || 'Credit'}</p>
+                                                            <p className="text-xs text-muted-foreground">{format(tx.createdAt.toDate(), 'PP')}</p>
+                                                        </div>
+                                                        <span className="font-mono">{formatCurrency(tx.amount)}</span>
+                                                    </label>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center p-4">
+                                                No outstanding credits found.
+                                            </p>
+                                        )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )}
+
                             <Button type="submit" disabled={isSubmitting} className="w-full">
                                 {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : null}
                                 Add Transaction
@@ -293,7 +370,8 @@ export default function CustomerLedgerPage() {
                             <TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Type</TableHead>
-                                <TableHead>Amount</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
                                 <TableHead className="text-center">Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -303,7 +381,8 @@ export default function CustomerLedgerPage() {
                                     <TableRow key={tx.id}>
                                         <TableCell>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
                                         <TableCell><Badge variant={tx.type === 'credit' ? 'destructive' : 'default'}>{tx.type}</Badge></TableCell>
-                                        <TableCell className="font-mono">{formatCurrency(tx.amount)}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
+                                        <TableCell className="text-right font-mono">{formatCurrency(tx.amount)}</TableCell>
                                         <TableCell className="text-center">
                                             <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)}>
                                                 <Trash2 className="w-4 h-4 text-destructive"/>
@@ -354,3 +433,5 @@ export default function CustomerLedgerPage() {
     </>
   );
 }
+
+    
