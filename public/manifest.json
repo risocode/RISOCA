@@ -1,26 +1,33 @@
 {
+  "theme_color": "#111317",
+  "background_color": "#f0faf9",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
   "name": "RiSoCa Receipt",
   "short_name": "RiSoCa",
-  "description": "An AI-powered receipt scanner and expense tracker.",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#111317",
-  "theme_color": "#6c47ff",
+  "description": "An application for tracking sales and managing a store inventory.",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

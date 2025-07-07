@@ -36,7 +36,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#111317" />
 
-        <link rel="icon" href="/icons/favicon.ico" />
+        <link rel="icon" href="/favicon.ico" />
       </head>
       <body className="font-body antialiased h-full bg-background">
         <SiteProtection>
