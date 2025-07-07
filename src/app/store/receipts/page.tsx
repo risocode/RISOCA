@@ -448,7 +448,7 @@ export default function ReceiptPage() {
   }
 
   const renderInitialState = () => (
-    <div className="w-full max-w-2xl text-center animate-enter">
+    <div className="w-full text-center animate-enter md:max-w-2xl md:mx-auto">
       <p className="mb-8 text-lg text-muted-foreground">
         Scan, capture, or manually enter a receipt.
       </p>
@@ -728,8 +728,8 @@ export default function ReceiptPage() {
   );
 
   const renderPreviewState = () => (
-    <div className="animate-enter">
-      <Card className="w-full max-w-lg">
+    <div className="animate-enter w-full md:max-w-lg md:mx-auto">
+      <Card>
         <CardHeader>
           <CardTitle>Ready to Scan</CardTitle>
           <CardDescription>
@@ -761,8 +761,8 @@ export default function ReceiptPage() {
   );
 
   const renderLoadingState = () => (
-    <div className="animate-enter">
-      <Card className="w-full max-w-2xl">
+    <div className="animate-enter w-full md:max-w-2xl md:mx-auto">
+      <Card>
         <CardHeader>
           <CardTitle>Processing Receipt</CardTitle>
           <CardDescription>
@@ -796,8 +796,8 @@ export default function ReceiptPage() {
 
   const renderResultsState = () =>
     diagnosis && (
-      <div className="animate-enter">
-        <Card className="w-full max-w-3xl">
+      <div className="animate-enter w-full md:max-w-3xl md:mx-auto">
+        <Card>
           <CardHeader>
             <CardTitle>Process Complete</CardTitle>
             <CardDescription>
@@ -904,8 +904,8 @@ export default function ReceiptPage() {
     );
 
   const renderErrorState = () => (
-    <div className="animate-enter">
-      <Card className="w-full max-w-lg shadow-2xl shadow-destructive/20">
+    <div className="animate-enter w-full md:max-w-lg md:mx-auto">
+      <Card className="shadow-2xl shadow-destructive/20">
         <CardHeader>
           <CardTitle>Processing Failed</CardTitle>
           <CardDescription>
@@ -941,7 +941,7 @@ export default function ReceiptPage() {
   );
 
   const AddReceiptTabContent = () => (
-    <div className="flex flex-col items-center justify-start w-full py-8">
+    <div className="flex flex-col justify-start w-full py-4 md:py-8">
       <div className="w-full">
         {isLoading
           ? renderLoadingState()

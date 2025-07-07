@@ -339,7 +339,7 @@ export default function InventoryPage() {
                 <TableHead>Cost</TableHead>
                 <TableHead>Selling Price</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -359,7 +359,7 @@ export default function InventoryPage() {
                       <Skeleton className="h-5 w-1/3" />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Skeleton className="h-8 w-20 ml-auto" />
+                      <Skeleton className="h-8 w-20 mx-auto" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -372,23 +372,25 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell className="p-2 md:p-4 whitespace-nowrap">₱{item.price.toFixed(2)}</TableCell>
                     <TableCell className="p-2 md:p-4">{item.stock}</TableCell>
-                    <TableCell className="p-2 md:p-4 text-right space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenDialog(item)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleOpenAlert(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
+                    <TableCell className="p-2 md:p-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDialog(item)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenAlert(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
