@@ -75,8 +75,8 @@ import {Badge} from '@/components/ui/badge';
 import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
 
-const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true});
-type TransactionFormData = Omit<LedgerTransactionInput, 'customerId'>;
+const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
+type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
 
 export default function CustomerLedgerPage() {
   const params = useParams();
@@ -153,11 +153,21 @@ export default function CustomerLedgerPage() {
     }, 0);
   }, [transactions]);
   
-  const creditTransactions = useMemo(() => {
-    return transactions
-      .filter((tx) => tx.type === 'credit')
-      .sort((a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime());
+  const paidCreditIds = useMemo(() => {
+    const ids = new Set<string>();
+    transactions.forEach(tx => {
+        if (tx.type === 'payment' && tx.paidCreditIds) {
+            tx.paidCreditIds.forEach(id => ids.add(id));
+        }
+    });
+    return ids;
   }, [transactions]);
+
+  const outstandingCreditTransactions = useMemo(() => {
+    return transactions
+      .filter((tx) => tx.type === 'credit' && !paidCreditIds.has(tx.id))
+      .sort((a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime());
+  }, [transactions, paidCreditIds]);
 
 
   useEffect(() => {
@@ -168,7 +178,7 @@ export default function CustomerLedgerPage() {
       return;
     }
 
-    const selectedTxs = creditTransactions.filter(tx => selectedCredits.has(tx.id));
+    const selectedTxs = outstandingCreditTransactions.filter(tx => selectedCredits.has(tx.id));
     const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
     if (selectedTxs.length > 0) {
@@ -176,7 +186,7 @@ export default function CustomerLedgerPage() {
       const description = `Payment for: ${selectedTxs.map(tx => tx.description || `Credit on ${format(tx.createdAt.toDate(), 'PP')}`).join(', ')}`;
       form.setValue('description', description);
     }
-  }, [selectedCredits, creditTransactions, form, formType]);
+  }, [selectedCredits, outstandingCreditTransactions, form, formType]);
 
 
   const handleCreditSelection = (txId: string) => {
@@ -193,7 +203,17 @@ export default function CustomerLedgerPage() {
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
-    const response = await addLedgerTransaction({customerId, ...data});
+    
+    const payload: LedgerTransactionInput = {
+      customerId,
+      ...data,
+    };
+
+    if (data.type === 'payment' && selectedCredits.size > 0) {
+        payload.paidCreditIds = Array.from(selectedCredits);
+    }
+
+    const response = await addLedgerTransaction(payload);
 
     if (response.success) {
       toast({
@@ -320,8 +340,8 @@ export default function CustomerLedgerPage() {
                                     <FormLabel>Pay off specific credits (optional)</FormLabel>
                                     <Card className="max-h-60 overflow-y-auto">
                                         <CardContent className="p-2">
-                                        {creditTransactions.length > 0 ? (
-                                            creditTransactions.map(tx => (
+                                        {outstandingCreditTransactions.length > 0 ? (
+                                            outstandingCreditTransactions.map(tx => (
                                                 <div key={tx.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted">
                                                     <Checkbox
                                                         id={`credit-${tx.id}`}
@@ -351,8 +371,8 @@ export default function CustomerLedgerPage() {
                             )}
 
                             <Button type="submit" disabled={isSubmitting} className="w-full">
-                                {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : null}
-                                Add Transaction
+                                {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                                {formType === 'payment' ? 'Pay' : 'Add Credit'}
                             </Button>
                         </form>
                     </Form>
@@ -433,5 +453,3 @@ export default function CustomerLedgerPage() {
     </>
   );
 }
-
-    

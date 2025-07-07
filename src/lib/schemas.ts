@@ -31,6 +31,7 @@ export const LedgerTransactionSchema = z.object({
   type: z.enum(['credit', 'payment']),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
   description: z.string().optional(),
+  paidCreditIds: z.array(z.string()).optional(),
 });
 
 export type LedgerTransactionInput = z.infer<typeof LedgerTransactionSchema>;
