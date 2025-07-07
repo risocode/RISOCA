@@ -108,7 +108,7 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
     icon = (
       <Landmark
         className={`w-6 h-6 ${
-          isCredit ? 'text-destructive' : 'text-green-600'
+          isCredit ? 'text-destructive' : 'text-success'
         }`}
       />
     );
@@ -119,14 +119,14 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
     amountDisplay = (
       <p
         className={`font-bold text-lg ${
-          isCredit ? 'text-destructive' : 'text-green-600'
+          isCredit ? 'text-destructive' : 'text-success'
         }`}
       >
         {formatCurrency(ledgerData.amount)}
       </p>
     );
     badge = (
-      <Badge variant={isCredit ? 'destructive' : 'default'}>
+      <Badge variant={isCredit ? 'destructive' : 'success'}>
         {ledgerData.type}
       </Badge>
     );

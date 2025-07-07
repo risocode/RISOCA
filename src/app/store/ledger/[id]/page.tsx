@@ -74,6 +74,7 @@ import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Badge} from '@/components/ui/badge';
 import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
+import {cn} from '@/lib/utils';
 
 const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
 type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
@@ -296,7 +297,7 @@ export default function CustomerLedgerPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold truncate">{customer?.name}</h1>
             <p className="text-muted-foreground">
-              Balance: <span className={`font-bold ${balance > 0 ? 'text-destructive' : 'text-green-600'}`}>{formatCurrency(balance)}</span>
+              Balance: <span className={`font-bold ${balance > 0 ? 'text-destructive' : 'text-success'}`}>{formatCurrency(balance)}</span>
             </p>
           </div>
         </div>
@@ -342,7 +343,14 @@ export default function CustomerLedgerPage() {
                                         <CardContent className="p-2">
                                         {outstandingCreditTransactions.length > 0 ? (
                                             outstandingCreditTransactions.map(tx => (
-                                                <div key={tx.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted">
+                                                <div
+                                                  key={tx.id}
+                                                  className={cn(
+                                                    'flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted',
+                                                    selectedCredits.has(tx.id) &&
+                                                      'bg-destructive/10 border border-destructive/30'
+                                                  )}
+                                                >
                                                     <Checkbox
                                                         id={`credit-${tx.id}`}
                                                         checked={selectedCredits.has(tx.id)}
@@ -389,7 +397,7 @@ export default function CustomerLedgerPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Type</TableHead>
+                                <TableHead className="text-center">Type</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
                                 <TableHead className="text-center">Action</TableHead>
@@ -400,7 +408,7 @@ export default function CustomerLedgerPage() {
                                 transactions.map((tx) => (
                                     <TableRow key={tx.id}>
                                         <TableCell>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
-                                        <TableCell><Badge variant={tx.type === 'credit' ? 'destructive' : 'default'}>{tx.type}</Badge></TableCell>
+                                        <TableCell className="text-center"><Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge></TableCell>
                                         <TableCell className="max-w-[200px] truncate">{tx.description}</TableCell>
                                         <TableCell className="text-right font-mono">{formatCurrency(tx.amount)}</TableCell>
                                         <TableCell className="text-center">
