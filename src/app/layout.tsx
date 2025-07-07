@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/logo.png?v=3',
-    shortcut: '/logo.png?v=3',
-    apple: '/logo.png?v=3',
+    icon: '/logo.png?v=4',
+    shortcut: '/logo.png?v=4',
+    apple: '/logo.png?v=4',
   },
 };
 
