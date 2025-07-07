@@ -94,7 +94,7 @@ export default function HomePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <header className="flex justify-between items-center">
+      <header className="flex justify-center items-center">
         <Image
           src="/logo.png"
           alt="RiSoCa Logo"
