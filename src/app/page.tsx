@@ -6,10 +6,8 @@ import {
   collection,
   query,
   onSnapshot,
-  orderBy,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import type {LedgerTransaction} from '@/lib/schemas';
 import {cn} from '@/lib/utils';
 
 import {
@@ -26,18 +24,20 @@ const StatCard = ({
   title,
   value,
   isLoading,
+  className,
 }: {
   title: string;
   value: string | number;
   isLoading?: boolean;
+  className?: string;
 }) => (
-  <Card className="bg-primary text-primary-foreground text-center shadow-lg">
+  <Card className={cn('text-center shadow-lg', className)}>
     <CardHeader className="pb-2">
       <CardTitle className="text-sm font-medium opacity-80">{title}</CardTitle>
     </CardHeader>
     <CardContent>
       {isLoading ? (
-        <Skeleton className="h-10 w-3/4 mx-auto bg-primary/80" />
+        <Skeleton className="h-10 w-3/4 mx-auto bg-white/20" />
       ) : (
         <div className="text-4xl font-bold tracking-tighter">{value}</div>
       )}
@@ -73,37 +73,57 @@ const ActionButton = ({
 );
 
 export default function HomePage() {
-  const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [sales, setSales] = useState<{ total: number }[]>([]);
+  const [receipts, setReceipts] = useState<{ total: number }[]>([]);
+  const [isLoadingSales, setIsLoadingSales] = useState(true);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(true);
 
   useEffect(() => {
-    setIsLoading(true);
-
-    const q = query(collection(db, 'ledger'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(
-      q,
+    const salesQuery = query(collection(db, 'sales'));
+    const unsubSales = onSnapshot(
+      salesQuery,
       (snapshot) => {
-        setTransactions(
-          snapshot.docs.map(
-            (doc) => ({id: doc.id, ...doc.data()}) as LedgerTransaction
-          )
+        const salesData = snapshot.docs.map(
+          (doc) => doc.data() as { total: number }
         );
-        setIsLoading(false);
+        setSales(salesData);
+        setIsLoadingSales(false);
       },
       (err) => {
-        console.error('Firebase snapshot error:', err);
-        setIsLoading(false);
+        console.error('Firebase sales snapshot error:', err);
+        setIsLoadingSales(false);
       }
     );
 
-    return () => unsubscribe();
+    const receiptsQuery = query(collection(db, 'receipts'));
+    const unsubReceipts = onSnapshot(
+      receiptsQuery,
+      (snapshot) => {
+        const receiptsData = snapshot.docs.map(
+          (doc) => doc.data() as { total: number }
+        );
+        setReceipts(receiptsData);
+        setIsLoadingExpenses(false);
+      },
+      (err) => {
+        console.error('Firebase receipts snapshot error:', err);
+        setIsLoadingExpenses(false);
+      }
+    );
+
+    return () => {
+      unsubSales();
+      unsubReceipts();
+    };
   }, []);
 
-  const totalBalance = useMemo(() => {
-    return transactions.reduce((acc, tx) => {
-      return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
-    }, 0);
-  }, [transactions]);
+  const totalSales = useMemo(() => {
+    return sales.reduce((acc, sale) => acc + sale.total, 0);
+  }, [sales]);
+
+  const totalExpenses = useMemo(() => {
+    return receipts.reduce((acc, receipt) => acc + receipt.total, 0);
+  }, [receipts]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -169,11 +189,20 @@ export default function HomePage() {
       </header>
 
       <main className="space-y-6">
-        <StatCard
-          title="Your Credit Balance"
-          value={formatCurrency(totalBalance)}
-          isLoading={isLoading}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <StatCard
+            title="Total Sales"
+            value={formatCurrency(totalSales)}
+            isLoading={isLoadingSales}
+            className="bg-primary text-primary-foreground"
+          />
+          <StatCard
+            title="Total Expenses"
+            value={formatCurrency(totalExpenses)}
+            isLoading={isLoadingExpenses}
+            className="bg-accent text-accent-foreground"
+          />
+        </div>
 
         <Card>
           <CardContent className="pt-6 grid grid-cols-4 gap-4">
