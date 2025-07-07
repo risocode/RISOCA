@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect, useMemo} from 'react';
@@ -271,7 +272,7 @@ export default function InventoryPage() {
                     name="price"
                     render={({field}) => (
                       <FormItem>
-                        <FormLabel>Selling Price (₱)</FormLabel>
+                        <FormLabel>Price (₱)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -342,30 +343,30 @@ export default function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-2/5">Product Name</TableHead>
-                <TableHead>Cost</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="px-2 md:px-4">Product Name</TableHead>
+                <TableHead className="px-2 md:px-4">Cost</TableHead>
+                <TableHead className="px-2 md:px-4">Price</TableHead>
+                <TableHead className="text-center px-2 md:px-4">Stock</TableHead>
+                <TableHead className="text-right px-2 md:px-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({length: 5}).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4">
                       <Skeleton className="h-5 w-3/4" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4">
                       <Skeleton className="h-5 w-1/2" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4">
                       <Skeleton className="h-5 w-1/2" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="p-2 md:p-4">
                       <Skeleton className="h-5 w-1/3" />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right p-2 md:p-4">
                       <Skeleton className="h-8 w-10 ml-auto" />
                     </TableCell>
                   </TableRow>
@@ -382,7 +383,7 @@ export default function InventoryPage() {
                     <TableCell className="p-2 md:p-4 whitespace-nowrap">
                       ₱{item.price.toFixed(2)}
                     </TableCell>
-                    <TableCell className="p-2 md:p-4">{item.stock}</TableCell>
+                    <TableCell className="p-2 md:p-4 text-center">{item.stock}</TableCell>
                     <TableCell className="p-2 md:p-4 text-right">
                       <Button
                         variant="ghost"
