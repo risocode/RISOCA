@@ -14,3 +14,28 @@ export type InventoryItem = InventoryItemInput & {
   id: string;
   createdAt: Timestamp;
 };
+
+export const CustomerSchema = z.object({
+  name: z.string().min(1, 'Customer name is required.'),
+});
+
+export type CustomerInput = z.infer<typeof CustomerSchema>;
+
+export type Customer = CustomerInput & {
+  id: string;
+  createdAt: Timestamp;
+};
+
+export const LedgerTransactionSchema = z.object({
+  customerId: z.string(),
+  type: z.enum(['credit', 'payment']),
+  amount: z.coerce.number().positive('Amount must be a positive number.'),
+  description: z.string().optional(),
+});
+
+export type LedgerTransactionInput = z.infer<typeof LedgerTransactionSchema>;
+
+export type LedgerTransaction = LedgerTransactionInput & {
+  id: string;
+  createdAt: Timestamp;
+};

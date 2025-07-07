@@ -55,6 +55,7 @@ import {
   Check,
   ChevronsUpDown,
   ScanLine,
+  BookUser,
 } from 'lucide-react';
 import {ScrollArea} from '@/components/ui/scroll-area';
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -326,6 +327,12 @@ export default function StorePage() {
               <Link href="/store/inventory">
                 <PackageSearch className="mr-2" />
                 Manage Inventory
+              </Link>
+            </Button>
+             <Button asChild variant="outline" className="justify-center">
+              <Link href="/store/ledger">
+                <BookUser className="mr-2" />
+                Credit Ledger
               </Link>
             </Button>
           </div>

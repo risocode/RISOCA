@@ -9,7 +9,7 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from '@/components/ui/sidebar';
-import {Store} from 'lucide-react';
+import {Store, BookUser} from 'lucide-react';
 
 export function AppSidebar() {
   return (
@@ -34,6 +34,14 @@ export function AppSidebar() {
             <Link href="/store">
               <Store />
               <span>RiSoCa Store</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link href="/store/ledger">
+              <BookUser />
+              <span>Credit Ledger</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

@@ -1,0 +1,393 @@
+'use client';
+
+import {useState, useEffect, useMemo} from 'react';
+import Link from 'next/link';
+import {useParams, useRouter} from 'next/navigation';
+import {useForm} from 'react-hook-form';
+import {zodResolver} from '@hookform/resolvers/zod';
+import {
+  collection,
+  query,
+  onSnapshot,
+  orderBy,
+  doc,
+  where,
+} from 'firebase/firestore';
+import {db} from '@/lib/firebase';
+import {
+  addLedgerTransaction,
+  deleteLedgerTransaction,
+  deleteCustomer,
+} from '@/app/actions';
+import {
+  LedgerTransactionSchema,
+  type Customer,
+  type LedgerTransaction,
+  type LedgerTransactionInput,
+} from '@/lib/schemas';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {Button} from '@/components/ui/button';
+import {useToast} from '@/hooks/use-toast';
+import {
+  ArrowLeft,
+  Trash2,
+  Loader2,
+  Plus,
+  Minus,
+  MessageSquare,
+} from 'lucide-react';
+import {Skeleton} from '@/components/ui/skeleton';
+import {Input} from '@/components/ui/input';
+import {Textarea} from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {Badge} from '@/components/ui/badge';
+import {format} from 'date-fns';
+
+const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true});
+type TransactionFormData = Omit<LedgerTransactionInput, 'customerId'>;
+
+export default function CustomerLedgerPage() {
+  const params = useParams();
+  const router = useRouter();
+  const customerId = params.id as string;
+  const {toast} = useToast();
+
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertAction, setAlertAction] = useState<'deleteTransaction' | 'deleteCustomer' | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const form = useForm<TransactionFormData>({
+    resolver: zodResolver(TransactionFormSchema),
+    defaultValues: {
+      type: 'credit',
+      amount: 0,
+      description: '',
+    },
+  });
+
+  useEffect(() => {
+    if (!customerId) return;
+    setIsLoading(true);
+
+    const unsubCustomer = onSnapshot(
+      doc(db, 'customers', customerId),
+      (doc) => {
+        if (doc.exists()) {
+          setCustomer({id: doc.id, ...doc.data()} as Customer);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Customer not found',
+            description: 'This customer may have been deleted.',
+          });
+          router.push('/store/ledger');
+        }
+        setIsLoading(false);
+      }
+    );
+
+    const transQuery = query(
+      collection(db, 'ledger'),
+      where('customerId', '==', customerId),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubTransactions = onSnapshot(transQuery, (snapshot) => {
+      const transData = snapshot.docs.map(
+        (doc) => ({id: doc.id, ...doc.data()} as LedgerTransaction)
+      );
+      setTransactions(transData);
+    });
+
+    return () => {
+      unsubCustomer();
+      unsubTransactions();
+    };
+  }, [customerId, router, toast]);
+
+  const balance = useMemo(() => {
+    return transactions.reduce((acc, tx) => {
+      return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
+    }, 0);
+  }, [transactions]);
+
+  const handleFormSubmit = async (data: TransactionFormData) => {
+    setIsSubmitting(true);
+    const response = await addLedgerTransaction({customerId, ...data});
+
+    if (response.success) {
+      toast({
+        title: 'Transaction Added',
+        description: 'The transaction has been successfully recorded.',
+      });
+      form.reset({
+        type: 'credit',
+        amount: 0,
+        description: '',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Action Failed',
+        description: response.message || 'An unknown error occurred.',
+      });
+    }
+    setIsSubmitting(false);
+  };
+
+  const openDeleteAlert = (action: 'deleteTransaction' | 'deleteCustomer', id?: string) => {
+      setAlertAction(action);
+      if(id) setDeletingId(id);
+      setIsAlertOpen(true);
+  }
+
+  const handleConfirmDelete = async () => {
+    if(!alertAction) return;
+
+    setIsDeleting(true);
+
+    let response;
+    if (alertAction === 'deleteTransaction' && deletingId) {
+      response = await deleteLedgerTransaction(deletingId);
+    } else if (alertAction === 'deleteCustomer') {
+      response = await deleteCustomer(customerId);
+    }
+    
+    if (response?.success) {
+      toast({title: 'Success', description: 'The action was completed successfully.'});
+      if(alertAction === 'deleteCustomer') router.push('/store/ledger');
+    } else {
+      toast({variant: 'destructive', title: 'Action Failed', description: response?.message || 'An error occurred.'});
+    }
+
+    setIsDeleting(false);
+    setIsAlertOpen(false);
+    setAlertAction(null);
+    setDeletingId(null);
+  };
+  
+  const formatCurrency = (value: number) =>
+    `₱${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <Skeleton className="h-8 w-1/4 mb-4" />
+        <Skeleton className="h-4 w-1/2 mb-8" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-1/3" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-40 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <>
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+       <header className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button asChild variant="outline" size="icon">
+            <Link href="/store/ledger">
+              <ArrowLeft />
+              <span className="sr-only">Back to Ledger</span>
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{customer?.name}</h1>
+            <p className="text-muted-foreground">
+              Current Balance: <span className="font-bold text-primary">{formatCurrency(balance)}</span>
+            </p>
+          </div>
+        </div>
+        <Button variant="destructive" onClick={() => openDeleteAlert('deleteCustomer')}>
+            <Trash2 className="mr-2"/> Delete Customer
+        </Button>
+      </header>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+            <Card>
+                <CardHeader>
+                    <CardTitle>New Transaction</CardTitle>
+                    <CardDescription>Add a credit or payment for this customer.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Transaction Type</FormLabel>
+                                        <FormControl>
+                                           <Tabs defaultValue="credit" onValueChange={field.onChange} className="w-full">
+                                                <TabsList className="grid w-full grid-cols-2">
+                                                    <TabsTrigger value="credit"><Plus className="mr-2"/>Credit</TabsTrigger>
+                                                    <TabsTrigger value="payment"><Minus className="mr-2"/>Payment</TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+                                        </FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="amount"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Amount (₱)</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" step="0.01" {...field} />
+                                        </FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="description"
+                                render={({field}) => (
+                                    <FormItem>
+                                        <FormLabel>Description (Optional)</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
+                                        </FormControl>
+                                        <FormMessage/>
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" disabled={isSubmitting} className="w-full">
+                                {isSubmitting ? <Loader2 className="mr-2 animate-spin"/> : null}
+                                Add Transaction
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
+        </div>
+        <div className="lg:col-span-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Transaction History</CardTitle>
+                    <CardDescription>A complete log of all credits and payments.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead className="text-center">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {transactions.length > 0 ? (
+                                transactions.map((tx) => (
+                                    <TableRow key={tx.id}>
+                                        <TableCell>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={tx.type === 'credit' ? 'destructive' : 'default'}>{tx.type}</Badge>
+                                        </TableCell>
+                                        <TableCell className="max-w-[200px] truncate">{tx.description || '-'}</TableCell>
+                                        <TableCell className="text-right font-mono">{formatCurrency(tx.amount)}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)}>
+                                                <Trash2 className="w-4 h-4 text-destructive"/>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        No transactions yet for this customer.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
+    </div>
+    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {alertAction === 'deleteCustomer' 
+                ? "This will permanently delete this customer and all of their associated transactions. This action cannot be undone."
+                : "This will permanently delete this transaction. This action cannot be undone."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsAlertOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

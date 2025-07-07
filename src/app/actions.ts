@@ -11,13 +11,20 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  query,
   runTransaction,
   serverTimestamp,
   updateDoc,
+  where,
   type DocumentReference,
   type Timestamp,
 } from 'firebase/firestore';
-import type {InventoryItemInput} from '@/lib/schemas';
+import type {
+  InventoryItemInput,
+  CustomerInput,
+  LedgerTransactionInput,
+} from '@/lib/schemas';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
@@ -307,8 +314,7 @@ export async function updateInventoryItem(
       ...item,
     });
     return {success: true};
-  } catch (error)
-  {
+  } catch (error) {
     console.error('Error updating inventory item in Firestore: ', error);
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -356,7 +362,7 @@ export async function voidSale(
           );
         }
       }
-      
+
       transaction.delete(saleRef);
     });
 
@@ -372,7 +378,9 @@ export async function voidSale(
   }
 }
 
-export async function verifyPassword(password: string): Promise<{success: boolean}> {
+export async function verifyPassword(
+  password: string
+): Promise<{success: boolean}> {
   if (!process.env.SITE_PASSWORD) {
     console.error('SITE_PASSWORD environment variable is not set.');
     // In a real-world scenario, you might want to prevent any access
@@ -381,4 +389,92 @@ export async function verifyPassword(password: string): Promise<{success: boolea
   }
   const isCorrect = password === process.env.SITE_PASSWORD;
   return {success: isCorrect};
+}
+
+// Actions for Credit Ledger
+export async function addCustomer(
+  customer: CustomerInput
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await addDoc(collection(db, 'customers'), {
+      ...customer,
+      createdAt: serverTimestamp(),
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error adding customer to Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not add customer: ${message}`};
+  }
+}
+
+export async function addLedgerTransaction(
+  transaction: LedgerTransactionInput
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await addDoc(collection(db, 'ledger'), {
+      ...transaction,
+      createdAt: serverTimestamp(),
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error adding ledger transaction to Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      message: `Could not add transaction: ${message}`,
+    };
+  }
+}
+
+export async function deleteLedgerTransaction(
+  id: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await deleteDoc(doc(db, 'ledger', id));
+    return {success: true};
+  } catch (error) {
+    console.error('Error deleting ledger transaction: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      message: `Could not delete transaction: ${message}`,
+    };
+  }
+}
+
+export async function deleteCustomer(
+  id: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const customerRef = doc(db, 'customers', id);
+
+      const ledgerQuery = query(
+        collection(db, 'ledger'),
+        where('customerId', '==', id)
+      );
+
+      // Firestore SDK v9+ getDocs is not part of the transaction object.
+      // It must be performed outside.
+      const ledgerSnapshot = await getDocs(ledgerQuery);
+      ledgerSnapshot.forEach((doc) => {
+        transaction.delete(doc.ref);
+      });
+
+      transaction.delete(customerRef);
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error deleting customer and their transactions: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      message: `Could not delete customer: ${message}`,
+    };
+  }
 }
