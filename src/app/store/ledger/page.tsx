@@ -194,7 +194,7 @@ export default function LedgerPage() {
         </header>
 
         <Card className="shadow-lg text-primary-foreground bg-gradient-to-br from-primary to-purple-700">
-           <CardHeader>
+           <CardHeader className="text-center">
             <CardTitle className="text-lg font-normal">
               Total Outstanding Balance
             </CardTitle>
