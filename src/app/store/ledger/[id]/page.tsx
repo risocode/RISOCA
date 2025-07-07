@@ -118,8 +118,9 @@ export default function CustomerLedgerPage() {
         } else {
           toast({
             variant: 'destructive',
-            title: 'Customer not found',
-            description: 'This customer may have been deleted.',
+            title: 'Customer Not Found',
+            description: 'This customer may have been deleted. Redirecting...',
+            duration: 1000,
           });
           router.push('/store/ledger');
         }
@@ -319,13 +320,13 @@ export default function CustomerLedgerPage() {
                                 <TabsList className="grid w-full grid-cols-2">
                                     <TabsTrigger
                                         value="credit"
-                                        className="gap-2 data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive data-[state=active]:shadow-inner"
+                                        className="gap-2 data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive-foreground data-[state=active]:shadow-inner"
                                     >
                                         <Plus className="h-4 w-4" />Credit
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="payment"
-                                        className="gap-2 data-[state=active]:bg-success/20 data-[state=active]:text-success data-[state=active]:shadow-inner"
+                                        className="gap-2 data-[state=active]:bg-success/20 data-[state=active]:text-success-foreground data-[state=active]:shadow-inner"
                                     >
                                         <Minus className="h-4 w-4" />Payment
                                     </TabsTrigger>
