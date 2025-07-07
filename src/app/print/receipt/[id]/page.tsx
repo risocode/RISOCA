@@ -82,7 +82,7 @@ export default function PrintReceiptPage() {
       <header className="text-center mb-4 space-y-2">
         <div className="flex items-center justify-center gap-1">
           <Image
-            src="/logo.png?v=3"
+            src="/logo.png?v=7"
             alt="App Logo"
             width={32}
             height={32}

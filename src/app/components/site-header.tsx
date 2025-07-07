@@ -6,7 +6,7 @@ export function SiteHeader() {
     <header className="flex items-center justify-center p-4">
       <Link href="/" className="flex items-center justify-center">
         <Image
-          src="/logo.png?v=3"
+          src="/logo.png?v=7"
           alt="App Logo"
           width={40}
           height={40}

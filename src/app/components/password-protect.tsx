@@ -199,7 +199,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
           <Link href="/">
             <div className="flex items-center justify-center mb-4">
               <Image
-                src="/logo.png?v=3"
+                src="/logo.png?v=7"
                 alt="App Logo"
                 width={40}
                 height={40}

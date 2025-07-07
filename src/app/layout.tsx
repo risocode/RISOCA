@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: 'Risoca',
   description:
     'An application for tracking sales, expenses, and managing a store inventory.',
-  manifest: '/manifest.json?v=6',
+  manifest: '/manifest.json?v=7',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -66,20 +66,20 @@ export default function RootLayout({
     <html lang="en" className="dark h-full">
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=6" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=7" />
         <link
           rel="icon"
           type="image/png"
           sizes="32x32"
-          href="/favicon-32x32.png?v=6"
+          href="/favicon-32x32.png?v=7"
         />
         <link
           rel="icon"
           type="image/png"
           sizes="16x16"
-          href="/favicon-16x16.png?v=6"
+          href="/favicon-16x16.png?v=7"
         />
-        <link rel="shortcut icon" href="/favicon.ico?v=6" />
+        <link rel="shortcut icon" href="/favicon.ico?v=7" />
       </head>
       <body className="font-body antialiased h-full bg-background">
         <SiteProtection>
