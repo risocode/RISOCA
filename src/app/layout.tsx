@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import {Inter} from 'next/font/google';
 import './globals.css';
 import {ReceiptsProvider} from '@/contexts/ReceiptContext';
@@ -14,10 +14,32 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  manifest: '/manifest.webmanifest',
-  title: 'Sales Dashboard',
+  applicationName: 'Risoca',
+  title: 'Risoca',
   description:
-    'An application for tracking sales and managing a store inventory.',
+    'An application for tracking sales, expenses, and managing a store inventory.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Risoca',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#111317',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -28,16 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark h-full">
       <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-        />
-        <meta name="application-name" content="RiSoCa Receipt" />
-        <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="theme-color" content="#111317" />
-
-        <link rel="icon" href="/favicon.ico" />
       </head>
       <body className="font-body antialiased h-full bg-background">
         <SiteProtection>
