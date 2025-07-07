@@ -54,9 +54,6 @@ import {
   Loader2,
   ChevronRight,
   Info,
-  Users,
-  TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 
@@ -196,54 +193,26 @@ export default function LedgerPage() {
           <h1 className="text-2xl font-bold">Credit Ledger</h1>
         </header>
 
-        <Card className="shadow-lg text-primary-foreground bg-primary">
-          <CardHeader>
+        <Card className="shadow-lg text-primary-foreground bg-gradient-to-br from-primary to-purple-700">
+           <CardHeader>
             <CardTitle className="text-lg font-normal">
               Total Outstanding Balance
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-5xl font-bold tracking-tighter">
+             <p className="text-5xl font-bold tracking-tighter !mt-2">
               {formatCurrency(totalBalance)}
             </p>
+          </CardHeader>
+          <CardContent className="flex justify-between text-sm">
+             <div>
+                <p className="text-primary-foreground/80">Total Credit</p>
+                <p className="font-semibold">{formatCurrency(totalCredit)}</p>
+            </div>
+            <div className="text-right">
+                <p className="text-primary-foreground/80">Total Paid</p>
+                <p className="font-semibold">{formatCurrency(totalPayment)}</p>
+            </div>
           </CardContent>
         </Card>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Customers</CardTitle>
-              <Users className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{customers.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Total Credit
-              </CardTitle>
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(totalCredit)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-              <TrendingDown className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(totalPayment)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         <Card>
           <CardHeader>
