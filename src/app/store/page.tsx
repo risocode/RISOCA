@@ -76,6 +76,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {Separator} from '@/components/ui/separator';
+import {Badge} from '@/components/ui/badge';
 
 const SaleItemFormSchema = z.object({
   itemId: z.string().optional(),
@@ -89,6 +90,7 @@ type SaleItemFormData = z.infer<typeof SaleItemFormSchema>;
 export type SaleDoc = SaleItem & {
   id: string;
   createdAt: Timestamp;
+  status?: 'active' | 'voided';
 };
 
 export default function StorePage() {
@@ -441,23 +443,32 @@ export default function StorePage() {
                 recentSales.map((sale) => (
                   <li
                     key={sale.id}
-                    className="flex items-center justify-between p-2 rounded-md bg-background"
+                    className={cn(
+                      'flex items-center justify-between p-2 rounded-md bg-background',
+                      sale.status === 'voided' && 'opacity-60 bg-muted/50'
+                    )}
                   >
-                    <div>
+                    <div
+                      className={cn(sale.status === 'voided' && 'line-through')}
+                    >
                       <p className="font-medium">{sale.itemName}</p>
                       <p className="text-xs text-muted-foreground">
                         {sale.quantity} x ₱{sale.unitPrice.toFixed(2)} = ₱
                         {sale.total.toFixed(2)}
                       </p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setVoidingSale(sale)}
-                    >
-                      <Trash2 className="mr-2 w-4 h-4 text-destructive" />
-                      Void
-                    </Button>
+                    {sale.status === 'voided' ? (
+                      <Badge variant="destructive">Voided</Badge>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setVoidingSale(sale)}
+                      >
+                        <Trash2 className="mr-2 w-4 h-4 text-destructive" />
+                        Void
+                      </Button>
+                    )}
                   </li>
                 ))
               ) : (
