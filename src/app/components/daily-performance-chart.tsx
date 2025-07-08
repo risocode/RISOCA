@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/card';
 import {
   ChartContainer,
+  ChartTooltip,
   ChartTooltipContent,
   ChartStyle,
 } from '@/components/ui/chart';
