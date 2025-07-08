@@ -10,7 +10,14 @@ import {
   limit,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {History, FileWarning, ChevronDown} from 'lucide-react';
+import {
+  History,
+  FileWarning,
+  ChevronDown,
+  TrendingUp,
+  TrendingDown,
+  BarChart2,
+} from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -33,6 +40,7 @@ import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
+import {useReceipts} from '@/contexts/ReceiptContext';
 import {DailyPerformanceChart} from '@/app/components/daily-performance-chart';
 
 export default function HomePage() {
@@ -40,6 +48,11 @@ export default function HomePage() {
   const [historyLimit, setHistoryLimit] = useState(5);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const {toast} = useToast();
+
+  const [showChart, setShowChart] = useState(false);
+  const [totalSales, setTotalSales] = useState(0);
+  const [isLoadingTotals, setIsLoadingTotals] = useState(true);
+  const {totalSpent: totalExpenses} = useReceipts();
 
   const [openRecentSales, setOpenRecentSales] = useState<
     Record<string, boolean>
@@ -84,8 +97,26 @@ export default function HomePage() {
       }
     );
 
+    setIsLoadingTotals(true);
+    const salesQuery = query(collection(db, 'saleTransactions'));
+    const unsubSales = onSnapshot(
+      salesQuery,
+      (snapshot) => {
+        const total = snapshot.docs
+          .filter((doc) => doc.data().status !== 'voided')
+          .reduce((acc, doc) => acc + doc.data().total, 0);
+        setTotalSales(total);
+        setIsLoadingTotals(false);
+      },
+      (error) => {
+        handleFirestoreError(error, 'saleTransactions (totals)');
+        setIsLoadingTotals(false);
+      }
+    );
+
     return () => {
       unsubHistory();
+      unsubSales();
     };
   }, [toast, historyLimit]);
 
@@ -98,7 +129,59 @@ export default function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-6">
-        <DailyPerformanceChart />
+        {showChart ? (
+          <DailyPerformanceChart />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">
+                  Total Sales
+                </CardTitle>
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isLoadingTotals ? (
+                  <Skeleton className="h-8 w-3/4 mt-1" />
+                ) : (
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(totalSales)}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Lifetime sales revenue
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium">
+                  Total Expenses
+                </CardTitle>
+                <TrendingDown className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {isLoadingTotals ? (
+                  <Skeleton className="h-8 w-3/4 mt-1" />
+                ) : (
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(totalExpenses)}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Lifetime expense tracking
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => setShowChart(!showChart)}>
+            <BarChart2 className="mr-2" />
+            {showChart ? 'Hide Chart' : 'Show 7-Day Performance Chart'}
+          </Button>
+        </div>
 
         <Card>
           <CardHeader>
@@ -192,7 +275,9 @@ export default function HomePage() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>{sale.customerName || 'Customer'}</TableCell>
+                          <TableCell>
+                            {sale.customerName || 'Customer'}
+                          </TableCell>
                           <TableCell className="text-center">
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
@@ -282,7 +367,7 @@ export default function HomePage() {
               </p>
             )}
             <Button asChild variant="outline" className="w-full">
-              <Link href="/store/history">
+              <Link href="/transactions">
                 <History className="mr-2" />
                 View Full Transaction History
               </Link>
