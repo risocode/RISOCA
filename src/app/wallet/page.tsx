@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import {useState, useEffect, useMemo} from 'react';
-import {useForm} from 'react-hook-form';
+import {useForm, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
 import {
@@ -122,6 +122,11 @@ export default function WalletPage() {
     defaultValues: {endingCash: 0},
   });
 
+  const watchedStartingCash = useWatch({
+    control: startDayForm.control,
+    name: 'startingCash',
+  });
+
   const startDayTotal = useMemo(() => {
     return denominations.reduce((acc, denom) => {
       const count = Number(counts[String(denom.value)]) || 0;
@@ -217,7 +222,8 @@ export default function WalletPage() {
       const entryDate = parseISO(entry.date);
       const dailySales = sales
         .filter(
-          (s) => s.status !== 'voided' && isSameDay(s.createdAt.toDate(), entryDate)
+          (s) =>
+            s.status !== 'voided' && isSameDay(s.createdAt.toDate(), entryDate)
         )
         .reduce((sum, s) => sum + s.total, 0);
 
@@ -232,12 +238,6 @@ export default function WalletPage() {
 
     return {enrichedHistory: enriched, openDay, latestClosedDay};
   }, [walletHistory, sales, receipts]);
-
-  useEffect(() => {
-    if (!openDay && latestClosedDay?.endingCash) {
-      startDayForm.setValue('startingCash', latestClosedDay.endingCash);
-    }
-  }, [openDay, latestClosedDay, startDayForm.setValue]);
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
@@ -436,6 +436,37 @@ export default function WalletPage() {
         <Form {...startDayForm}>
           <form onSubmit={startDayForm.handleSubmit(handleStartDay)}>
             <CardContent className="space-y-4">
+              {latestClosedDay?.endingCash !== undefined && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                  <p className="text-sm">
+                    Last closing balance:{' '}
+                    <span className="font-bold font-mono">
+                      {formatCurrency(latestClosedDay.endingCash)}
+                    </span>
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      startDayForm.setValue(
+                        'startingCash',
+                        latestClosedDay.endingCash || 0
+                      );
+                      setCounts({});
+                      toast({
+                        title: 'Amount Set',
+                        description: `Starting cash set to ${formatCurrency(
+                          latestClosedDay.endingCash
+                        )}.`,
+                      });
+                    }}
+                  >
+                    Use this amount
+                  </Button>
+                </div>
+              )}
+
               <div className="grid grid-cols-[1fr_80px_1fr] items-center gap-x-4 gap-y-2 text-sm">
                 <Label className="font-semibold text-muted-foreground">
                   Denomination
@@ -480,7 +511,7 @@ export default function WalletPage() {
               <div className="flex justify-between items-baseline text-xl font-bold">
                 <span className="text-foreground">Total Starting Cash</span>
                 <span className="font-mono text-primary">
-                  {formatCurrency(startDayTotal)}
+                  {formatCurrency(watchedStartingCash)}
                 </span>
               </div>
               <FormField
@@ -503,7 +534,7 @@ export default function WalletPage() {
                 className="w-full"
               >
                 {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                Start Day with {formatCurrency(startDayTotal)}
+                Start Day with {formatCurrency(watchedStartingCash)}
               </Button>
             </CardFooter>
           </form>
