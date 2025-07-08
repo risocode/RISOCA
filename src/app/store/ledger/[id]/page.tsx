@@ -383,7 +383,7 @@ export default function CustomerLedgerPage() {
 
   return (
     <>
-    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
        <header className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
            <Button asChild variant="outline" size="icon" className="flex-shrink-0">

@@ -236,7 +236,7 @@ export default function InventoryPage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
+      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4 opacity-0 animate-page-enter">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Products</h1>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

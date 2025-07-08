@@ -267,7 +267,7 @@ export default function TransactionsPage() {
   }, [sales, receipts, ledger, customers]);
 
   return (
-    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4 opacity-0 animate-page-enter">
       <header>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <History /> Transactions
