@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useState, useRef, type ChangeEvent, useEffect} from 'react';
+import React, {useState, useRef, type ChangeEvent, useEffect} from 'react';
 import Image from 'next/image';
 import {
   Upload,
@@ -18,6 +18,7 @@ import {
   FileText,
   Tag,
   Save,
+  ChevronDown,
 } from 'lucide-react';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
@@ -119,6 +120,7 @@ export default function ReceiptPage() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({});
   const {toast} = useToast();
 
   const form = useForm<ReceiptFormData>({
@@ -150,6 +152,19 @@ export default function ReceiptPage() {
     categories: receiptCategories,
   } = useReceipts();
   const uniqueCategories = Object.keys(receiptCategories).length;
+
+  const toggleReceiptRow = (id: string) => {
+    setOpenReceipts((prev) => {
+      const isCurrentlyOpen = !!prev[id];
+      return isCurrentlyOpen ? {} : {[id]: true};
+    });
+  };
+
+  const formatCurrency = (value: number) =>
+    `₱${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   const resizeImage = (
     dataUrl: string,
@@ -285,7 +300,7 @@ export default function ReceiptPage() {
   };
 
   const renderInitialState = () => (
-    <div className="w-full text-center animate-enter">
+    <div className="w-full text-center">
       <Tabs defaultValue="upload" className="w-full">
         <TabsList className="grid w-full h-12 grid-cols-3 p-1">
           <TabsTrigger value="upload" className="h-full text-base">
@@ -556,7 +571,7 @@ export default function ReceiptPage() {
   };
 
   const renderPreviewState = () => (
-    <div className="animate-enter w-full">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <CardTitle>Ready to Scan</CardTitle>
@@ -587,7 +602,7 @@ export default function ReceiptPage() {
   );
 
   const renderEditableFormState = () => (
-    <div className="w-full animate-enter">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <CardTitle>Review & Edit</CardTitle>
@@ -786,7 +801,7 @@ export default function ReceiptPage() {
   );
 
   const renderLoadingState = () => (
-    <div className="animate-enter w-full">
+    <div className="w-full">
       <Card>
         <CardHeader>
           <CardTitle>Processing Receipt</CardTitle>
@@ -821,7 +836,7 @@ export default function ReceiptPage() {
 
   const renderResultsState = () =>
     diagnosis && (
-      <div className="animate-enter w-full">
+      <div className="w-full">
         <Card>
           <CardHeader>
             <CardTitle>Process Complete</CardTitle>
@@ -927,7 +942,7 @@ export default function ReceiptPage() {
     );
 
   const renderErrorState = () => (
-    <div className="animate-enter w-full">
+    <div className="w-full">
       <Card className="shadow-2xl shadow-destructive/20">
         <CardHeader>
           <CardTitle>Processing Failed</CardTitle>
@@ -961,7 +976,7 @@ export default function ReceiptPage() {
 
   const HistoryTabContent = () =>
     receipts.length === 0 ? (
-      <div className="flex flex-col items-center justify-center text-center p-8 mt-8 border rounded-lg bg-card">
+      <div className="flex flex-col items-center justify-center text-center p-8 border rounded-lg bg-card">
         <FileText className="w-16 h-16 mb-4 text-muted-foreground" />
         <h2 className="text-2xl font-semibold">No Receipts Scanned</h2>
         <p className="max-w-md mt-2 text-muted-foreground">
@@ -970,67 +985,60 @@ export default function ReceiptPage() {
       </div>
     ) : (
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-              <Wallet className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ₱
-                {totalSpent.toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+        <Card>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 md:grid-cols-3">
+              <div className="p-6 text-center border-b md:border-b-0 md:border-r">
+                <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Wallet className="w-4 h-4" />
+                  Total Spent
+                </div>
+                <p className="mt-1 text-2xl font-bold">
+                  {formatCurrency(totalSpent)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  from {receipts.length} receipts
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                from {receipts.length} receipts
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Receipts Scanned
-              </CardTitle>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{receipts.length}</div>
-              <p className="text-xs text-muted-foreground">Keep them coming!</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">
-                Unique Categories
-              </CardTitle>
-              <Tag className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{uniqueCategories}</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {Object.keys(receiptCategories).map((cat) => (
-                  <Badge key={cat} variant="secondary">
-                    {cat}
-                  </Badge>
-                ))}
+              <div className="p-6 text-center border-b md:border-b-0 md:border-r">
+                <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
+                  <FileText className="w-4 h-4" />
+                  Receipts Scanned
+                </div>
+                <p className="mt-1 text-2xl font-bold">{receipts.length}</p>
+                <p className="text-xs text-muted-foreground">
+                  Keep them coming!
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-        <Card className="mt-6">
+              <div className="p-6 text-center">
+                <div className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Tag className="w-4 h-4" />
+                  Unique Categories
+                </div>
+                <p className="mt-1 text-2xl font-bold">{uniqueCategories}</p>
+                <div className="flex flex-wrap justify-center gap-1 mt-1">
+                  {Object.keys(receiptCategories).map((cat) => (
+                    <Badge key={cat} variant="secondary">
+                      {cat}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
           <CardHeader>
             <CardTitle>Receipt History</CardTitle>
             <CardDescription>
-              A list of all your scanned receipts.
+              A list of all your scanned receipts. Click a row to see items.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Merchant</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Category</TableHead>
@@ -1038,32 +1046,77 @@ export default function ReceiptPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="font-medium">
-                      {receipt.merchantName}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {new Date(
-                        receipt.transactionDate + 'T00:00:00'
-                      ).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{receipt.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono whitespace-nowrap">
-                      ₱
-                      {receipt.total.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {receipts.map((receipt) => {
+                  const isOpen = !!openReceipts[receipt.id];
+                  return (
+                    <React.Fragment key={receipt.id}>
+                      <TableRow
+                        onClick={() => toggleReceiptRow(receipt.id)}
+                        className="cursor-pointer"
+                      >
+                        <TableCell className="p-2 align-middle">
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 transition-transform',
+                              isOpen && 'rotate-180'
+                            )}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {receipt.merchantName}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(
+                            receipt.transactionDate + 'T00:00:00'
+                          ).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{receipt.category}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono whitespace-nowrap">
+                          {formatCurrency(receipt.total)}
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="p-2 bg-muted/50">
+                            <div className="p-2 bg-background rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="h-8">Item</TableHead>
+                                    <TableHead className="h-8 text-right">
+                                      Price
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {receipt.items.map((item, index) => (
+                                    <TableRow
+                                      key={index}
+                                      className="border-none"
+                                    >
+                                      <TableCell className="py-1 font-medium">
+                                        {item.name}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-right font-mono">
+                                        {formatCurrency(item.price)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -1083,14 +1136,10 @@ export default function ReceiptPage() {
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         <TabsContent value="add" className="pt-4">
-          <div className="flex flex-col justify-start w-full animate-page-enter">
-            {renderContent()}
-          </div>
+          <div className="w-full">{renderContent()}</div>
         </TabsContent>
         <TabsContent value="history" className="pt-4">
-          <div className="animate-page-enter">
-            <HistoryTabContent />
-          </div>
+          <HistoryTabContent />
         </TabsContent>
       </Tabs>
     </div>
