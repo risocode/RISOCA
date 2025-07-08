@@ -62,7 +62,6 @@ export function DailyPerformanceChart() {
   const [timeRange, setTimeRange] = useState<TimeRange>('daily');
 
   useEffect(() => {
-    setIsLoading(true);
     const today = new Date();
     let startDate: Date;
 
@@ -84,12 +83,13 @@ export function DailyPerformanceChart() {
       where('createdAt', '>=', startDate)
     );
 
-    let salesData: SaleTransaction[] = [];
-    let receiptsData: ReceiptDoc[] = [];
-    let loadedCount = 0;
+    let salesData: SaleTransaction[] | null = null;
+    let receiptsData: ReceiptDoc[] | null = null;
 
     const processData = () => {
-      if (loadedCount < 2) return;
+      // Only process when both datasets are loaded.
+      if (salesData === null || receiptsData === null) return;
+
       let processedData;
 
       if (timeRange === 'daily') {
@@ -167,14 +167,16 @@ export function DailyPerformanceChart() {
         });
       }
       setChartData(processedData.reverse());
-      setIsLoading(false);
+      // Only set loading to false once after the initial load.
+      if (isLoading) {
+        setIsLoading(false);
+      }
     };
 
     const unsubSales = onSnapshot(salesQuery, (snapshot) => {
       salesData = snapshot.docs.map(
         (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
       );
-      if (loadedCount < 2) loadedCount++;
       processData();
     });
 
@@ -182,7 +184,6 @@ export function DailyPerformanceChart() {
       receiptsData = snapshot.docs.map(
         (doc) => ({id: doc.id, ...doc.data()} as ReceiptDoc)
       );
-      if (loadedCount < 2) loadedCount++;
       processData();
     });
 
@@ -190,7 +191,7 @@ export function DailyPerformanceChart() {
       unsubSales();
       unsubExpenses();
     };
-  }, [timeRange]);
+  }, [timeRange, isLoading]);
 
   const chartConfig = {
     sales: {
