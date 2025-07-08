@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, {useState, useEffect, useMemo} from 'react';
@@ -208,11 +209,24 @@ export function DailyPerformanceChart() {
       maximumFractionDigits: 2,
     })}`;
 
-  const descriptionText = {
-    daily: 'Sales vs. Expenses for the Last 7 Days',
-    monthly: 'Sales vs. Expenses for the Last 12 Months',
-    yearly: 'Sales vs. Expenses for the Last 5 Years',
-  };
+  const descriptionText = useMemo(() => {
+    const today = new Date();
+    switch (timeRange) {
+      case 'daily':
+        const startDate = subDays(today, 6);
+        if (isSameMonth(startDate, today)) {
+          return `Showing daily data for ${format(today, 'MMMM yyyy')}`;
+        }
+        return `Showing daily data: ${format(
+          startDate,
+          'MMM d'
+        )} - ${format(today, 'MMM d, yyyy')}`;
+      case 'monthly':
+        return 'Showing data for the last 12 months';
+      case 'yearly':
+        return 'Showing data for the last 5 years';
+    }
+  }, [timeRange]);
 
   if (isLoading) {
     return (
@@ -234,7 +248,7 @@ export function DailyPerformanceChart() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <CardTitle>Performance Overview</CardTitle>
-            <CardDescription>{descriptionText[timeRange]}</CardDescription>
+            <CardDescription>{descriptionText}</CardDescription>
           </div>
           <Tabs
             value={timeRange}
@@ -271,9 +285,7 @@ export function DailyPerformanceChart() {
               axisLine={false}
               tickLine={false}
               tickMargin={5}
-              tickFormatter={(value) =>
-                `₱${value.toLocaleString('en-US')}`
-              }
+              tickFormatter={(value) => `₱${value.toLocaleString('en-US')}`}
             />
             <ChartTooltip
               cursor={false}
