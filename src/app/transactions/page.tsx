@@ -90,11 +90,11 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
     );
   } else if (isReceipt) {
     const receiptData = data as ReceiptDoc;
-    icon = <ReceiptText className="w-6 h-6 text-accent" />;
+    icon = <ReceiptText className="w-6 h-6 text-destructive" />;
     title = receiptData.merchantName;
     description = date;
     amountDisplay = (
-      <p className="font-bold text-lg text-accent">
+      <p className="font-bold text-lg text-destructive">
         - {formatCurrency(receiptData.total)}
       </p>
     );

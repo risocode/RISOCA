@@ -332,7 +332,7 @@ export default function WalletPage() {
                   </div>
                   <div className="flex flex-col items-center">
                     <p className="text-sm text-muted-foreground">Expenses</p>
-                    <p className="font-bold text-lg text-accent">
+                    <p className="font-bold text-lg text-destructive">
                       {formatCurrency(dailyExpenses)}
                     </p>
                   </div>
@@ -676,7 +676,7 @@ export default function WalletPage() {
                     <TableCell className="text-center font-mono text-primary">
                       {formatCurrency(entry.dailySales)}
                     </TableCell>
-                    <TableCell className="text-center font-mono text-accent">
+                    <TableCell className="text-center font-mono text-destructive">
                       {formatCurrency(entry.dailyExpenses)}
                     </TableCell>
                     <TableCell

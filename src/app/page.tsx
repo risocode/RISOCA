@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -155,7 +156,7 @@ export default function HomePage() {
                 {isLoadingTotals ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-accent">
+                  <p className="text-3xl font-bold text-destructive">
                     {formatCurrency(totalExpenses)}
                   </p>
                 )}
