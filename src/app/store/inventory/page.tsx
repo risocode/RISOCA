@@ -91,7 +91,7 @@ export default function InventoryPage() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOption, setSortOption] = useState('default');
+  const [sortOption, setSortOption] = useState('name-asc');
   const {toast} = useToast();
 
   const form = useForm<InventoryItemInput>({
@@ -394,8 +394,8 @@ export default function InventoryPage() {
                     <SelectValue placeholder="Sort by..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Date Added</SelectItem>
                     <SelectItem value="name-asc">A-Z</SelectItem>
+                    <SelectItem value="default">Date Added</SelectItem>
                     <SelectItem value="price-high">
                       Price: High to Low
                     </SelectItem>
