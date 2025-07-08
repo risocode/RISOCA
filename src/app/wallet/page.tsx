@@ -562,8 +562,6 @@ export default function WalletPage() {
         </h1>
       </header>
 
-      {renderCurrentDayCard()}
-
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center justify-center gap-2">
@@ -590,6 +588,8 @@ export default function WalletPage() {
           </div>
         </CardContent>
       </Card>
+
+      {renderCurrentDayCard()}
 
       {chartData.length > 0 && (
         <Card>
