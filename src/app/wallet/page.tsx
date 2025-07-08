@@ -244,6 +244,12 @@ export default function WalletPage() {
     return {enrichedHistory: enriched, openDay, latestClosedDay};
   }, [walletHistory, sales, receipts]);
 
+  const totalProfit = useMemo(() => {
+    return enrichedHistory
+      .filter((e) => e.status === 'closed' && e.profit != null)
+      .reduce((acc, e) => acc + (e.profit || 0), 0);
+  }, [enrichedHistory]);
+
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
     const response = await startDay(data.startingCash);
@@ -557,6 +563,33 @@ export default function WalletPage() {
       </header>
 
       {renderCurrentDayCard()}
+
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-center gap-2">
+            <Wallet className="w-6 h-6" /> Overall Wallet Profit
+          </CardTitle>
+          <CardDescription className="text-center">
+            This is the total profit from all closed days, calculated as (Ending
+            Cash - Starting Cash).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div
+            className={cn(
+              'text-5xl font-bold tracking-tighter flex items-center justify-center gap-2',
+              totalProfit >= 0 ? 'text-success' : 'text-destructive'
+            )}
+          >
+            {totalProfit >= 0 ? (
+              <TrendingUp className="h-10 w-10" />
+            ) : (
+              <TrendingDown className="h-10 w-10" />
+            )}
+            {formatCurrency(totalProfit)}
+          </div>
+        </CardContent>
+      </Card>
 
       {chartData.length > 0 && (
         <Card>
