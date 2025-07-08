@@ -15,10 +15,7 @@ import {
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {addCustomer} from '@/app/actions';
-import {
-  type Customer,
-  type LedgerTransaction,
-} from '@/lib/schemas';
+import {type Customer, type LedgerTransaction} from '@/lib/schemas';
 
 import {Button} from '@/components/ui/button';
 import {
@@ -49,12 +46,7 @@ import {
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
-import {
-  UserPlus,
-  Loader2,
-  ChevronRight,
-  Info,
-} from 'lucide-react';
+import {UserPlus, Loader2, ChevronRight, Info, Search} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 
 const AddCustomerFormSchema = z.object({
@@ -66,7 +58,7 @@ const AddCustomerFormSchema = z.object({
 });
 type AddCustomerFormData = z.infer<typeof AddCustomerFormSchema>;
 
-type CustomerWithBalance = Customer & {balance: number};
+type CustomerWithDetails = Customer & {balance: number; paid: number};
 
 export default function LedgerPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -74,6 +66,7 @@ export default function LedgerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const {toast} = useToast();
 
   const form = useForm<AddCustomerFormData>({
@@ -162,9 +155,10 @@ export default function LedgerPage() {
     setIsSubmitting(false);
   };
 
-  const {customersWithBalance, totalBalance, totalCredit, totalPayment} =
+  const {processedCustomers, totalBalance, totalCredit, totalPayment} =
     useMemo(() => {
       const customerBalances: Record<string, number> = {};
+      const customerPayments: Record<string, number> = {};
 
       transactions.forEach((tx) => {
         if (tx.status === 'deleted') return;
@@ -174,15 +168,24 @@ export default function LedgerPage() {
         } else {
           customerBalances[tx.customerId] =
             (customerBalances[tx.customerId] || 0) - tx.amount;
+          customerPayments[tx.customerId] =
+            (customerPayments[tx.customerId] || 0) + tx.amount;
         }
       });
 
-      const customersWithBalance = customers
-        .filter(c => c.status !== 'deleted')
+      let customersWithDetails: CustomerWithDetails[] = customers
+        .filter((c) => c.status !== 'deleted')
         .map((c) => ({
           ...c,
           balance: customerBalances[c.id] || 0,
-      }));
+          paid: customerPayments[c.id] || 0,
+        }));
+
+      if (searchTerm) {
+        customersWithDetails = customersWithDetails.filter((c) =>
+          c.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
 
       const totalCredit = transactions
         .filter((tx) => tx.type === 'credit' && tx.status !== 'deleted')
@@ -192,8 +195,13 @@ export default function LedgerPage() {
         .reduce((sum, tx) => sum + tx.amount, 0);
       const totalBalance = totalCredit - totalPayment;
 
-      return {customersWithBalance, totalBalance, totalCredit, totalPayment};
-    }, [customers, transactions]);
+      return {
+        processedCustomers: customersWithDetails,
+        totalBalance,
+        totalCredit,
+        totalPayment,
+      };
+    }, [customers, transactions, searchTerm]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -209,66 +217,104 @@ export default function LedgerPage() {
         </header>
 
         <Card className="shadow-lg text-primary-foreground bg-gradient-to-br from-primary to-purple-700">
-           <CardHeader className="text-center">
+          <CardHeader className="text-center">
             <CardTitle className="text-lg font-normal">
               Total Outstanding Balance
             </CardTitle>
-             <p className="text-5xl font-bold tracking-tighter !mt-2">
+            <p className="text-5xl font-bold tracking-tighter !mt-2">
               {formatCurrency(totalBalance)}
             </p>
           </CardHeader>
           <CardContent className="flex justify-between text-sm">
-             <div>
-                <p className="text-primary-foreground/80">Total Credit</p>
-                <p className="font-semibold">{formatCurrency(totalCredit)}</p>
+            <div>
+              <p className="text-primary-foreground/80">Total Credit</p>
+              <p className="font-semibold">{formatCurrency(totalCredit)}</p>
             </div>
             <div className="text-right">
-                <p className="text-primary-foreground/80">Total Paid</p>
-                <p className="font-semibold">{formatCurrency(totalPayment)}</p>
+              <p className="text-primary-foreground/80">Total Paid</p>
+              <p className="font-semibold">{formatCurrency(totalPayment)}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Customer List</CardTitle>
+          <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Customer List</CardTitle>
+              <CardDescription>
+                Select a customer to view their transaction history.
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search customers..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-2">
+            <div className="px-4 py-2 border-b grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-4">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Name
+              </h4>
+              <h4 className="text-sm font-medium text-muted-foreground text-right">
+                Balance
+              </h4>
+              <h4 className="text-sm font-medium text-muted-foreground text-right">
+                Paid
+              </h4>
+              <span className="sr-only">Action</span>
+            </div>
+            <div>
               {isLoading ? (
                 Array.from({length: 5}).map((_, i) => (
                   <div
                     key={i}
-                    className="flex items-center p-4 space-x-4 border-b"
+                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 gap-4 border-b"
                   >
-                    <Skeleton className="h-6 flex-1" />
-                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-6 w-20 justify-self-end" />
+                    <Skeleton className="h-6 w-20 justify-self-end" />
+                    <Skeleton className="h-5 w-5 justify-self-end" />
                   </div>
                 ))
-              ) : customersWithBalance.length > 0 ? (
-                customersWithBalance.map((customer) => (
+              ) : processedCustomers.length > 0 ? (
+                processedCustomers.map((customer) => (
                   <Link
                     key={customer.id}
                     href={`/store/ledger/${customer.id}`}
-                    className="flex items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
+                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
                   >
-                    <span className="font-medium flex-1">{customer.name}</span>
+                    <span className="font-medium truncate">
+                      {customer.name}
+                    </span>
                     <span
-                      className={`font-mono text-right mr-2 ${
+                      className={`font-mono text-right ${
                         customer.balance > 0
                           ? 'text-destructive'
-                          : 'text-green-600'
+                          : 'text-success'
                       }`}
                     >
                       {formatCurrency(customer.balance)}
                     </span>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    <span className="font-mono text-right text-muted-foreground">
+                      {formatCurrency(customer.paid)}
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
                   </Link>
                 ))
               ) : (
                 <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
                   <Info className="w-8 h-8 mb-2" />
-                  <p>No customers yet. Add one to get started.</p>
+                  <p>
+                    {searchTerm
+                      ? `No customers found for "${searchTerm}"`
+                      : 'No customers yet. Add one to get started.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -310,32 +356,40 @@ export default function LedgerPage() {
                   </FormItem>
                 )}
               />
-               <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({field}) => (
-                    <FormItem>
-                      <FormLabel>Initial Credit Amount (₱)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="description"
-                  render={({field}) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Initial balance" {...field}/>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Initial Credit Amount (₱)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., Initial balance"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
                 <DialogClose asChild>
                   <Button type="button" variant="secondary">
