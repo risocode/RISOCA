@@ -108,7 +108,7 @@ export default function SalesHistoryPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: response.message || 'An unknown error occurred.',
+        description: response.message,
       });
     }
 
@@ -214,7 +214,7 @@ export default function SalesHistoryPage() {
                           {sale.status === 'voided' ? (
                             <Badge variant="destructive">Voided</Badge>
                           ) : (
-                            <Badge variant="secondary">Active</Badge>
+                            <Badge variant="success">Active</Badge>
                           )}
                         </TableCell>
                         <TableCell

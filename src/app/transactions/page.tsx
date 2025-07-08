@@ -86,7 +86,7 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
     badge = isDeleted ? (
       <Badge variant="destructive">Voided</Badge>
     ) : (
-      <Badge variant="secondary">Sale</Badge>
+      <Badge variant="success">Sale</Badge>
     );
   } else if (isReceipt) {
     const receiptData = data as ReceiptDoc;

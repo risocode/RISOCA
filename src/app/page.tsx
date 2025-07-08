@@ -274,7 +274,7 @@ export default function HomePage() {
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
                             ) : (
-                              <Badge variant="secondary">Active</Badge>
+                              <Badge variant="success">Active</Badge>
                             )}
                           </TableCell>
                           <TableCell
@@ -415,7 +415,7 @@ export default function HomePage() {
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
                             ) : (
-                              <Badge variant="secondary">Active</Badge>
+                              <Badge variant="success">Active</Badge>
                             )}
                           </TableCell>
                           <TableCell
