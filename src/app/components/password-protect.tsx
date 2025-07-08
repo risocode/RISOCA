@@ -45,6 +45,16 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
   const {toast} = useToast();
 
   useEffect(() => {
+    // Set the custom title for the login page
+    document.title = 'Risoca - Admin Login';
+
+    // Reset the title to the app default when the component unmounts
+    return () => {
+      document.title = 'Risoca';
+    };
+  }, []);
+
+  useEffect(() => {
     // This check runs on the client to determine if it's a mobile device.
     setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
 
