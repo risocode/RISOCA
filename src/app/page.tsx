@@ -218,7 +218,7 @@ export default function HomePage() {
                 <TableRow>
                   <TableHead>Receipt</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
@@ -233,7 +233,7 @@ export default function HomePage() {
                         <Skeleton className="h-5 w-3/4" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-16 mx-auto" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-1/4 ml-auto" />
@@ -275,7 +275,7 @@ export default function HomePage() {
                             </div>
                           </TableCell>
                           <TableCell>{sale.customerName || 'Customer'}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
                             ) : (
@@ -367,7 +367,7 @@ export default function HomePage() {
                 <TableRow>
                   <TableHead>Receipt</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
@@ -382,7 +382,7 @@ export default function HomePage() {
                         <Skeleton className="h-5 w-3/4" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-6 w-16" />
+                        <Skeleton className="h-6 w-16 mx-auto" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-1/4 ml-auto" />
@@ -421,7 +421,7 @@ export default function HomePage() {
                             </div>
                           </TableCell>
                           <TableCell>{sale.customerName || 'Customer'}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-center">
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
                             ) : (
