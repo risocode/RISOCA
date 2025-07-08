@@ -63,7 +63,12 @@ export default function HomePage() {
   >({});
 
   const toggleRecentSaleRow = (id: string) => {
-    setOpenRecentSales((prev) => ({...prev, [id]: !prev[id]}));
+    setOpenRecentSales((prev) => {
+      const isCurrentlyOpen = !!prev[id];
+      // If the clicked row is already open, close it by returning an empty object.
+      // Otherwise, open the clicked row and close all others.
+      return isCurrentlyOpen ? {} : {[id]: true};
+    });
   };
 
   const handleFirestoreError = (error: Error, collectionName: string) => {
@@ -319,10 +324,10 @@ export default function HomePage() {
                                           {item.quantity}
                                         </TableCell>
                                         <TableCell className="py-1 text-right font-mono">
-                                          {item.unitPrice.toFixed(2)}
+                                          {formatCurrency(item.unitPrice)}
                                         </TableCell>
                                         <TableCell className="py-1 text-right font-mono">
-                                          {item.total.toFixed(2)}
+                                          {formatCurrency(item.total)}
                                         </TableCell>
                                       </TableRow>
                                     ))}
