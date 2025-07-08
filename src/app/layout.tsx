@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F0FAF9',
+  themeColor: '#1a2424',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -63,7 +63,7 @@ export default async function RootLayout({
 
   // For all other routes, render the full application layout.
   return (
-    <html lang="en" className="light h-full">
+    <html lang="en" className="h-full">
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
