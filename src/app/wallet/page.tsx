@@ -624,42 +624,42 @@ export default function WalletPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Start</TableHead>
-                <TableHead className="text-right">Sales</TableHead>
-                <TableHead className="text-right">Expenses</TableHead>
-                <TableHead className="text-right">Profit</TableHead>
-                <TableHead className="text-right">End</TableHead>
+                <TableHead className="text-center">Date</TableHead>
+                <TableHead className="text-center">Start</TableHead>
+                <TableHead className="text-center">Sales</TableHead>
+                <TableHead className="text-center">Expenses</TableHead>
+                <TableHead className="text-center">Profit</TableHead>
+                <TableHead className="text-center">End</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({length: 3}).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-24 mx-auto" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-20 mx-auto" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-20 mx-auto" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-20 mx-auto" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-20 mx-auto" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
+                    <TableCell className="text-center">
+                      <Skeleton className="h-5 w-20 mx-auto" />
                     </TableCell>
                   </TableRow>
                 ))
               ) : enrichedHistory.length > 0 ? (
                 enrichedHistory.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="text-center font-medium">
                       {format(parseISO(entry.date), 'MMMM d, yyyy')}
                       <Badge
                         variant={
@@ -670,22 +670,22 @@ export default function WalletPage() {
                         {entry.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-center font-mono">
                       {formatCurrency(entry.startingCash)}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-primary">
+                    <TableCell className="text-center font-mono text-primary">
                       {formatCurrency(entry.dailySales)}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-accent">
+                    <TableCell className="text-center font-mono text-accent">
                       {formatCurrency(entry.dailyExpenses)}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        'text-right font-mono',
+                        'text-center font-mono',
                         entry.profit >= 0 ? 'text-success' : 'text-destructive'
                       )}
                     >
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-center">
                         {entry.profit >= 0 ? (
                           <TrendingUp className="mr-1" />
                         ) : (
@@ -694,7 +694,7 @@ export default function WalletPage() {
                         {formatCurrency(entry.profit)}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-center font-mono">
                       {formatCurrency(entry.endingCash)}
                     </TableCell>
                   </TableRow>
