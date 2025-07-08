@@ -32,6 +32,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import {
   Table,
@@ -61,6 +62,15 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+  SheetClose,
+} from '@/components/ui/sheet';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -75,6 +85,10 @@ import {
   Plus,
   Minus,
   Pencil,
+  Landmark,
+  TrendingUp,
+  TrendingDown,
+  CalendarDays,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -87,12 +101,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import {Badge} from '@/components/ui/badge';
 import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Label} from '@/components/ui/label';
+import {ScrollArea} from '@/components/ui/scroll-area';
 
 const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
 type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
@@ -109,11 +124,11 @@ export default function CustomerLedgerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [alertAction, setAlertAction] = useState<'deleteTransaction' | 'deleteCustomer' | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
 
-  // State for edit name dialog
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [newName, setNewName] = useState('');
@@ -179,12 +194,20 @@ export default function CustomerLedgerPage() {
     };
   }, [customerId, router, toast]);
 
-  const balance = useMemo(() => {
-    return transactions
-      .filter(tx => tx.status !== 'deleted')
-      .reduce((acc, tx) => {
-        return acc + (tx.type === 'credit' ? tx.amount : -tx.amount);
-      }, 0);
+  const {balance, totalCredit, totalPaid} = useMemo(() => {
+    let credit = 0;
+    let payment = 0;
+    transactions
+      .filter((tx) => tx.status !== 'deleted')
+      .forEach((tx) => {
+        if (tx.type === 'credit') {
+          credit += tx.amount;
+        } else {
+          payment += tx.amount;
+        }
+      });
+    const balance = credit - payment;
+    return {balance, totalCredit: credit, totalPaid: payment};
   }, [transactions]);
   
   const paidCreditIds = useMemo(() => {
@@ -260,6 +283,7 @@ export default function CustomerLedgerPage() {
         description: '',
       });
       setSelectedCredits(new Set());
+      setIsSheetOpen(false);
     } else {
       toast({
         variant: 'destructive',
@@ -381,10 +405,7 @@ export default function CustomerLedgerPage() {
             </Button>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <p className="text-muted-foreground text-right">
-            Balance: <span className={cn('font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</span>
-          </p>
+        <div className="flex items-center gap-2">
           <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -396,7 +417,7 @@ export default function CustomerLedgerPage() {
                       disabled={cannotDeleteCustomer}
                       className={cannotDeleteCustomer ? 'pointer-events-none' : ''}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete Customer
                     </Button>
                   </span>
                 </TooltipTrigger>
@@ -409,145 +430,196 @@ export default function CustomerLedgerPage() {
             </TooltipProvider>
         </div>
       </header>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>New Transaction</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-                            <Tabs defaultValue="credit" onValueChange={(value) => form.setValue('type', value as 'credit' | 'payment')} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger
-                                        value="credit"
-                                        className="gap-2 data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive-foreground data-[state=active]:shadow-inner"
-                                    >
-                                        <Plus className="h-4 w-4" />Credit
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="payment"
-                                        className="gap-2 data-[state=active]:bg-success/20 data-[state=active]:text-success-foreground data-[state=active]:shadow-inner"
-                                    >
-                                        <Minus className="h-4 w-4" />Payment
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
-                            
-                             <FormField control={form.control} name="amount" render={({field}) => (
-                                <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                    <Input type="number" step="0.01" {...field} onChange={(e) => {
-                                        field.onChange(e.target.valueAsNumber);
-                                        // When amount is manually changed, clear selections
-                                        if (selectedCredits.size > 0) {
-                                          setSelectedCredits(new Set());
-                                          form.setValue('description', '');
-                                        }
-                                    }}/>
-                                </FormControl><FormMessage/></FormItem>
-                            )}/>
-                             <FormField control={form.control} name="description" render={({field}) => (
-                                <FormItem><FormLabel>Description</FormLabel><FormControl>
-                                    <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
-                                </FormControl><FormMessage/></FormItem>
-                            )}/>
-                            
-                            {formType === 'payment' && (
-                                <div className="space-y-2">
-                                    <FormLabel>Pay off specific credits (optional)</FormLabel>
-                                    <Card className="max-h-60 overflow-y-auto">
-                                        <CardContent className="p-2">
-                                        {outstandingCreditTransactions.length > 0 ? (
-                                            outstandingCreditTransactions.map(tx => (
-                                                <div
-                                                  key={tx.id}
-                                                  className="flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted has-[:checked]:bg-destructive/10"
-                                                >
-                                                    <Checkbox
-                                                        id={`credit-${tx.id}`}
-                                                        checked={selectedCredits.has(tx.id)}
-                                                        onCheckedChange={() => handleCreditSelection(tx.id)}
-                                                    />
-                                                    <label
-                                                        htmlFor={`credit-${tx.id}`}
-                                                        className="flex justify-between items-center w-full text-sm font-normal cursor-pointer"
-                                                    >
-                                                        <div>
-                                                            <p className="font-medium">{tx.description || 'Credit'}</p>
-                                                            <p className="text-xs text-muted-foreground">{format(tx.createdAt.toDate(), 'PP')}</p>
-                                                        </div>
-                                                        <span className="font-mono">{formatCurrency(tx.amount)}</span>
-                                                    </label>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground text-center p-4">
-                                                No outstanding credits found.
-                                            </p>
-                                        )}
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            )}
 
-                            <Button type="submit" disabled={isSubmitting} className="w-full">
-                                {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                                {formType === 'payment' ? 'Pay' : 'Add Credit'}
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="lg:col-span-2">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Transaction History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-center">Type</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                                <TableHead className="text-center">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {transactions.length > 0 ? (
-                                transactions.map((tx) => (
-                                    <TableRow key={tx.id} className={cn(tx.status === 'deleted' && "opacity-50")}>
-                                        <TableCell className={cn(tx.status === 'deleted' && 'line-through')}>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
-                                        <TableCell className="text-center">
-                                            {tx.status === 'deleted' ? <Badge variant="destructive">Deleted</Badge> : <Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge>}
-                                        </TableCell>
-                                        <TableCell className={cn("max-w-[200px] truncate", tx.status === 'deleted' && 'line-through')}>{tx.description}</TableCell>
-                                        <TableCell className={cn("text-right font-mono", tx.status === 'deleted' && 'line-through')}>{formatCurrency(tx.amount)}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)} disabled={tx.status === 'deleted'}>
-                                                <Trash2 className="w-4 h-4 text-destructive"/>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        No transactions yet for this customer.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Balance</CardTitle>
+            <Landmark className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={cn('text-2xl font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Credit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{formatCurrency(totalCredit)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-success">{formatCurrency(totalPaid)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Customer Since</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{customer ? format(customer.createdAt.toDate(), 'PP') : 'N/A'}</div>
+          </CardContent>
+        </Card>
       </div>
+      
+      <Card>
+          <CardHeader>
+              <CardTitle>Transaction History</CardTitle>
+              <CardDescription>A complete log of all credits and payments for this customer.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-center">Type</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-center">Action</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {transactions.length > 0 ? (
+                          transactions.map((tx) => (
+                              <TableRow key={tx.id} className={cn(tx.status === 'deleted' && "opacity-50")}>
+                                  <TableCell className={cn(tx.status === 'deleted' && 'line-through')}>{format(tx.createdAt.toDate(), 'PP')}</TableCell>
+                                  <TableCell className="text-center">
+                                      {tx.status === 'deleted' ? <Badge variant="destructive">Deleted</Badge> : <Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge>}
+                                  </TableCell>
+                                  <TableCell className={cn("max-w-[200px] truncate", tx.status === 'deleted' && 'line-through')}>{tx.description}</TableCell>
+                                  <TableCell className={cn("text-right font-mono", tx.status === 'deleted' && 'line-through')}>{formatCurrency(tx.amount)}</TableCell>
+                                  <TableCell className="text-center">
+                                      <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)} disabled={tx.status === 'deleted'}>
+                                          <Trash2 className="w-4 h-4 text-destructive"/>
+                                      </Button>
+                                  </TableCell>
+                              </TableRow>
+                          ))
+                      ) : (
+                          <TableRow>
+                              <TableCell colSpan={5} className="h-24 text-center">
+                                  No transactions yet for this customer.
+                              </TableCell>
+                          </TableRow>
+                      )}
+                  </TableBody>
+              </Table>
+          </CardContent>
+      </Card>
     </div>
+    
+    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetTrigger asChild>
+            <Button className="fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl" size="icon">
+                <Plus className="h-8 w-8" />
+                <span className="sr-only">New Transaction</span>
+            </Button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-2xl sm:max-w-xl mx-auto border-none bg-card p-0">
+            <SheetHeader className="p-6">
+                <SheetTitle>New Transaction</SheetTitle>
+                <SheetDescription>Add a credit or payment to this customer's account.</SheetDescription>
+            </SheetHeader>
+            <ScrollArea className="h-[calc(100vh-200px)]">
+            <div className="p-6 pt-0">
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+                        <Tabs defaultValue="credit" onValueChange={(value) => form.setValue('type', value as 'credit' | 'payment')} className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger
+                                    value="credit"
+                                    className="gap-2 data-[state=active]:bg-destructive/20 data-[state=active]:text-destructive-foreground data-[state=active]:shadow-inner"
+                                >
+                                    <Plus className="h-4 w-4" />Credit
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="payment"
+                                    className="gap-2 data-[state=active]:bg-success/20 data-[state=active]:text-success-foreground data-[state=active]:shadow-inner"
+                                >
+                                    <Minus className="h-4 w-4" />Payment
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        
+                         <FormField control={form.control} name="amount" render={({field}) => (
+                            <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
+                                <Input type="number" step="0.01" {...field} onChange={(e) => {
+                                    field.onChange(e.target.valueAsNumber);
+                                    if (selectedCredits.size > 0) {
+                                      setSelectedCredits(new Set());
+                                      form.setValue('description', '');
+                                    }
+                                }}/>
+                            </FormControl><FormMessage/></FormItem>
+                        )}/>
+                         <FormField control={form.control} name="description" render={({field}) => (
+                            <FormItem><FormLabel>Description</FormLabel><FormControl>
+                                <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
+                            </FormControl><FormMessage/></FormItem>
+                        )}/>
+                        
+                        {formType === 'payment' && (
+                            <div className="space-y-2">
+                                <FormLabel>Pay off specific credits (optional)</FormLabel>
+                                <Card className="max-h-60 overflow-y-auto">
+                                    <CardContent className="p-2">
+                                    {outstandingCreditTransactions.length > 0 ? (
+                                        outstandingCreditTransactions.map(tx => (
+                                            <div
+                                              key={tx.id}
+                                              className="flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted has-[:checked]:bg-primary/10"
+                                            >
+                                                <Checkbox
+                                                    id={`credit-${tx.id}`}
+                                                    checked={selectedCredits.has(tx.id)}
+                                                    onCheckedChange={() => handleCreditSelection(tx.id)}
+                                                />
+                                                <label
+                                                    htmlFor={`credit-${tx.id}`}
+                                                    className="flex justify-between items-center w-full text-sm font-normal cursor-pointer"
+                                                >
+                                                    <div>
+                                                        <p className="font-medium">{tx.description || 'Credit'}</p>
+                                                        <p className="text-xs text-muted-foreground">{format(tx.createdAt.toDate(), 'PP')}</p>
+                                                    </div>
+                                                    <span className="font-mono">{formatCurrency(tx.amount)}</span>
+                                                </label>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground text-center p-4">
+                                            No outstanding credits found.
+                                        </p>
+                                    )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                            <SheetClose asChild>
+                                <Button type="button" variant="secondary">Cancel</Button>
+                            </SheetClose>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                                {formType === 'payment' ? 'Record Payment' : 'Add Credit'}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+              </div>
+            </ScrollArea>
+        </SheetContent>
+    </Sheet>
+
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -578,6 +650,7 @@ export default function CustomerLedgerPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent>
             <DialogHeader>
