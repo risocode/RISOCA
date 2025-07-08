@@ -143,6 +143,16 @@ export default function ReceiptPage() {
     name: 'items',
   });
 
+  const items = form.watch('items');
+  useEffect(() => {
+    const total = items.reduce(
+      (sum, item) => sum + (Number(item.price) || 0),
+      0
+    );
+    const roundedTotal = Math.round(total * 100) / 100;
+    form.setValue('total', roundedTotal, {shouldValidate: true});
+  }, [items, form]);
+
   const {
     receipts,
     totalSpent,
@@ -153,7 +163,7 @@ export default function ReceiptPage() {
   useEffect(() => {
     let stream: MediaStream | null = null;
     const isCameraActive = inputMethod === 'camera' && !imagePreview;
-    
+
     if (isCameraActive) {
       document.body.classList.add('camera-active');
       const getCameraPermission = async () => {
@@ -174,7 +184,7 @@ export default function ReceiptPage() {
 
       getCameraPermission();
     } else {
-       document.body.classList.remove('camera-active');
+      document.body.classList.remove('camera-active');
     }
 
     return () => {
@@ -516,6 +526,7 @@ export default function ReceiptPage() {
                               step="0.01"
                               placeholder="e.g. 150.75"
                               {...field}
+                              disabled
                             />
                           </FormControl>
                           <FormMessage />
@@ -807,7 +818,7 @@ export default function ReceiptPage() {
                       <FormItem>
                         <FormLabel>Total (₱)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} />
+                          <Input type="number" step="0.01" {...field} disabled />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -860,15 +871,15 @@ export default function ReceiptPage() {
                       </div>
                     ))}
                   </div>
-                   <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => append({name: '', price: 0})}
-                    >
-                      <PlusCircle className="mr-2" /> Add Item
-                    </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => append({name: '', price: 0})}
+                  >
+                    <PlusCircle className="mr-2" /> Add Item
+                  </Button>
                 </div>
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={handleReset}>
