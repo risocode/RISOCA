@@ -123,3 +123,4 @@ This application is ready to be deployed to any static hosting provider like Ver
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
+
