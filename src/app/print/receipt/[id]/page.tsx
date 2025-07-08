@@ -107,7 +107,7 @@ export default function PrintReceiptPage() {
       </div>
 
       <div className="my-2 text-xs">
-        <p>Receipt #: {transaction.id.substring(0, 8).toUpperCase()}</p>
+        <p>Receipt #: {transaction.receiptNumber}</p>
         {transaction.customerName && (
           <p>Customer: {transaction.customerName}</p>
         )}

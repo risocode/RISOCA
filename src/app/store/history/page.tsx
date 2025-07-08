@@ -191,7 +191,7 @@ export default function SalesHistoryPage() {
                           )}
                         >
                           <p className="font-medium">
-                            #{sale.id.substring(0, 6)}
+                            #{sale.receiptNumber}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {sale.createdAt
@@ -240,7 +240,10 @@ export default function SalesHistoryPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => handleOpenAlert(sale)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenAlert(sale);
+                                }}
                                 aria-label="Void Sale"
                               >
                                 <Trash2 className="w-4 h-4 text-destructive" />

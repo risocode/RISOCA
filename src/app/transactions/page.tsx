@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import {
   collection,
   query,
@@ -76,7 +76,7 @@ function TransactionCard({transaction}: {transaction: UnifiedTransaction}) {
   if (isSale) {
     const saleData = data as SaleTransaction;
     icon = <ShoppingCart className="w-6 h-6 text-primary" />;
-    title = `Sale #${saleData.id.substring(0, 6)}`;
+    title = `Sale #${saleData.receiptNumber}`;
     description = saleData.customerName || date;
     amountDisplay = (
       <p className="font-bold text-lg text-primary">

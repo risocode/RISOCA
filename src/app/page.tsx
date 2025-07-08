@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import {useState, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import Image from 'next/image';
 import {
   collection,
@@ -106,7 +106,7 @@ export default function HomePage() {
       unsubDaily();
       unsubHistory();
     };
-  }, []);
+  }, [toast]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -175,7 +175,7 @@ export default function HomePage() {
                            todaysSalesList.map((sale) => (
                                <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
                                    <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
-                                       <p className="font-medium">#{sale.id.substring(0, 6)}</p>
+                                       <p className="font-medium">#{sale.receiptNumber}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
                                        </p>
@@ -232,7 +232,7 @@ export default function HomePage() {
                            recentSales.map((sale) => (
                                <TableRow key={sale.id} className={cn(sale.status === 'voided' && 'opacity-60')}>
                                    <TableCell className={cn(sale.status === 'voided' && 'line-through')}>
-                                       <p className="font-medium">#{sale.id.substring(0,6)}</p>
+                                       <p className="font-medium">#{sale.receiptNumber}</p>
                                        <p className="text-xs text-muted-foreground">
                                            {new Date(sale.createdAt.toDate()).toLocaleDateString()}
                                        </p>

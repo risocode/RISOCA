@@ -36,6 +36,7 @@ export type SaleTransactionInput = z.infer<typeof SaleTransactionSchema>;
 export type SaleTransaction = SaleTransactionInput & {
   id: string;
   createdAt: Timestamp;
+  receiptNumber: string;
 };
 
 export const CustomerSchema = z.object({

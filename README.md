@@ -57,7 +57,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     rules_version = '2';
     service cloud.firestore {
       match /databases/{database}/documents {
-        // Allow access to specific collections used by the app.
+        // Allows access to specific collections used by the app.
         match /receipts/{document=**} {
           allow read, write: if true;
         }
@@ -74,6 +74,9 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
           allow read, write: if true;
         }
         match /walletHistory/{document=**} {
+          allow read, write: if true;
+        }
+        match /counters/{document=**} {
           allow read, write: if true;
         }
       }

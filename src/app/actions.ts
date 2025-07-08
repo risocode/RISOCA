@@ -203,9 +203,20 @@ export async function submitSaleTransaction(
   }
 
   try {
-    const transactionRef = doc(collection(db, 'saleTransactions')); // Define ref outside transaction
+    const transactionRef = doc(collection(db, 'saleTransactions'));
+    const counterRef = doc(db, 'counters', 'saleReceipt');
 
     await runTransaction(db, async (transaction) => {
+      // Get the current counter value
+      const counterDoc = await transaction.get(counterRef);
+      let newReceiptNumber = 1;
+      if (counterDoc.exists()) {
+        newReceiptNumber = (counterDoc.data().currentNumber || 0) + 1;
+      }
+
+      // Format the receipt number with leading zeros
+      const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
+
       // Step 1: Aggregate all inventory items and their quantities.
       const inventoryMap = new Map<string, { ref: DocumentReference; quantity: number }>();
       for (const item of saleData.items) {
@@ -226,7 +237,7 @@ export async function submitSaleTransaction(
       
       const inventoryUpdates: { ref: DocumentReference; newStock: number }[] = [];
 
-      // Step 3: Validate stock levels (this is now a non-transactional read of fetched data).
+      // Step 3: Validate stock levels.
       for (const inventoryDoc of inventoryDocs) {
         if (!inventoryDoc.exists()) {
            throw new Error(`Inventory item with ID ${inventoryDoc.id} not found.`);
@@ -243,10 +254,11 @@ export async function submitSaleTransaction(
         inventoryUpdates.push({ ref: inventoryDoc.ref, newStock: currentStock - required.quantity });
       }
 
-      // Step 4: Now, perform all write operations.
+      // Step 4: Perform all write operations.
       // Write 1: Create the main sale transaction document.
       transaction.set(transactionRef, {
         ...saleData,
+        receiptNumber: formattedReceiptNumber,
         createdAt: serverTimestamp(),
         status: 'active',
       });
@@ -255,6 +267,9 @@ export async function submitSaleTransaction(
       for (const update of inventoryUpdates) {
         transaction.update(update.ref, { stock: update.newStock });
       }
+      
+      // Write 3: Update the counter
+      transaction.set(counterRef, { currentNumber: newReceiptNumber });
     });
 
     return {success: true, transactionId: transactionRef.id};

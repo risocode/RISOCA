@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useState, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import Link from 'next/link';
 import {useForm, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -317,6 +317,7 @@ export default function StorePage() {
                               onValueChange={(search) => {
                                 form.setValue('itemName', search);
                                 form.setValue('itemId', undefined);
+                                form.setValue('unitPrice', 0);
                               }}
                             />
                             <CommandList>
@@ -497,7 +498,7 @@ export default function StorePage() {
                       )}
                     >
                       <p className="font-medium">
-                        Receipt #{tx.id.substring(0, 6)}
+                        Receipt #{tx.receiptNumber}
                         {tx.customerName && (
                           <span className="text-sm text-muted-foreground">
                             {' '}
@@ -575,7 +576,7 @@ export default function StorePage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently void transaction #
-              {voidingTransaction?.id.substring(0, 6)}. The stock for all items
+              {voidingTransaction?.receiptNumber}. The stock for all items
               will be restored. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
