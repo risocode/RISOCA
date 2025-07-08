@@ -19,7 +19,18 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {format, subDays, startOfDay, endOfDay, isSameDay} from 'date-fns';
+import {
+  format,
+  subDays,
+  startOfDay,
+  isSameDay,
+  subMonths,
+  startOfMonth,
+  isSameMonth,
+  subYears,
+  startOfYear,
+  isSameYear,
+} from 'date-fns';
 import {
   Card,
   CardContent,
@@ -31,9 +42,9 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartStyle,
 } from '@/components/ui/chart';
 import {Skeleton} from '@/components/ui/skeleton';
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs';
 import type {SaleTransaction} from '@/lib/schemas';
 import type {DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 
@@ -42,13 +53,26 @@ type ReceiptDoc = DiagnoseReceiptOutput & {
   createdAt: Timestamp;
 };
 
+type TimeRange = 'daily' | 'monthly' | 'yearly';
+
 export function DailyPerformanceChart() {
   const [chartData, setChartData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('daily');
 
   useEffect(() => {
+    setIsLoading(true);
     const today = new Date();
-    const startDate = startOfDay(subDays(today, 6));
+    let startDate: Date;
+
+    if (timeRange === 'daily') {
+      startDate = startOfDay(subDays(today, 6));
+    } else if (timeRange === 'monthly') {
+      startDate = startOfMonth(subMonths(today, 11));
+    } else {
+      // yearly
+      startDate = startOfYear(subYears(today, 4));
+    }
 
     const salesQuery = query(
       collection(db, 'saleTransactions'),
@@ -65,34 +89,83 @@ export function DailyPerformanceChart() {
 
     const processData = () => {
       if (loadedCount < 2) return;
+      let processedData;
 
-      const dailyData = Array.from({length: 7}).map((_, i) => {
-        const date = subDays(today, i);
-        return {
-          date: format(date, 'MMM d'),
-          fullDate: date,
-          sales: 0,
-          expenses: 0,
-        };
-      });
-
-      salesData.forEach((sale) => {
-        if (sale.status !== 'voided') {
-          const day = dailyData.find((d) =>
-            isSameDay(d.fullDate, sale.createdAt.toDate())
+      if (timeRange === 'daily') {
+        processedData = Array.from({length: 7}).map((_, i) => {
+          const date = subDays(today, i);
+          return {
+            date: format(date, 'MMM d'),
+            fullDate: date,
+            sales: 0,
+            expenses: 0,
+          };
+        });
+        salesData.forEach((sale) => {
+          if (sale.status !== 'voided') {
+            const day = processedData.find((d) =>
+              isSameDay(d.fullDate, sale.createdAt.toDate())
+            );
+            if (day) day.sales += sale.total;
+          }
+        });
+        receiptsData.forEach((receipt) => {
+          const day = processedData.find((d) =>
+            isSameDay(d.fullDate, receipt.createdAt.toDate())
           );
-          if (day) day.sales += sale.total;
-        }
-      });
-
-      receiptsData.forEach((receipt) => {
-        const day = dailyData.find((d) =>
-          isSameDay(d.fullDate, receipt.createdAt.toDate())
-        );
-        if (day) day.expenses += receipt.total;
-      });
-
-      setChartData(dailyData.reverse());
+          if (day) day.expenses += receipt.total;
+        });
+      } else if (timeRange === 'monthly') {
+        processedData = Array.from({length: 12}).map((_, i) => {
+          const date = subMonths(today, i);
+          return {
+            date: format(date, 'MMM'),
+            fullDate: date,
+            sales: 0,
+            expenses: 0,
+          };
+        });
+        salesData.forEach((sale) => {
+          if (sale.status !== 'voided') {
+            const month = processedData.find((d) =>
+              isSameMonth(d.fullDate, sale.createdAt.toDate())
+            );
+            if (month) month.sales += sale.total;
+          }
+        });
+        receiptsData.forEach((receipt) => {
+          const month = processedData.find((d) =>
+            isSameMonth(d.fullDate, receipt.createdAt.toDate())
+          );
+          if (month) month.expenses += receipt.total;
+        });
+      } else {
+        // yearly
+        processedData = Array.from({length: 5}).map((_, i) => {
+          const date = subYears(today, i);
+          return {
+            date: format(date, 'yyyy'),
+            fullDate: date,
+            sales: 0,
+            expenses: 0,
+          };
+        });
+        salesData.forEach((sale) => {
+          if (sale.status !== 'voided') {
+            const year = processedData.find((d) =>
+              isSameYear(d.fullDate, sale.createdAt.toDate())
+            );
+            if (year) year.sales += sale.total;
+          }
+        });
+        receiptsData.forEach((receipt) => {
+          const year = processedData.find((d) =>
+            isSameYear(d.fullDate, receipt.createdAt.toDate())
+          );
+          if (year) year.expenses += receipt.total;
+        });
+      }
+      setChartData(processedData.reverse());
       setIsLoading(false);
     };
 
@@ -116,7 +189,7 @@ export function DailyPerformanceChart() {
       unsubSales();
       unsubExpenses();
     };
-  }, []);
+  }, [timeRange]);
 
   const chartConfig = {
     sales: {
@@ -135,6 +208,12 @@ export function DailyPerformanceChart() {
       maximumFractionDigits: 2,
     })}`;
 
+  const descriptionText = {
+    daily: 'Sales vs. Expenses for the Last 7 Days',
+    monthly: 'Sales vs. Expenses for the Last 12 Months',
+    yearly: 'Sales vs. Expenses for the Last 5 Years',
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -152,10 +231,23 @@ export function DailyPerformanceChart() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Performance</CardTitle>
-        <CardDescription>
-          Sales vs. Expenses for the Last 7 Days
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <CardTitle>Performance Overview</CardTitle>
+            <CardDescription>{descriptionText[timeRange]}</CardDescription>
+          </div>
+          <Tabs
+            value={timeRange}
+            onValueChange={(value) => setTimeRange(value as TimeRange)}
+            className="w-full sm:w-auto"
+          >
+            <TabsList className="grid w-full grid-cols-3 sm:w-auto">
+              <TabsTrigger value="daily">Daily</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="yearly">Yearly</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-60 w-full">
@@ -166,7 +258,9 @@ export function DailyPerformanceChart() {
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
+              tickFormatter={(value) =>
+                timeRange === 'daily' ? value.slice(0, 3) : value
+              }
             />
             <ChartTooltip
               cursor={false}

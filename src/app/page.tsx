@@ -16,7 +16,6 @@ import {
   ChevronDown,
   TrendingUp,
   TrendingDown,
-  BarChart2,
 } from 'lucide-react';
 import {
   Card,
@@ -49,7 +48,6 @@ export default function HomePage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const {toast} = useToast();
 
-  const [showChart, setShowChart] = useState(false);
   const [totalSales, setTotalSales] = useState(0);
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const {totalSpent: totalExpenses} = useReceipts();
@@ -129,59 +127,50 @@ export default function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-6">
-        {showChart ? (
-          <DailyPerformanceChart />
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Total Sales
-                </CardTitle>
-                <TrendingUp className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {isLoadingTotals ? (
-                  <Skeleton className="h-8 w-3/4 mt-1" />
-                ) : (
-                  <div className="text-2xl font-bold">
-                    {formatCurrency(totalSales)}
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Lifetime sales revenue
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Total Expenses
-                </CardTitle>
-                <TrendingDown className="w-4 h-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {isLoadingTotals ? (
-                  <Skeleton className="h-8 w-3/4 mt-1" />
-                ) : (
-                  <div className="text-2xl font-bold">
-                    {formatCurrency(totalExpenses)}
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Lifetime expense tracking
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={() => setShowChart(!showChart)}>
-            <BarChart2 className="mr-2" />
-            {showChart ? 'Hide Chart' : 'Show 7-Day Performance Chart'}
-          </Button>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Total Sales
+              </CardTitle>
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingTotals ? (
+                <Skeleton className="h-8 w-3/4 mt-1" />
+              ) : (
+                <div className="text-2xl font-bold">
+                  {formatCurrency(totalSales)}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Lifetime sales revenue
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">
+                Total Expenses
+              </CardTitle>
+              <TrendingDown className="w-4 h-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {isLoadingTotals ? (
+                <Skeleton className="h-8 w-3/4 mt-1" />
+              ) : (
+                <div className="text-2xl font-bold">
+                  {formatCurrency(totalExpenses)}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Lifetime expense tracking
+              </p>
+            </CardContent>
+          </Card>
         </div>
+
+        <DailyPerformanceChart />
 
         <Card>
           <CardHeader>
