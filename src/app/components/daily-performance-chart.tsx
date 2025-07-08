@@ -228,6 +228,57 @@ export function DailyPerformanceChart() {
     }
   }, [timeRange]);
 
+  const CustomAxisTick = (props: any) => {
+    const {x, y, payload} = props;
+    const {value} = payload;
+
+    if (timeRange === 'daily') {
+      const parts = value.split(' ');
+      if (parts.length === 2) {
+        const [month, day] = parts;
+        return (
+          <g transform={`translate(${x},${y})`}>
+            <text
+              x={0}
+              y={0}
+              dy={12}
+              textAnchor="middle"
+              fill="hsl(var(--muted-foreground))"
+              fontSize="12px"
+            >
+              {day}
+            </text>
+            <text
+              x={0}
+              y={12}
+              dy={12}
+              textAnchor="middle"
+              fill="hsl(var(--muted-foreground))"
+              fontSize="10px"
+            >
+              {month}
+            </text>
+          </g>
+        );
+      }
+    }
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={0}
+          dy={16}
+          textAnchor="middle"
+          fill="hsl(var(--muted-foreground))"
+          fontSize="12px"
+        >
+          {value}
+        </text>
+      </g>
+    );
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -264,21 +315,16 @@ export function DailyPerformanceChart() {
         </div>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-60 w-full">
+        <ChartContainer config={chartConfig} className="h-64 w-full">
           <BarChart data={chartData} accessibilityLayer>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="date"
               tickLine={false}
-              tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => {
-                if (timeRange === 'daily') {
-                  // "Jul 9" -> "9"
-                  return value.split(' ')[1];
-                }
-                return value;
-              }}
+              tick={<CustomAxisTick />}
+              height={50}
+              tickMargin={5}
             />
             <YAxis
               width={80}
