@@ -38,6 +38,13 @@ import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type SaleDoc = {
   id: string;
@@ -52,25 +59,20 @@ type SaleDoc = {
 export default function HomePage() {
   const [totalSales, setTotalSales] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
-  const [dailySales, setDailySales] = useState(0);
-  const [todaysSalesList, setTodaysSalesList] = useState<SaleTransaction[]>([]);
   const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
+  const [historyLimit, setHistoryLimit] = useState(5);
 
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const {toast} = useToast();
 
-  const [openTodaysSales, setOpenTodaysSales] = useState<Record<string, boolean>>({});
-  const [openRecentSales, setOpenRecentSales] = useState<Record<string, boolean>>({});
-
-  const toggleTodaysSaleRow = (id: string) => {
-    setOpenTodaysSales((prev) => ({...prev, [id]: !prev[id]}));
-  };
+  const [openRecentSales, setOpenRecentSales] = useState<
+    Record<string, boolean>
+  >({});
 
   const toggleRecentSaleRow = (id: string) => {
     setOpenRecentSales((prev) => ({...prev, [id]: !prev[id]}));
   };
-
 
   const handleFirestoreError = (error: Error, collectionName: string) => {
     console.error(`Error fetching ${collectionName}:`, error);
@@ -110,32 +112,11 @@ export default function HomePage() {
       (error) => handleFirestoreError(error, 'receipts')
     );
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dailyQuery = query(
-      collection(db, 'saleTransactions'),
-      where('createdAt', '>=', Timestamp.fromDate(today)),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubDaily = onSnapshot(
-      dailyQuery,
-      (snapshot) => {
-        const salesData = snapshot.docs.map(
-          (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
-        );
-        const total = salesData
-          .filter((sale) => sale.status !== 'voided')
-          .reduce((acc, sale) => acc + sale.total, 0);
-        setDailySales(total);
-        setTodaysSalesList(salesData);
-      },
-      (error) => handleFirestoreError(error, 'saleTransactions (daily)')
-    );
-
+    setIsLoadingHistory(true);
     const historyQuery = query(
       collection(db, 'saleTransactions'),
       orderBy('createdAt', 'desc'),
-      limit(5)
+      limit(historyLimit)
     );
     const unsubHistory = onSnapshot(
       historyQuery,
@@ -144,18 +125,20 @@ export default function HomePage() {
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
         );
         setRecentSales(salesData);
-        if (isLoadingHistory) setIsLoadingHistory(false);
+        setIsLoadingHistory(false);
       },
-      (error) => handleFirestoreError(error, 'saleTransactions (history)')
+      (error) => {
+        handleFirestoreError(error, 'saleTransactions (history)');
+        setIsLoadingHistory(false);
+      }
     );
 
     return () => {
       unsubSales();
       unsubReceipts();
-      unsubDaily();
       unsubHistory();
     };
-  }, [toast]);
+  }, [toast, historyLimit]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -198,18 +181,25 @@ export default function HomePage() {
 
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
-                <CardTitle>Today's Sales</CardTitle>
-                <CardDescription>Total revenue for today.</CardDescription>
+                <CardTitle>Sales History</CardTitle>
+                <CardDescription>
+                  Your most recent transactions.
+                </CardDescription>
               </div>
-              {isLoadingTotals ? (
-                <Skeleton className="h-8 w-32" />
-              ) : (
-                <div className="text-2xl font-bold text-primary">
-                  {formatCurrency(dailySales)}
-                </div>
-              )}
+              <Select
+                value={String(historyLimit)}
+                onValueChange={(value) => setHistoryLimit(Number(value))}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Show transactions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">Show last 5</SelectItem>
+                  <SelectItem value="10">Show last 10</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -219,12 +209,12 @@ export default function HomePage() {
                   <TableHead>Receipt</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingTotals ? (
-                  Array.from({length: 3}).map((_, i) => (
+                {isLoadingHistory ? (
+                  Array.from({length: historyLimit}).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell>
                         <Skeleton className="h-5 w-3/4" />
@@ -240,13 +230,13 @@ export default function HomePage() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : todaysSalesList.length > 0 ? (
-                  todaysSalesList.map((sale) => {
-                    const isOpen = !!openTodaysSales[sale.id];
+                ) : recentSales.length > 0 ? (
+                  recentSales.map((sale) => {
+                    const isOpen = !!openRecentSales[sale.id];
                     return (
                       <React.Fragment key={sale.id}>
                         <TableRow
-                          onClick={() => toggleTodaysSaleRow(sale.id)}
+                          onClick={() => toggleRecentSaleRow(sale.id)}
                           className={cn(
                             'cursor-pointer',
                             sale.status === 'voided' && 'opacity-60'
@@ -258,7 +248,12 @@ export default function HomePage() {
                             )}
                           >
                             <div className="flex items-center gap-2">
-                              <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
+                              <ChevronDown
+                                className={cn(
+                                  'h-4 w-4 transition-transform',
+                                  isOpen && 'rotate-180'
+                                )}
+                              />
                               <div>
                                 <p className="font-medium">
                                   #{sale.receiptNumber}
@@ -266,10 +261,7 @@ export default function HomePage() {
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(
                                     sale.createdAt.toDate()
-                                  ).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
+                                  ).toLocaleDateString()}
                                 </p>
                               </div>
                             </div>
@@ -319,7 +311,10 @@ export default function HomePage() {
                                   </TableHeader>
                                   <TableBody>
                                     {sale.items.map((item, index) => (
-                                      <TableRow key={index} className="border-none">
+                                      <TableRow
+                                        key={index}
+                                        className="border-none"
+                                      >
                                         <TableCell className="py-1 font-medium">
                                           {item.itemName}
                                         </TableCell>
@@ -347,152 +342,6 @@ export default function HomePage() {
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                       <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                      No sales recorded today.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Sales History</CardTitle>
-            <CardDescription>Your last 5 transactions.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Receipt</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingHistory ? (
-                  Array.from({length: 5}).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-5 w-3/4" />
-                      </TableCell>
-                       <TableCell>
-                        <Skeleton className="h-5 w-3/4" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-16 mx-auto" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-1/4 ml-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : recentSales.length > 0 ? (
-                  recentSales.map((sale) => {
-                     const isOpen = !!openRecentSales[sale.id];
-                     return (
-                      <React.Fragment key={sale.id}>
-                        <TableRow
-                          onClick={() => toggleRecentSaleRow(sale.id)}
-                          className={cn(
-                            'cursor-pointer',
-                            sale.status === 'voided' && 'opacity-60'
-                          )}
-                        >
-                          <TableCell
-                            className={cn(
-                              sale.status === 'voided' && 'line-through'
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
-                              <div>
-                                <p className="font-medium">
-                                  #{sale.receiptNumber}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(
-                                    sale.createdAt.toDate()
-                                  ).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{sale.customerName || 'Customer'}</TableCell>
-                          <TableCell className="text-center">
-                            {sale.status === 'voided' ? (
-                              <Badge variant="destructive">Voided</Badge>
-                            ) : (
-                              <Badge variant="success">Active</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell
-                            className={cn(
-                              'text-right font-mono',
-                              sale.status === 'voided' && 'line-through'
-                            )}
-                          >
-                            {formatCurrency(sale.total)}
-                          </TableCell>
-                        </TableRow>
-                        {isOpen && (
-                           <TableRow
-                            className={cn(
-                              'bg-muted/50',
-                              sale.status === 'voided' && 'opacity-60'
-                            )}
-                          >
-                            <TableCell colSpan={4} className="p-2">
-                              <div className="p-2 bg-background rounded-md">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="h-8">
-                                        Item Name
-                                      </TableHead>
-                                      <TableHead className="h-8 text-center w-16">
-                                        Qty
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Unit Price
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Amount
-                                      </TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {sale.items.map((item, index) => (
-                                      <TableRow key={index} className="border-none">
-                                        <TableCell className="py-1 font-medium">
-                                          {item.itemName}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-center">
-                                          {item.quantity}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.unitPrice.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.total.toFixed(2)}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </React.Fragment>
-                    )
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                      <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                       No recent sales found.
                     </TableCell>
                   </TableRow>
@@ -500,9 +349,14 @@ export default function HomePage() {
               </TableBody>
             </Table>
           </CardContent>
-          <CardFooter className="pt-4">
+          <CardFooter className="flex-col items-center gap-4 pt-4">
+            {historyLimit === 10 && (
+              <p className="text-sm text-center text-muted-foreground">
+                For more results, view the full history.
+              </p>
+            )}
             <Button asChild variant="outline" className="w-full">
-              <Link href="/transactions">
+              <Link href="/store/history">
                 <History className="mr-2" />
                 View Full Transaction History
               </Link>
