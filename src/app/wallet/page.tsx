@@ -323,20 +323,20 @@ export default function WalletPage() {
                     {formatCurrency(openDay.startingCash)}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center">
                     <p className="text-sm text-muted-foreground">Sales</p>
                     <p className="font-bold text-lg text-primary">
                       {formatCurrency(dailySales)}
                     </p>
                   </div>
-                  <div>
+                  <div className="flex flex-col items-center">
                     <p className="text-sm text-muted-foreground">Expenses</p>
                     <p className="font-bold text-lg text-accent">
                       {formatCurrency(dailyExpenses)}
                     </p>
                   </div>
-                  <div>
+                  <div className="flex flex-col items-center">
                     <p className="text-sm text-muted-foreground">Profit/Loss</p>
                     <p
                       className={cn(
