@@ -2,15 +2,12 @@
 
 import Link from 'next/link';
 import React, {useState, useEffect} from 'react';
-import Image from 'next/image';
 import {
   collection,
   query,
   onSnapshot,
   orderBy,
-  where,
   limit,
-  Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {History, FileWarning, ChevronDown} from 'lucide-react';
@@ -23,7 +20,6 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import {Skeleton} from '@/components/ui/skeleton';
-import {Separator} from '@/components/ui/separator';
 import {Button} from '@/components/ui/button';
 import {
   Table,
@@ -37,24 +33,11 @@ import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
-
-type SaleDoc = {
-  id: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-  createdAt: Timestamp;
-  status?: 'active' | 'voided';
-};
+import {DailyPerformanceChart} from '@/app/components/daily-performance-chart';
 
 export default function HomePage() {
-  const [totalSales, setTotalSales] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
   const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
-
-  const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const {toast} = useToast();
 
@@ -65,8 +48,6 @@ export default function HomePage() {
   const toggleRecentSaleRow = (id: string) => {
     setOpenRecentSales((prev) => {
       const isCurrentlyOpen = !!prev[id];
-      // If the clicked row is already open, close it by returning an empty object.
-      // Otherwise, open the clicked row and close all others.
       return isCurrentlyOpen ? {} : {[id]: true};
     });
   };
@@ -82,33 +63,6 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    // This now queries the new saleTransactions collection for totals
-    const salesQuery = query(collection(db, 'saleTransactions'));
-    const unsubSales = onSnapshot(
-      salesQuery,
-      (snapshot) => {
-        const total = snapshot.docs
-          .filter((doc) => doc.data().status !== 'voided')
-          .reduce((acc, doc) => acc + (doc.data().total || 0), 0);
-        setTotalSales(total);
-        if (isLoadingTotals) setIsLoadingTotals(false);
-      },
-      (error) => handleFirestoreError(error, 'saleTransactions')
-    );
-
-    const receiptsQuery = query(collection(db, 'receipts'));
-    const unsubReceipts = onSnapshot(
-      receiptsQuery,
-      (snapshot) => {
-        const total = snapshot.docs.reduce(
-          (acc, doc) => acc + (doc.data().total || 0),
-          0
-        );
-        setTotalExpenses(total);
-      },
-      (error) => handleFirestoreError(error, 'receipts')
-    );
-
     setIsLoadingHistory(true);
     const historyQuery = query(
       collection(db, 'saleTransactions'),
@@ -131,8 +85,6 @@ export default function HomePage() {
     );
 
     return () => {
-      unsubSales();
-      unsubReceipts();
       unsubHistory();
     };
   }, [toast, historyLimit]);
@@ -146,35 +98,7 @@ export default function HomePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-6">
-        <Card>
-          <CardContent className="pt-6 flex items-center justify-around">
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Total Sales
-              </p>
-              {isLoadingTotals ? (
-                <Skeleton className="h-8 w-32" />
-              ) : (
-                <p className="text-3xl font-bold tracking-tighter text-primary">
-                  {formatCurrency(totalSales)}
-                </p>
-              )}
-            </div>
-            <Separator orientation="vertical" className="h-16" />
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
-                Total Expenses
-              </p>
-              {isLoadingTotals ? (
-                <Skeleton className="h-8 w-32" />
-              ) : (
-                <p className="text-3xl font-bold tracking-tighter text-accent">
-                  {formatCurrency(totalExpenses)}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <DailyPerformanceChart />
 
         <Card>
           <CardHeader>
