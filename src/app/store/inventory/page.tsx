@@ -62,6 +62,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {Skeleton} from '@/components/ui/skeleton';
 import {useToast} from '@/hooks/use-toast';
 import {
@@ -84,6 +91,7 @@ export default function InventoryPage() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState('default');
   const {toast} = useToast();
 
   const form = useForm<InventoryItemInput>({
@@ -131,16 +139,26 @@ export default function InventoryPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const filteredItems = useMemo(() => {
-    if (!searchTerm) {
-      return items;
+  const displayedItems = useMemo(() => {
+    const filtered = searchTerm
+      ? items.filter(
+          (item) =>
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.barcode?.includes(searchTerm)
+        )
+      : [...items];
+
+    switch (sortOption) {
+      case 'name-asc':
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+      case 'price-high':
+        return filtered.sort((a, b) => b.price - a.price);
+      case 'price-low':
+        return filtered.sort((a, b) => a.price - b.price);
+      default:
+        return filtered;
     }
-    return items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.barcode?.includes(searchTerm)
-    );
-  }, [items, searchTerm]);
+  }, [items, searchTerm, sortOption]);
 
   const handleOpenDialog = (item: InventoryItem | null = null) => {
     setEditingItem(item);
@@ -351,8 +369,8 @@ export default function InventoryPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-grow">
                 <CardTitle className="flex items-center gap-2">
                   <PackageSearch className="w-5 h-5" /> All Products
                 </CardTitle>
@@ -360,15 +378,28 @@ export default function InventoryPage() {
                   A list of all products currently in your inventory.
                 </CardDescription>
               </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search products..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center gap-2">
+                <div className="relative w-full sm:w-auto">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search products..."
+                    className="pl-10 w-full sm:w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Select value={sortOption} onValueChange={setSortOption}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Sort by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Date Added</SelectItem>
+                    <SelectItem value="name-asc">A-Z</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
@@ -408,8 +439,8 @@ export default function InventoryPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  : filteredItems.length > 0
-                  ? filteredItems.map((item) => (
+                  : displayedItems.length > 0
+                  ? displayedItems.map((item) => (
                       <TableRow
                         key={item.id}
                         onClick={() => handleOpenDialog(item)}
