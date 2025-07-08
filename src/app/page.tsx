@@ -217,6 +217,7 @@ export default function HomePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Receipt</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
@@ -225,6 +226,9 @@ export default function HomePage() {
                 {isLoadingTotals ? (
                   Array.from({length: 3}).map((_, i) => (
                     <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-5 w-3/4" />
+                      </TableCell>
                       <TableCell>
                         <Skeleton className="h-5 w-3/4" />
                       </TableCell>
@@ -270,6 +274,7 @@ export default function HomePage() {
                               </div>
                             </div>
                           </TableCell>
+                          <TableCell>{sale.customerName || 'Customer'}</TableCell>
                           <TableCell>
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
@@ -293,7 +298,7 @@ export default function HomePage() {
                               sale.status === 'voided' && 'opacity-60'
                             )}
                           >
-                            <TableCell colSpan={3} className="p-2">
+                            <TableCell colSpan={4} className="p-2">
                               <div className="p-2 bg-background rounded-md">
                                 <Table>
                                   <TableHeader>
@@ -340,7 +345,7 @@ export default function HomePage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                       No sales recorded today.
                     </TableCell>
@@ -361,6 +366,7 @@ export default function HomePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Receipt</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
@@ -370,6 +376,9 @@ export default function HomePage() {
                   Array.from({length: 5}).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell>
+                        <Skeleton className="h-5 w-3/4" />
+                      </TableCell>
+                       <TableCell>
                         <Skeleton className="h-5 w-3/4" />
                       </TableCell>
                       <TableCell>
@@ -411,6 +420,7 @@ export default function HomePage() {
                               </div>
                             </div>
                           </TableCell>
+                          <TableCell>{sale.customerName || 'Customer'}</TableCell>
                           <TableCell>
                             {sale.status === 'voided' ? (
                               <Badge variant="destructive">Voided</Badge>
@@ -434,7 +444,7 @@ export default function HomePage() {
                               sale.status === 'voided' && 'opacity-60'
                             )}
                           >
-                            <TableCell colSpan={3} className="p-2">
+                            <TableCell colSpan={4} className="p-2">
                               <div className="p-2 bg-background rounded-md">
                                 <Table>
                                   <TableHeader>
@@ -481,7 +491,7 @@ export default function HomePage() {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                       <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                       No recent sales found.
                     </TableCell>
