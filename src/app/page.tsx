@@ -41,15 +41,17 @@ import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {DailyPerformanceChart} from '@/app/components/daily-performance-chart';
+import {BestSellersReport} from '@/app/components/best-sellers-report';
 
 export default function HomePage() {
   const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isSalesLoading, setIsSalesLoading] = useState(true); // New state for filter loading
   const {toast} = useToast();
 
   const [totalSales, setTotalSales] = useState(0);
-  const [isLoadingTotals, setIsLoadingTotals] = useState(true);
+  const [isTotalsLoading, setIsTotalsLoading] = useState(true);
   const {totalSpent: totalExpenses} = useReceipts();
 
   const [openRecentSales, setOpenRecentSales] = useState<
@@ -78,7 +80,7 @@ export default function HomePage() {
 
   // Effect for fetching sales history (paginated)
   useEffect(() => {
-    setIsLoadingHistory(true);
+    setIsSalesLoading(true); // Always set loading to true when filter changes
     const historyQuery = query(
       collection(db, 'saleTransactions'),
       orderBy('createdAt', 'desc'),
@@ -91,17 +93,21 @@ export default function HomePage() {
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
         );
         setRecentSales(salesData);
-        setIsLoadingHistory(false);
+        if (isLoadingHistory) {
+          setIsLoadingHistory(false); // Only set this on the very first load
+        }
+        setIsSalesLoading(false); // Done loading this filter
       },
       (error) => {
         handleFirestoreError(error, 'saleTransactions (history)');
         setIsLoadingHistory(false);
+        setIsSalesLoading(false);
       }
     );
     return () => unsubHistory();
-  }, [historyLimit, handleFirestoreError]);
+  }, [historyLimit, handleFirestoreError, isLoadingHistory]);
 
-  // Effect for fetching total sales (all time)
+  // Effect for fetching total sales (all time) - Runs only once
   useEffect(() => {
     const salesQuery = query(collection(db, 'saleTransactions'));
     const unsubSales = onSnapshot(
@@ -111,11 +117,11 @@ export default function HomePage() {
           .filter((doc) => doc.data().status !== 'voided')
           .reduce((acc, doc) => acc + doc.data().total, 0);
         setTotalSales(total);
-        setIsLoadingTotals(false);
+        setIsTotalsLoading(false);
       },
       (error) => {
         handleFirestoreError(error, 'saleTransactions (totals)');
-        setIsLoadingTotals(false);
+        setIsTotalsLoading(false);
       }
     );
     return () => unsubSales();
@@ -128,7 +134,7 @@ export default function HomePage() {
     })}`;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
+    <div className="p-4 md:p-6 space-y-6 animate-page-enter opacity-0">
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -143,7 +149,7 @@ export default function HomePage() {
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <TrendingUp /> Total Sales
                 </p>
-                {isLoadingTotals ? (
+                {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
                   <p className="text-3xl font-bold text-primary">
@@ -155,7 +161,7 @@ export default function HomePage() {
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <TrendingDown /> Total Expenses
                 </p>
-                {isLoadingTotals ? (
+                {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
                   <p className="text-3xl font-bold text-destructive">
@@ -184,6 +190,7 @@ export default function HomePage() {
                   variant={historyLimit === 5 ? 'secondary' : 'outline'}
                   size="sm"
                   onClick={() => setHistoryLimit(5)}
+                  disabled={isSalesLoading}
                 >
                   5
                 </Button>
@@ -191,6 +198,7 @@ export default function HomePage() {
                   variant={historyLimit === 10 ? 'secondary' : 'outline'}
                   size="sm"
                   onClick={() => setHistoryLimit(10)}
+                  disabled={isSalesLoading}
                 >
                   10
                 </Button>
@@ -208,7 +216,7 @@ export default function HomePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingHistory && recentSales.length === 0 ? (
+                {isLoadingHistory ? (
                   Array.from({length: historyLimit}).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell>
@@ -352,12 +360,15 @@ export default function HomePage() {
                 For more results, view the full history.
               </p>
             )}
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/transactions">
-                <History className="mr-2" />
-                View Full Transaction History
-              </Link>
-            </Button>
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <BestSellersReport />
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/transactions">
+                  <History className="mr-2" />
+                  View Full Transaction History
+                </Link>
+              </Button>
+            </div>
           </CardFooter>
         </Card>
       </div>
