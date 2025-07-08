@@ -231,7 +231,12 @@ export default function WalletPage() {
         .filter((r) => isSameDay(r.createdAt.toDate(), entryDate))
         .reduce((sum, r) => sum + r.total, 0);
 
-      const profit = dailySales - dailyExpenses;
+      let profit;
+      if (entry.status === 'closed' && entry.endingCash !== null) {
+        profit = entry.endingCash - entry.startingCash;
+      } else {
+        profit = dailySales - dailyExpenses;
+      }
 
       return {...entry, dailySales, dailyExpenses, profit};
     });
