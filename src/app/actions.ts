@@ -180,23 +180,12 @@ async function saveReceiptToFirestore(
   }
 }
 
-export async function scanAndNotify(
-  input: DiagnoseReceiptInput
-): Promise<ActionResponse> {
-  const diagnosis = await diagnoseReceipt(input);
-  await saveReceiptToFirestore(diagnosis, input.photoDataUri);
-  const notificationStatus = await notifyOnTelegram(
-    diagnosis,
-    input.photoDataUri
-  );
-  return {diagnosis, notificationStatus};
-}
-
 export async function submitManualReceipt(
-  data: DiagnoseReceiptOutput
+  data: DiagnoseReceiptOutput,
+  imagePreview?: string
 ): Promise<ActionResponse> {
-  await saveReceiptToFirestore(data);
-  const notificationStatus = await notifyOnTelegram(data);
+  await saveReceiptToFirestore(data, imagePreview);
+  const notificationStatus = await notifyOnTelegram(data, imagePreview);
   return {diagnosis: data, notificationStatus};
 }
 

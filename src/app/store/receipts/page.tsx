@@ -18,10 +18,12 @@ import {
   Wallet,
   FileText,
   Tag,
+  Save,
 } from 'lucide-react';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
-import {scanAndNotify, submitManualReceipt} from '@/app/actions';
+import {diagnoseReceipt} from '@/ai/flows/diagnose-receipt-flow';
+import {submitManualReceipt} from '@/app/actions';
 import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 import {useForm, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -35,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -83,7 +86,7 @@ const categories = [
   'Other',
 ];
 
-const ManualFormSchema = z.object({
+const ReceiptFormSchema = z.object({
   merchantName: z.string().min(1, 'Merchant name is required.'),
   transactionDate: z.date({required_error: 'A date is required.'}),
   total: z.coerce
@@ -102,7 +105,7 @@ const ManualFormSchema = z.object({
     .min(1, 'At least one item is required.'),
 });
 
-type ManualFormData = z.infer<typeof ManualFormSchema>;
+type ReceiptFormData = z.infer<typeof ReceiptFormSchema>;
 
 export default function ReceiptPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -112,6 +115,8 @@ export default function ReceiptPage() {
   const [diagnosis, setDiagnosis] = useState<DiagnoseReceiptOutput | null>(
     null
   );
+  const [editableDiagnosis, setEditableDiagnosis] =
+    useState<DiagnoseReceiptOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const {toast} = useToast();
@@ -125,8 +130,8 @@ export default function ReceiptPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const form = useForm<ManualFormData>({
-    resolver: zodResolver(ManualFormSchema),
+  const form = useForm<ReceiptFormData>({
+    resolver: zodResolver(ReceiptFormSchema),
     defaultValues: {
       merchantName: '',
       items: [{name: '', price: 0}],
@@ -282,15 +287,17 @@ export default function ReceiptPage() {
       return;
     }
     setIsLoading(true);
-    setDiagnosis(null);
+    setEditableDiagnosis(null);
     setError(null);
 
     try {
-      const response = await scanAndNotify({photoDataUri: imageData});
-      setDiagnosis(response.diagnosis);
-      toast({
-        variant: 'success',
-        title: 'Scan Complete',
+      const diagnosisResult = await diagnoseReceipt({photoDataUri: imageData});
+      setEditableDiagnosis(diagnosisResult);
+      form.reset({
+        ...diagnosisResult,
+        transactionDate: new Date(
+          diagnosisResult.transactionDate + 'T00:00:00'
+        ),
       });
     } catch (e) {
       console.error(e);
@@ -300,9 +307,8 @@ export default function ReceiptPage() {
     }
   };
 
-  const handleManualSubmit = async (data: ManualFormData) => {
+  const handleFinalSubmit = async (data: ReceiptFormData) => {
     setIsLoading(true);
-    setDiagnosis(null);
     setError(null);
 
     const payload: DiagnoseReceiptOutput = {
@@ -311,16 +317,17 @@ export default function ReceiptPage() {
     };
 
     try {
-      const response = await submitManualReceipt(payload);
+      const response = await submitManualReceipt(payload, imageData);
       setDiagnosis(response.diagnosis);
+      setEditableDiagnosis(null);
       toast({
         variant: 'success',
-        title: 'Receipt Submitted',
+        title: 'Receipt Saved!',
       });
       form.reset();
     } catch (e) {
       console.error(e);
-      setError('Could not submit the receipt. Please try again.');
+      setError('Could not save the receipt. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -330,6 +337,7 @@ export default function ReceiptPage() {
     setImagePreview(null);
     setImageData(null);
     setDiagnosis(null);
+    setEditableDiagnosis(null);
     setError(null);
     setIsLoading(false);
     if (fileInputRef.current) {
@@ -408,7 +416,7 @@ export default function ReceiptPage() {
             <CardContent>
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(handleManualSubmit)}
+                  onSubmit={form.handleSubmit(handleFinalSubmit)}
                   className="space-y-8"
                 >
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -646,6 +654,7 @@ export default function ReceiptPage() {
   const renderContent = () => {
     if (isLoading) return renderLoadingState();
     if (diagnosis) return renderResultsState();
+    if (editableDiagnosis) return renderEditableFormState();
     if (error)
       return imagePreview ? renderErrorState() : renderInitialState();
     if (imagePreview) return renderPreviewState();
@@ -677,6 +686,205 @@ export default function ReceiptPage() {
             <Button onClick={handleScanReceipt}>
               <ReceiptText className="mr-2" /> Scan Receipt
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderEditableFormState = () => (
+    <div className="w-full animate-enter">
+      <Card>
+        <CardHeader>
+          <CardTitle>Review & Edit</CardTitle>
+          <CardDescription>
+            Check the scanned data and make any corrections before saving.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="relative w-full overflow-hidden rounded-lg aspect-video border">
+              {imagePreview && (
+                <Image
+                  src={imagePreview}
+                  alt="Scanned receipt"
+                  fill
+                  className="object-contain"
+                />
+              )}
+            </div>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(handleFinalSubmit)}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FormField
+                    name="merchantName"
+                    control={form.control}
+                    render={({field}) => (
+                      <FormItem>
+                        <FormLabel>Merchant</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="transactionDate"
+                    control={form.control}
+                    render={({field}) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  'pl-3 text-left font-normal',
+                                  !field.value && 'text-muted-foreground'
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, 'PPP')
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() ||
+                                date < new Date('1900-01-01')
+                              }
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="category"
+                    control={form.control}
+                    render={({field}) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="total"
+                    control={form.control}
+                    render={({field}) => (
+                      <FormItem>
+                        <FormLabel>Total (₱)</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div>
+                  <FormLabel>Items</FormLabel>
+                  <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-2">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="flex items-start gap-2">
+                        <FormField
+                          name={`items.${index}.name`}
+                          control={form.control}
+                          render={({field}) => (
+                            <FormItem className="flex-grow">
+                              <FormControl>
+                                <Input placeholder="Item name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          name={`items.${index}.price`}
+                          control={form.control}
+                          render={({field}) => (
+                            <FormItem className="w-28">
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Price"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                          disabled={fields.length <= 1}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                   <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => append({name: '', price: 0})}
+                    >
+                      <PlusCircle className="mr-2" /> Add Item
+                    </Button>
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={handleReset}>
+                    <X className="mr-2" /> Discard Changes
+                  </Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="mr-2 animate-spin" />
+                    ) : (
+                      <Save className="mr-2" />
+                    )}
+                    Save Receipt
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </div>
         </CardContent>
       </Card>
@@ -815,11 +1023,11 @@ export default function ReceiptPage() {
               </div>
             </div>
           </CardContent>
-          <CardContent className="p-6 pt-0">
+          <CardFooter className="p-6 pt-0">
             <Button onClick={handleReset} className="w-full">
               <ReceiptText className="mr-2" /> Process Another
             </Button>
-          </CardContent>
+          </CardFooter>
         </Card>
       </div>
     );
