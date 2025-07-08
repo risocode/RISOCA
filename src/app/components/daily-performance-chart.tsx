@@ -258,8 +258,21 @@ export function DailyPerformanceChart() {
               tickLine={false}
               tickMargin={10}
               axisLine={false}
+              tickFormatter={(value) => {
+                if (timeRange === 'daily') {
+                  // "Jul 9" -> "9"
+                  return value.split(' ')[1];
+                }
+                return value;
+              }}
+            />
+            <YAxis
+              width={80}
+              axisLine={false}
+              tickLine={false}
+              tickMargin={5}
               tickFormatter={(value) =>
-                timeRange === 'daily' ? value.slice(0, 3) : value
+                `₱${value.toLocaleString('en-US')}`
               }
             />
             <ChartTooltip
