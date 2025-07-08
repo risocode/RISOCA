@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -100,10 +99,6 @@ const denominations = [
   {value: 100, label: '₱100 bill'},
   {value: 50, label: '₱50 bill'},
   {value: 20, label: '₱20 bill'},
-  {value: 10, label: '₱10 coin'},
-  {value: 5, label: '₱5 coin'},
-  {value: 1, label: '₱1 coin'},
-  {value: 0.25, label: '25¢ coin'},
 ];
 
 export default function WalletPage() {
