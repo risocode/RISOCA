@@ -378,25 +378,27 @@ export default function InventoryPage() {
                   A list of all products currently in your inventory.
                 </CardDescription>
               </div>
-              <div className="flex flex-col sm:flex-row w-full sm:w-auto items-center gap-2">
-                <div className="relative w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-grow">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search products..."
-                    className="pl-10 w-full sm:w-64"
+                    className="pl-10 w-full"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
                 <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Sort by..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="default">Date Added</SelectItem>
                     <SelectItem value="name-asc">A-Z</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="price-high">
+                      Price: High to Low
+                    </SelectItem>
                     <SelectItem value="price-low">Price: Low to High</SelectItem>
                   </SelectContent>
                 </Select>
