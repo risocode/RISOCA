@@ -231,104 +231,102 @@ export default function HomePage() {
                   ))
                 ) : todaysSalesList.length > 0 ? (
                   todaysSalesList.map((sale) => (
-                    <Collapsible asChild key={sale.id}>
-                      <>
-                        <CollapsibleTrigger asChild>
-                          <TableRow
+                    <Collapsible key={sale.id}>
+                      <CollapsibleTrigger asChild>
+                        <TableRow
+                          className={cn(
+                            'cursor-pointer',
+                            sale.status === 'voided' && 'opacity-60'
+                          )}
+                        >
+                          <TableCell
                             className={cn(
-                              'cursor-pointer',
-                              sale.status === 'voided' && 'opacity-60'
+                              sale.status === 'voided' && 'line-through'
                             )}
                           >
-                            <TableCell
-                              className={cn(
-                                sale.status === 'voided' && 'line-through'
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
-                                <div>
-                                  <p className="font-medium">
-                                    #{sale.receiptNumber}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(
-                                      sale.createdAt.toDate()
-                                    ).toLocaleTimeString([], {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })}
-                                  </p>
-                                </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                              <div>
+                                <p className="font-medium">
+                                  #{sale.receiptNumber}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    sale.createdAt.toDate()
+                                  ).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </p>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {sale.status === 'voided' ? (
-                                <Badge variant="destructive">Voided</Badge>
-                              ) : (
-                                <Badge variant="secondary">Active</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell
-                              className={cn(
-                                'text-right font-mono',
-                                sale.status === 'voided' && 'line-through'
-                              )}
-                            >
-                              {formatCurrency(sale.total)}
-                            </TableCell>
-                          </TableRow>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent asChild>
-                          <tr
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {sale.status === 'voided' ? (
+                              <Badge variant="destructive">Voided</Badge>
+                            ) : (
+                              <Badge variant="secondary">Active</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell
                             className={cn(
-                              'bg-muted/50',
-                              sale.status === 'voided' && 'opacity-60'
+                              'text-right font-mono',
+                              sale.status === 'voided' && 'line-through'
                             )}
                           >
-                            <TableCell colSpan={3} className="p-2">
-                              <div className="p-2 bg-background rounded-md">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="h-8">
-                                        Item Name
-                                      </TableHead>
-                                      <TableHead className="h-8 text-center w-16">
-                                        Qty
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Unit Price
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Amount
-                                      </TableHead>
+                            {formatCurrency(sale.total)}
+                          </TableCell>
+                        </TableRow>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent asChild>
+                        <tr
+                          className={cn(
+                            'bg-muted/50',
+                            sale.status === 'voided' && 'opacity-60'
+                          )}
+                        >
+                          <TableCell colSpan={3} className="p-2">
+                            <div className="p-2 bg-background rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="h-8">
+                                      Item Name
+                                    </TableHead>
+                                    <TableHead className="h-8 text-center w-16">
+                                      Qty
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right">
+                                      Unit Price
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right">
+                                      Amount
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {sale.items.map((item, index) => (
+                                    <TableRow key={index} className="border-none">
+                                      <TableCell className="py-1 font-medium">
+                                        {item.itemName}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-center">
+                                        {item.quantity}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-right font-mono">
+                                        {item.unitPrice.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-right font-mono">
+                                        {item.total.toFixed(2)}
+                                      </TableCell>
                                     </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {sale.items.map((item, index) => (
-                                      <TableRow key={index} className="border-none">
-                                        <TableCell className="py-1 font-medium">
-                                          {item.itemName}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-center">
-                                          {item.quantity}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.unitPrice.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.total.toFixed(2)}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </TableCell>
-                          </tr>
-                        </CollapsibleContent>
-                      </>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
+                        </tr>
+                      </CollapsibleContent>
                     </Collapsible>
                   ))
                 ) : (
@@ -375,101 +373,99 @@ export default function HomePage() {
                   ))
                 ) : recentSales.length > 0 ? (
                   recentSales.map((sale) => (
-                    <Collapsible asChild key={sale.id}>
-                      <>
-                        <CollapsibleTrigger asChild>
-                          <TableRow
+                    <Collapsible key={sale.id}>
+                      <CollapsibleTrigger asChild>
+                        <TableRow
+                          className={cn(
+                            'cursor-pointer',
+                            sale.status === 'voided' && 'opacity-60'
+                          )}
+                        >
+                          <TableCell
                             className={cn(
-                              'cursor-pointer',
-                              sale.status === 'voided' && 'opacity-60'
+                              sale.status === 'voided' && 'line-through'
                             )}
                           >
-                            <TableCell
-                              className={cn(
-                                sale.status === 'voided' && 'line-through'
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
-                                <div>
-                                  <p className="font-medium">
-                                    #{sale.receiptNumber}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {new Date(
-                                      sale.createdAt.toDate()
-                                    ).toLocaleDateString()}
-                                  </p>
-                                </div>
+                            <div className="flex items-center gap-2">
+                              <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                              <div>
+                                <p className="font-medium">
+                                  #{sale.receiptNumber}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(
+                                    sale.createdAt.toDate()
+                                  ).toLocaleDateString()}
+                                </p>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {sale.status === 'voided' ? (
-                                <Badge variant="destructive">Voided</Badge>
-                              ) : (
-                                <Badge variant="secondary">Active</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell
-                              className={cn(
-                                'text-right font-mono',
-                                sale.status === 'voided' && 'line-through'
-                              )}
-                            >
-                              {formatCurrency(sale.total)}
-                            </TableCell>
-                          </TableRow>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent asChild>
-                          <tr
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {sale.status === 'voided' ? (
+                              <Badge variant="destructive">Voided</Badge>
+                            ) : (
+                              <Badge variant="secondary">Active</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell
                             className={cn(
-                              'bg-muted/50',
-                              sale.status === 'voided' && 'opacity-60'
+                              'text-right font-mono',
+                              sale.status === 'voided' && 'line-through'
                             )}
                           >
-                            <TableCell colSpan={3} className="p-2">
-                              <div className="p-2 bg-background rounded-md">
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="h-8">
-                                        Item Name
-                                      </TableHead>
-                                      <TableHead className="h-8 text-center w-16">
-                                        Qty
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Unit Price
-                                      </TableHead>
-                                      <TableHead className="h-8 text-right">
-                                        Amount
-                                      </TableHead>
+                            {formatCurrency(sale.total)}
+                          </TableCell>
+                        </TableRow>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent asChild>
+                        <tr
+                          className={cn(
+                            'bg-muted/50',
+                            sale.status === 'voided' && 'opacity-60'
+                          )}
+                        >
+                          <TableCell colSpan={3} className="p-2">
+                            <div className="p-2 bg-background rounded-md">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="h-8">
+                                      Item Name
+                                    </TableHead>
+                                    <TableHead className="h-8 text-center w-16">
+                                      Qty
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right">
+                                      Unit Price
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right">
+                                      Amount
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {sale.items.map((item, index) => (
+                                    <TableRow key={index} className="border-none">
+                                      <TableCell className="py-1 font-medium">
+                                        {item.itemName}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-center">
+                                        {item.quantity}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-right font-mono">
+                                        {item.unitPrice.toFixed(2)}
+                                      </TableCell>
+                                      <TableCell className="py-1 text-right font-mono">
+                                        {item.total.toFixed(2)}
+                                      </TableCell>
                                     </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {sale.items.map((item, index) => (
-                                      <TableRow key={index} className="border-none">
-                                        <TableCell className="py-1 font-medium">
-                                          {item.itemName}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-center">
-                                          {item.quantity}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.unitPrice.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="py-1 text-right font-mono">
-                                          {item.total.toFixed(2)}
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            </TableCell>
-                          </tr>
-                        </CollapsibleContent>
-                      </>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
+                        </tr>
+                      </CollapsibleContent>
                     </Collapsible>
                   ))
                 ) : (
