@@ -86,7 +86,9 @@ export default async function RootLayout({
           <ReceiptsProvider>
             <div className="relative flex flex-col h-full">
               <SiteHeader />
-              <main className="flex-1 pb-24 overflow-y-auto">{children}</main>
+              <main className="flex-1 pb-24 overflow-y-auto opacity-0 animate-page-enter">
+                {children}
+              </main>
               <BottomNav />
             </div>
           </ReceiptsProvider>

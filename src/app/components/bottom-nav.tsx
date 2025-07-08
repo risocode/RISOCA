@@ -81,7 +81,7 @@ export function BottomNav() {
           })}
         </nav>
         <SheetTrigger asChild>
-          <button className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/3 bg-accent hover:bg-accent/90 text-accent-foreground rounded-full w-16 h-16 flex items-center justify-center shadow-lg transition-transform hover:scale-105">
+          <button className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/3 bg-pink hover:bg-pink/90 text-pink-foreground rounded-full w-16 h-16 flex items-center justify-center shadow-lg transition-transform hover:scale-105">
             <Plus className="w-8 h-8" />
             <span className="sr-only">Create New</span>
           </button>

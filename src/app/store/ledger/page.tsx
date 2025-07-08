@@ -215,7 +215,7 @@ export default function LedgerPage() {
           <h1 className="text-2xl font-bold">Credit Ledger</h1>
         </header>
 
-        <Card className="shadow-lg text-primary-foreground bg-gradient-to-br from-primary to-purple-700">
+        <Card className="shadow-lg text-secondary-foreground bg-secondary">
           <CardHeader className="text-center">
             <CardTitle className="text-lg font-normal">
               Total Outstanding Balance
@@ -226,11 +226,11 @@ export default function LedgerPage() {
           </CardHeader>
           <CardContent className="flex justify-between text-sm">
             <div>
-              <p className="text-primary-foreground/80">Total Credit</p>
+              <p className="text-secondary-foreground/80">Total Credit</p>
               <p className="font-semibold">{formatCurrency(totalCredit)}</p>
             </div>
             <div className="text-right">
-              <p className="text-primary-foreground/80">Total Paid</p>
+              <p className="text-secondary-foreground/80">Total Paid</p>
               <p className="font-semibold">{formatCurrency(totalPayment)}</p>
             </div>
           </CardContent>
