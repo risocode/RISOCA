@@ -38,11 +38,6 @@ import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 
 type SaleDoc = {
   id: string;
@@ -64,6 +59,18 @@ export default function HomePage() {
   const [isLoadingTotals, setIsLoadingTotals] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const {toast} = useToast();
+
+  const [openTodaysSales, setOpenTodaysSales] = useState<Record<string, boolean>>({});
+  const [openRecentSales, setOpenRecentSales] = useState<Record<string, boolean>>({});
+
+  const toggleTodaysSaleRow = (id: string) => {
+    setOpenTodaysSales((prev) => ({...prev, [id]: !prev[id]}));
+  };
+
+  const toggleRecentSaleRow = (id: string) => {
+    setOpenRecentSales((prev) => ({...prev, [id]: !prev[id]}));
+  };
+
 
   const handleFirestoreError = (error: Error, collectionName: string) => {
     console.error(`Error fetching ${collectionName}:`, error);
@@ -230,10 +237,12 @@ export default function HomePage() {
                     </TableRow>
                   ))
                 ) : todaysSalesList.length > 0 ? (
-                  todaysSalesList.map((sale) => (
-                    <Collapsible key={sale.id}>
-                      <CollapsibleTrigger asChild>
+                  todaysSalesList.map((sale) => {
+                    const isOpen = !!openTodaysSales[sale.id];
+                    return (
+                      <React.Fragment key={sale.id}>
                         <TableRow
+                          onClick={() => toggleTodaysSaleRow(sale.id)}
                           className={cn(
                             'cursor-pointer',
                             sale.status === 'voided' && 'opacity-60'
@@ -245,7 +254,7 @@ export default function HomePage() {
                             )}
                           >
                             <div className="flex items-center gap-2">
-                              <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                              <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
                               <div>
                                 <p className="font-medium">
                                   #{sale.receiptNumber}
@@ -277,58 +286,58 @@ export default function HomePage() {
                             {formatCurrency(sale.total)}
                           </TableCell>
                         </TableRow>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent asChild>
-                        <tr
-                          className={cn(
-                            'bg-muted/50',
-                            sale.status === 'voided' && 'opacity-60'
-                          )}
-                        >
-                          <TableCell colSpan={3} className="p-2">
-                            <div className="p-2 bg-background rounded-md">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="h-8">
-                                      Item Name
-                                    </TableHead>
-                                    <TableHead className="h-8 text-center w-16">
-                                      Qty
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right">
-                                      Unit Price
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right">
-                                      Amount
-                                    </TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {sale.items.map((item, index) => (
-                                    <TableRow key={index} className="border-none">
-                                      <TableCell className="py-1 font-medium">
-                                        {item.itemName}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-center">
-                                        {item.quantity}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-right font-mono">
-                                        {item.unitPrice.toFixed(2)}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-right font-mono">
-                                        {item.total.toFixed(2)}
-                                      </TableCell>
+                        {isOpen && (
+                          <TableRow
+                            className={cn(
+                              'bg-muted/50',
+                              sale.status === 'voided' && 'opacity-60'
+                            )}
+                          >
+                            <TableCell colSpan={3} className="p-2">
+                              <div className="p-2 bg-background rounded-md">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="h-8">
+                                        Item Name
+                                      </TableHead>
+                                      <TableHead className="h-8 text-center w-16">
+                                        Qty
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right">
+                                        Unit Price
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right">
+                                        Amount
+                                      </TableHead>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </TableCell>
-                        </tr>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))
+                                  </TableHeader>
+                                  <TableBody>
+                                    {sale.items.map((item, index) => (
+                                      <TableRow key={index} className="border-none">
+                                        <TableCell className="py-1 font-medium">
+                                          {item.itemName}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-center">
+                                          {item.quantity}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {item.unitPrice.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {item.total.toFixed(2)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} className="h-24 text-center">
@@ -372,10 +381,12 @@ export default function HomePage() {
                     </TableRow>
                   ))
                 ) : recentSales.length > 0 ? (
-                  recentSales.map((sale) => (
-                    <Collapsible key={sale.id}>
-                      <CollapsibleTrigger asChild>
+                  recentSales.map((sale) => {
+                     const isOpen = !!openRecentSales[sale.id];
+                     return (
+                      <React.Fragment key={sale.id}>
                         <TableRow
+                          onClick={() => toggleRecentSaleRow(sale.id)}
                           className={cn(
                             'cursor-pointer',
                             sale.status === 'voided' && 'opacity-60'
@@ -387,7 +398,7 @@ export default function HomePage() {
                             )}
                           >
                             <div className="flex items-center gap-2">
-                              <ChevronDown className="h-4 w-4 transition-transform [&[data-state=open]]:rotate-180" />
+                              <ChevronDown className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')} />
                               <div>
                                 <p className="font-medium">
                                   #{sale.receiptNumber}
@@ -416,58 +427,58 @@ export default function HomePage() {
                             {formatCurrency(sale.total)}
                           </TableCell>
                         </TableRow>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent asChild>
-                        <tr
-                          className={cn(
-                            'bg-muted/50',
-                            sale.status === 'voided' && 'opacity-60'
-                          )}
-                        >
-                          <TableCell colSpan={3} className="p-2">
-                            <div className="p-2 bg-background rounded-md">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="h-8">
-                                      Item Name
-                                    </TableHead>
-                                    <TableHead className="h-8 text-center w-16">
-                                      Qty
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right">
-                                      Unit Price
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right">
-                                      Amount
-                                    </TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {sale.items.map((item, index) => (
-                                    <TableRow key={index} className="border-none">
-                                      <TableCell className="py-1 font-medium">
-                                        {item.itemName}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-center">
-                                        {item.quantity}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-right font-mono">
-                                        {item.unitPrice.toFixed(2)}
-                                      </TableCell>
-                                      <TableCell className="py-1 text-right font-mono">
-                                        {item.total.toFixed(2)}
-                                      </TableCell>
+                        {isOpen && (
+                           <TableRow
+                            className={cn(
+                              'bg-muted/50',
+                              sale.status === 'voided' && 'opacity-60'
+                            )}
+                          >
+                            <TableCell colSpan={3} className="p-2">
+                              <div className="p-2 bg-background rounded-md">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="h-8">
+                                        Item Name
+                                      </TableHead>
+                                      <TableHead className="h-8 text-center w-16">
+                                        Qty
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right">
+                                        Unit Price
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right">
+                                        Amount
+                                      </TableHead>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </TableCell>
-                        </tr>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))
+                                  </TableHeader>
+                                  <TableBody>
+                                    {sale.items.map((item, index) => (
+                                      <TableRow key={index} className="border-none">
+                                        <TableCell className="py-1 font-medium">
+                                          {item.itemName}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-center">
+                                          {item.quantity}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {item.unitPrice.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {item.total.toFixed(2)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    )
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} className="h-24 text-center">
