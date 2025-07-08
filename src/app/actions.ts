@@ -207,13 +207,8 @@ export async function submitSaleTransaction(
   if (!saleData.items || saleData.items.length === 0) {
     return {success: false, message: 'No items in the report.'};
   }
-
+  let transactionId: string | null = null;
   try {
-    const newId = `${format(
-      new Date(),
-      'yyyyMMdd_HHmmss'
-    )}-S-${uuidv4().substring(0, 6)}`;
-    const transactionRef = doc(db, 'saleTransactions', newId);
     const counterRef = doc(db, 'counters', 'saleReceipt');
 
     await runTransaction(db, async (transaction) => {
@@ -226,6 +221,11 @@ export async function submitSaleTransaction(
 
       // Format the receipt number with leading zeros
       const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
+      
+      const newId = `${format(new Date(),'yyyyMMdd_HHmmss')}-S-${formattedReceiptNumber}`;
+      transactionId = newId;
+      const transactionRef = doc(db, 'saleTransactions', newId);
+
 
       // Step 1: Aggregate all inventory items and their quantities.
       const inventoryMap = new Map<
@@ -293,7 +293,7 @@ export async function submitSaleTransaction(
       transaction.set(counterRef, {currentNumber: newReceiptNumber});
     });
 
-    return {success: true, transactionId: transactionRef.id};
+    return {success: true, transactionId: transactionId};
   } catch (error) {
     console.error('Error in sales transaction: ', error);
     const message =
