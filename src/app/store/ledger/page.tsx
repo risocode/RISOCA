@@ -261,10 +261,10 @@ export default function LedgerPage() {
               <h4 className="text-sm font-medium text-muted-foreground">
                 Name
               </h4>
-              <h4 className="text-sm font-medium text-muted-foreground text-right">
+              <h4 className="text-sm font-medium text-muted-foreground text-center">
                 Balance
               </h4>
-              <h4 className="text-sm font-medium text-muted-foreground text-right">
+              <h4 className="text-sm font-medium text-muted-foreground text-center">
                 Paid
               </h4>
               <span className="sr-only">Action</span>
@@ -277,8 +277,8 @@ export default function LedgerPage() {
                     className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 gap-4 border-b"
                   >
                     <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-6 w-20 justify-self-end" />
-                    <Skeleton className="h-6 w-20 justify-self-end" />
+                    <Skeleton className="h-6 w-20 justify-self-center" />
+                    <Skeleton className="h-6 w-20 justify-self-center" />
                     <Skeleton className="h-5 w-5 justify-self-end" />
                   </div>
                 ))
@@ -293,7 +293,7 @@ export default function LedgerPage() {
                       {customer.name}
                     </span>
                     <span
-                      className={`font-mono text-right ${
+                      className={`font-mono text-center ${
                         customer.balance > 0
                           ? 'text-destructive'
                           : 'text-success'
@@ -301,7 +301,7 @@ export default function LedgerPage() {
                     >
                       {formatCurrency(customer.balance)}
                     </span>
-                    <span className="font-mono text-right text-muted-foreground">
+                    <span className="font-mono text-center text-muted-foreground">
                       {formatCurrency(customer.paid)}
                     </span>
                     <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
