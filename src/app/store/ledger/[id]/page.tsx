@@ -85,10 +85,7 @@ import {
   Plus,
   Minus,
   Pencil,
-  Landmark,
-  TrendingUp,
-  TrendingDown,
-  CalendarDays,
+  Info,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -108,6 +105,12 @@ import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
 import {Label} from '@/components/ui/label';
 import {ScrollArea} from '@/components/ui/scroll-area';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {Separator} from '@/components/ui/separator';
 
 const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
 type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
@@ -132,6 +135,7 @@ export default function CustomerLedgerPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -431,44 +435,43 @@ export default function CustomerLedgerPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
-            <Landmark className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={cn('text-2xl font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Credit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrency(totalCredit)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{formatCurrency(totalPaid)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customer Since</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{customer ? format(customer.createdAt.toDate(), 'PP') : 'N/A'}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="shadow-lg text-secondary-foreground bg-secondary">
+        <Collapsible onOpenChange={setIsInfoOpen}>
+          <div className="relative p-6">
+            <div className="flex flex-col items-center justify-center min-h-[120px]">
+              <CardTitle className="text-lg font-normal text-secondary-foreground/80">
+                Outstanding Balance
+              </CardTitle>
+              <p className={cn('text-5xl font-bold tracking-tighter !mt-2', balance > 0 ? 'text-destructive' : 'text-success')}>
+                {formatCurrency(balance)}
+              </p>
+            </div>
+            
+            <CollapsibleContent>
+              <Separator className="my-4 bg-border/20" />
+              <div className="flex justify-between text-sm">
+                <div>
+                  <p className="text-secondary-foreground/80">Total Credit</p>
+                  <p className="font-semibold text-destructive">{formatCurrency(totalCredit)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-secondary-foreground/80">Total Paid</p>
+                  <p className="font-semibold text-success">{formatCurrency(totalPaid)}</p>
+                </div>
+              </div>
+            </CollapsibleContent>
+            
+            <div className="mt-4 flex justify-center">
+              <CollapsibleTrigger asChild>
+                <Button variant="link" className="text-secondary-foreground/80 hover:text-secondary-foreground">
+                  {isInfoOpen ? 'Less Info' : 'More Info'}
+                  <Info className="ml-2 h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </div>
+        </Collapsible>
+      </Card>
       
       <Card>
           <CardHeader>
