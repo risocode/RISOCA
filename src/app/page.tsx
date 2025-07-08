@@ -38,13 +38,6 @@ import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
 import type {SaleTransaction} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 type SaleDoc = {
   id: string;
@@ -188,18 +181,23 @@ export default function HomePage() {
                   Your most recent transactions.
                 </CardDescription>
               </div>
-              <Select
-                value={String(historyLimit)}
-                onValueChange={(value) => setHistoryLimit(Number(value))}
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Show transactions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">Show last 5</SelectItem>
-                  <SelectItem value="10">Show last 10</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <Button
+                  variant={historyLimit === 5 ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setHistoryLimit(5)}
+                >
+                  5
+                </Button>
+                <Button
+                  variant={historyLimit === 10 ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setHistoryLimit(10)}
+                >
+                  10
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
