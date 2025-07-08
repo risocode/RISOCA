@@ -5,11 +5,21 @@ import {useState, useEffect, useMemo} from 'react';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
-import {collection, query, onSnapshot, orderBy} from 'firebase/firestore';
+import {collection, query, onSnapshot, orderBy, Timestamp} from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {startDay, closeDay} from '@/app/actions';
-import type {WalletEntry} from '@/lib/schemas';
-import {format, parseISO} from 'date-fns';
+import type {WalletEntry, SaleTransaction, DiagnoseReceiptOutput} from '@/lib/schemas';
+import {format, parseISO, isSameDay} from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 
 import {
   Card,
@@ -38,10 +48,16 @@ import {
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {useToast} from '@/hooks/use-toast';
-import {Loader2, Wallet, History, FileWarning} from 'lucide-react';
+import {Loader2, Wallet, History, FileWarning, TrendingUp, TrendingDown} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
+import {ChartTooltipContent, ChartContainer } from '@/components/ui/chart';
+
+type ReceiptDoc = DiagnoseReceiptOutput & {
+  id: string;
+  createdAt: Timestamp;
+};
 
 const StartDaySchema = z.object({
   startingCash: z.coerce
@@ -59,6 +75,8 @@ type EndDayFormData = z.infer<typeof EndDaySchema>;
 
 export default function WalletPage() {
   const [walletHistory, setWalletHistory] = useState<WalletEntry[]>([]);
+  const [sales, setSales] = useState<SaleTransaction[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptDoc[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {toast} = useToast();
@@ -74,35 +92,70 @@ export default function WalletPage() {
   });
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'walletHistory'),
-      orderBy('createdAt', 'desc')
-    );
-    const unsubscribe = onSnapshot(
-      q,
+    const queries = [
+      {
+        collectionName: 'walletHistory',
+        setter: setWalletHistory,
+        q: query(collection(db, 'walletHistory'), orderBy('date', 'desc'))
+      },
+      {
+        collectionName: 'saleTransactions',
+        setter: setSales,
+        q: query(collection(db, 'saleTransactions'), orderBy('createdAt', 'desc'))
+      },
+      {
+        collectionName: 'receipts',
+        setter: setReceipts,
+        q: query(collection(db, 'receipts'), orderBy('createdAt', 'desc'))
+      }
+    ];
+    
+    let pending = queries.length;
+    const unsubs = queries.map(({ collectionName, q, setter }) => onSnapshot(q,
       (snapshot) => {
-        const history = snapshot.docs.map(
-          (doc) => ({id: doc.id, ...doc.data()} as WalletEntry)
-        );
-        setWalletHistory(history);
-        setIsLoading(false);
+        setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+        pending--;
+        if (pending === 0) setIsLoading(false);
       },
       (error) => {
-        console.error('Error fetching wallet history:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Database Error',
-          description: 'Could not fetch wallet history.',
-        });
-        setIsLoading(false);
+        console.error(`Error fetching ${collectionName}:`, error);
+        toast({ variant: 'destructive', title: 'Database Error', description: `Could not fetch ${collectionName}.` });
+        pending--;
+        if (pending === 0) setIsLoading(false);
       }
-    );
-    return () => unsubscribe();
+    ));
+
+    return () => unsubs.forEach(unsub => unsub());
   }, [toast]);
 
-  const openDay = useMemo(() => {
-    return walletHistory.find((entry) => entry.status === 'open');
-  }, [walletHistory]);
+  const { enrichedHistory, openDay, latestClosedDay } = useMemo(() => {
+    const openDay = walletHistory.find((entry) => entry.status === 'open');
+    const latestClosedDay = walletHistory.find(entry => entry.status === 'closed');
+    
+    const enriched = walletHistory.map(entry => {
+      const entryDate = parseISO(entry.date);
+      const dailySales = sales
+        .filter(s => s.status !== 'voided' && isSameDay(s.createdAt.toDate(), entryDate))
+        .reduce((sum, s) => sum + s.total, 0);
+
+      const dailyExpenses = receipts
+        .filter(r => isSameDay(r.createdAt.toDate(), entryDate))
+        .reduce((sum, r) => sum + r.total, 0);
+
+      const profit = dailySales - dailyExpenses;
+      
+      return { ...entry, dailySales, dailyExpenses, profit };
+    });
+
+    return { enrichedHistory: enriched, openDay, latestClosedDay };
+  }, [walletHistory, sales, receipts]);
+
+  useEffect(() => {
+    if (!openDay && latestClosedDay?.endingCash) {
+        startDayForm.setValue('startingCash', latestClosedDay.endingCash);
+    }
+  }, [openDay, latestClosedDay, startDayForm]);
+
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
@@ -152,6 +205,11 @@ export default function WalletPage() {
       maximumFractionDigits: 2,
     })}`;
   };
+  
+  const chartData = enrichedHistory
+    .filter(e => e.status === 'closed')
+    .slice(0, 7)
+    .reverse();
 
   const renderCurrentDayCard = () => {
     if (isLoading) {
@@ -159,6 +217,7 @@ export default function WalletPage() {
     }
 
     if (openDay) {
+      const { dailySales, dailyExpenses, profit } = enrichedHistory.find(e => e.id === openDay.id) || {};
       return (
         <Card className="shadow-lg animate-enter">
           <CardHeader>
@@ -175,6 +234,20 @@ export default function WalletPage() {
                   <span className="font-bold text-lg">
                     {formatCurrency(openDay.startingCash)}
                   </span>
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                        <p className="text-sm text-muted-foreground">Sales</p>
+                        <p className="font-bold text-lg text-primary">{formatCurrency(dailySales)}</p>
+                    </div>
+                     <div>
+                        <p className="text-sm text-muted-foreground">Expenses</p>
+                        <p className="font-bold text-lg text-accent">{formatCurrency(dailyExpenses)}</p>
+                    </div>
+                     <div>
+                        <p className="text-sm text-muted-foreground">Profit/Loss</p>
+                        <p className={cn('font-bold text-lg', (profit || 0) >= 0 ? 'text-success' : 'text-destructive')}>{formatCurrency(profit)}</p>
+                    </div>
                 </div>
                 <FormField
                   control={endDayForm.control}
@@ -256,7 +329,7 @@ export default function WalletPage() {
       </Card>
     );
   };
-
+  
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
       <header>
@@ -267,13 +340,44 @@ export default function WalletPage() {
 
       {renderCurrentDayCard()}
 
+      {chartData.length > 0 && (
+         <Card>
+            <CardHeader>
+                <CardTitle>Performance Overview</CardTitle>
+                <CardDescription>Last 7 closed days.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <ChartContainer config={{}} className="h-64 w-full">
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis 
+                          dataKey="date" 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => format(parseISO(value), 'MMM d')}
+                        />
+                        <YAxis tickLine={false} axisLine={false} tickFormatter={(value) => `₱${value/1000}k`} />
+                        <Tooltip
+                          cursor={{ fill: 'hsl(var(--muted))' }}
+                          content={<ChartTooltipContent formatter={formatCurrency} />}
+                        />
+                        <Legend />
+                        <Bar dataKey="startingCash" name="Start" fill="hsl(var(--secondary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="endingCash" name="End" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="profit" name="Profit" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                </ChartContainer>
+            </CardContent>
+         </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <History /> History
+            <History /> Detailed History
           </CardTitle>
           <CardDescription>
-            A log of your previous daily wallet sessions.
+            A log of your previous daily wallet sessions and performance.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -281,8 +385,10 @@ export default function WalletPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Start</TableHead>
+                <TableHead className="text-right">Sales</TableHead>
+                <TableHead className="text-right">Expenses</TableHead>
+                <TableHead className="text-right">Profit</TableHead>
                 <TableHead className="text-right">End</TableHead>
               </TableRow>
             </TableHeader>
@@ -290,51 +396,36 @@ export default function WalletPage() {
               {isLoading ? (
                 Array.from({length: 3}).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-6 w-16" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-20 ml-auto" />
-                    </TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : walletHistory.length > 0 ? (
-                walletHistory.map((entry) => (
+              ) : enrichedHistory.length > 0 ? (
+                enrichedHistory.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="font-medium">
                       {format(parseISO(entry.date), 'MMMM d, yyyy')}
+                      <Badge variant={entry.status === 'open' ? 'default' : 'secondary'} className="ml-2">{entry.status}</Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          entry.status === 'open' ? 'default' : 'secondary'
-                        }
-                      >
-                        {entry.status}
-                      </Badge>
+                    <TableCell className="text-right font-mono">{formatCurrency(entry.startingCash)}</TableCell>
+                    <TableCell className="text-right font-mono text-primary">{formatCurrency(entry.dailySales)}</TableCell>
+                    <TableCell className="text-right font-mono text-accent">{formatCurrency(entry.dailyExpenses)}</TableCell>
+                    <TableCell className={cn('text-right font-mono', entry.profit >= 0 ? 'text-success' : 'text-destructive')}>
+                        <div className="flex items-center justify-end">
+                          {entry.profit >= 0 ? <TrendingUp className="mr-1" /> : <TrendingDown className="mr-1" />}
+                          {formatCurrency(entry.profit)}
+                        </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(entry.startingCash)}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-right font-mono',
-                        entry.status === 'open' && 'text-muted-foreground'
-                      )}
-                    >
-                      {formatCurrency(entry.endingCash)}
-                    </TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(entry.endingCash)}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                     No wallet history found. Start a day to begin.
                   </TableCell>
@@ -347,3 +438,5 @@ export default function WalletPage() {
     </div>
   );
 }
+
+    
