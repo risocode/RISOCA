@@ -29,7 +29,8 @@ import type {
   SaleTransactionInput,
   SaleItem,
 } from '@/lib/schemas';
-import { format } from 'date-fns';
+import {format} from 'date-fns';
+import {v4 as uuidv4} from 'uuid';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
@@ -163,7 +164,12 @@ async function saveReceiptToFirestore(
   imagePreview?: string
 ) {
   try {
-    await addDoc(collection(db, 'receipts'), {
+    const newId = `${format(
+      new Date(),
+      'yyyyMMdd_HHmmss'
+    )}-E-${uuidv4().substring(0, 6)}`;
+    const docRef = doc(db, 'receipts', newId);
+    await setDoc(docRef, {
       ...receiptData,
       imagePreview: imagePreview || null,
       createdAt: serverTimestamp(),
@@ -203,7 +209,11 @@ export async function submitSaleTransaction(
   }
 
   try {
-    const transactionRef = doc(collection(db, 'saleTransactions'));
+    const newId = `${format(
+      new Date(),
+      'yyyyMMdd_HHmmss'
+    )}-S-${uuidv4().substring(0, 6)}`;
+    const transactionRef = doc(db, 'saleTransactions', newId);
     const counterRef = doc(db, 'counters', 'saleReceipt');
 
     await runTransaction(db, async (transaction) => {
@@ -218,7 +228,10 @@ export async function submitSaleTransaction(
       const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
 
       // Step 1: Aggregate all inventory items and their quantities.
-      const inventoryMap = new Map<string, { ref: DocumentReference; quantity: number }>();
+      const inventoryMap = new Map<
+        string,
+        {ref: DocumentReference; quantity: number}
+      >();
       for (const item of saleData.items) {
         if (item.itemId) {
           const existing = inventoryMap.get(item.itemId);
@@ -230,17 +243,22 @@ export async function submitSaleTransaction(
       }
 
       // Step 2: Read all required inventory documents first.
-      const inventoryRefs = Array.from(inventoryMap.values()).map(i => i.ref);
-      const inventoryDocs = inventoryRefs.length > 0
-        ? await Promise.all(inventoryRefs.map(ref => transaction.get(ref)))
-        : [];
-      
-      const inventoryUpdates: { ref: DocumentReference; newStock: number }[] = [];
+      const inventoryRefs = Array.from(inventoryMap.values()).map(
+        (i) => i.ref
+      );
+      const inventoryDocs =
+        inventoryRefs.length > 0
+          ? await Promise.all(inventoryRefs.map((ref) => transaction.get(ref)))
+          : [];
+
+      const inventoryUpdates: {ref: DocumentReference; newStock: number}[] = [];
 
       // Step 3: Validate stock levels.
       for (const inventoryDoc of inventoryDocs) {
         if (!inventoryDoc.exists()) {
-           throw new Error(`Inventory item with ID ${inventoryDoc.id} not found.`);
+          throw new Error(
+            `Inventory item with ID ${inventoryDoc.id} not found.`
+          );
         }
         const required = inventoryMap.get(inventoryDoc.id)!;
         const currentStock = inventoryDoc.data().stock as number;
@@ -251,7 +269,10 @@ export async function submitSaleTransaction(
             }". Available: ${currentStock}, Requested: ${required.quantity}.`
           );
         }
-        inventoryUpdates.push({ ref: inventoryDoc.ref, newStock: currentStock - required.quantity });
+        inventoryUpdates.push({
+          ref: inventoryDoc.ref,
+          newStock: currentStock - required.quantity,
+        });
       }
 
       // Step 4: Perform all write operations.
@@ -265,11 +286,11 @@ export async function submitSaleTransaction(
 
       // Write 2: Update all inventory items.
       for (const update of inventoryUpdates) {
-        transaction.update(update.ref, { stock: update.newStock });
+        transaction.update(update.ref, {stock: update.newStock});
       }
-      
+
       // Write 3: Update the counter
-      transaction.set(counterRef, { currentNumber: newReceiptNumber });
+      transaction.set(counterRef, {currentNumber: newReceiptNumber});
     });
 
     return {success: true, transactionId: transactionRef.id};
@@ -340,7 +361,12 @@ export async function addInventoryItem(
   item: InventoryItemInput
 ): Promise<{success: boolean; message?: string}> {
   try {
-    await addDoc(collection(db, 'inventory'), {
+    const newId = `${format(
+      new Date(),
+      'yyyyMMdd_HHmmss'
+    )}-I-${uuidv4().substring(0, 6)}`;
+    const docRef = doc(db, 'inventory', newId);
+    await setDoc(docRef, {
       ...item,
       createdAt: serverTimestamp(),
     });
@@ -402,7 +428,14 @@ export async function addCustomer(data: {
 }): Promise<{success: boolean; message?: string}> {
   try {
     await runTransaction(db, async (transaction) => {
-      const customerRef = doc(collection(db, 'customers'));
+      const timestamp = new Date();
+      const shortUuid = uuidv4().substring(0, 6);
+
+      const customerId = `${format(
+        timestamp,
+        'yyyyMMdd_HHmmss'
+      )}-C-${shortUuid}`;
+      const customerRef = doc(db, 'customers', customerId);
       transaction.set(customerRef, {
         name: data.name,
         status: 'active',
@@ -410,7 +443,11 @@ export async function addCustomer(data: {
       });
 
       if (data.amount > 0) {
-        const ledgerRef = doc(collection(db, 'ledger'));
+        const ledgerId = `${format(
+          timestamp,
+          'yyyyMMdd_HHmmss'
+        )}-L-${shortUuid}`;
+        const ledgerRef = doc(db, 'ledger', ledgerId);
         transaction.set(ledgerRef, {
           customerId: customerRef.id,
           type: 'credit',
@@ -453,7 +490,12 @@ export async function addLedgerTransaction(
   transactionData: LedgerTransactionInput
 ): Promise<{success: boolean; message?: string}> {
   try {
-    await addDoc(collection(db, 'ledger'), {
+    const newId = `${format(
+      new Date(),
+      'yyyyMMdd_HHmmss'
+    )}-L-${uuidv4().substring(0, 6)}`;
+    const docRef = doc(db, 'ledger', newId);
+    await setDoc(docRef, {
       ...transactionData,
       status: 'active',
       createdAt: serverTimestamp(),
