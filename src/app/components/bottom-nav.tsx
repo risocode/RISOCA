@@ -10,6 +10,7 @@ import {
   Store,
   ReceiptText,
   Landmark,
+  Wallet,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {
@@ -89,12 +90,12 @@ export function BottomNav() {
 
       <SheetContent
         side="bottom"
-        className="rounded-t-2xl sm:max-w-md mx-auto border-none bg-card p-6"
+        className="rounded-t-2xl sm:max-w-xl mx-auto border-none bg-card p-6"
       >
         <SheetHeader className="mb-6">
           <SheetTitle className="text-center text-lg">Create New</SheetTitle>
         </SheetHeader>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <SheetClose asChild>
             <Button
               asChild
@@ -116,6 +117,18 @@ export function BottomNav() {
               <Link href="/store/receipts">
                 <ReceiptText className="w-8 h-8" />
                 <span>Expense</span>
+              </Link>
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button
+              asChild
+              variant="outline"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+            >
+              <Link href="/wallet">
+                <Wallet className="w-8 h-8" />
+                <span>Wallet</span>
               </Link>
             </Button>
           </SheetClose>

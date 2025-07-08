@@ -65,3 +65,16 @@ export type LedgerTransaction = LedgerTransactionInput & {
   createdAt: Timestamp;
   status?: 'active' | 'deleted';
 };
+
+export const WalletEntrySchema = z.object({
+  date: z.string(),
+  startingCash: z.number(),
+  endingCash: z.number().nullable(),
+  status: z.enum(['open', 'closed']),
+  createdAt: z.custom<Timestamp>(),
+  closedAt: z.custom<Timestamp>().nullable(),
+});
+
+export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
+    id: string;
+};

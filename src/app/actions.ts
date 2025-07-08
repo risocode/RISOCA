@@ -21,6 +21,7 @@ import {
   writeBatch,
   type DocumentReference,
   type Timestamp,
+  setDoc,
 } from 'firebase/firestore';
 import type {
   InventoryItemInput,
@@ -28,6 +29,7 @@ import type {
   SaleTransactionInput,
   SaleItem,
 } from '@/lib/schemas';
+import { format } from 'date-fns';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
@@ -514,5 +516,60 @@ export async function deleteCustomer(
       success: false,
       message: `Could not delete customer: ${message}`,
     };
+  }
+}
+
+// Actions for Wallet
+export async function startDay(
+  startingCash: number
+): Promise<{success: boolean; message?: string}> {
+  try {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const walletForTodayQuery = query(
+      collection(db, 'walletHistory'),
+      where('date', '==', todayStr),
+      where('status', '==', 'open')
+    );
+    const existing = await getDocs(walletForTodayQuery);
+    if (!existing.empty) {
+      return {success: false, message: 'A session for today is already open.'};
+    }
+
+    const docRef = doc(db, 'walletHistory', todayStr);
+    await setDoc(docRef, {
+      date: todayStr,
+      startingCash,
+      endingCash: null,
+      status: 'open',
+      createdAt: serverTimestamp(),
+      closedAt: null,
+    });
+
+    return {success: true};
+  } catch (error) {
+    console.error('Error starting day:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not start day: ${message}`};
+  }
+}
+
+export async function closeDay(
+  docId: string,
+  endingCash: number
+): Promise<{success: boolean; message?: string}> {
+  try {
+    const docRef = doc(db, 'walletHistory', docId);
+    await updateDoc(docRef, {
+      endingCash,
+      status: 'closed',
+      closedAt: serverTimestamp(),
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error closing day:', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not close day: ${message}`};
   }
 }
