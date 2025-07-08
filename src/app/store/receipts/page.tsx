@@ -147,7 +147,10 @@ export default function ReceiptPage() {
 
   useEffect(() => {
     let stream: MediaStream | null = null;
-    if (inputMethod === 'camera' && !imagePreview) {
+    const isCameraActive = inputMethod === 'camera' && !imagePreview;
+    
+    if (isCameraActive) {
+      document.body.classList.add('camera-active');
       const getCameraPermission = async () => {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
@@ -165,9 +168,12 @@ export default function ReceiptPage() {
       };
 
       getCameraPermission();
+    } else {
+       document.body.classList.remove('camera-active');
     }
 
     return () => {
+      document.body.classList.remove('camera-active');
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }

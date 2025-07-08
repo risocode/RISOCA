@@ -35,7 +35,7 @@ export function BottomNav() {
 
   return (
     <Sheet>
-      <div className="fixed bottom-0 left-0 right-0 h-20 bg-card border-t z-50 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
+      <div className="main-bottom-nav fixed bottom-0 left-0 right-0 h-20 bg-card border-t z-50 shadow-[0_-1px_10px_rgba(0,0,0,0.05)]">
         <nav className="flex items-center justify-around h-full max-w-lg mx-auto relative">
           {navItems.slice(0, 2).map((item) => {
             const isActive =
