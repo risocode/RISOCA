@@ -1,8 +1,8 @@
 
 'use client';
 
-import {useState} from 'react';
-import {useZxing} from 'react-zxing';
+import { useState, useEffect } from 'react';
+import { useZxing } from 'react-zxing';
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
-import {Button} from './ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from './ui/button';
+import { Loader2 } from 'lucide-react';
 
 interface BarcodeScannerDialogProps {
   open: boolean;
@@ -25,21 +26,48 @@ export function BarcodeScannerDialog({
   onScan,
 }: BarcodeScannerDialogProps) {
   const [error, setError] = useState('');
-  const {ref} = useZxing({
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      // Reset state each time the dialog opens
+      setHasPermission(null);
+      setError('');
+      
+      const requestPermission = async () => {
+        try {
+          // Request permission to trigger the browser prompt
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // We got permission. Stop the tracks immediately because useZxing will manage its own stream.
+          stream.getTracks().forEach(track => track.stop());
+          setHasPermission(true);
+        } catch (err) {
+          console.error('Camera permission error:', err);
+          if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'NotFoundError')) {
+            setError('Camera access was denied or no camera was found. Please allow camera access in your browser settings to use the scanner.');
+          } else {
+            setError('Could not start the camera. Please ensure it is not being used by another application.');
+          }
+          setHasPermission(false);
+        }
+      };
+      
+      requestPermission();
+    }
+  }, [open]);
+
+  const { ref } = useZxing({
     onDecodeResult(result) {
       onScan(result.getText());
     },
     onError(err) {
-      console.error('Barcode scanner error:', err);
-      if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        setError(
-          'Camera access was denied. Please allow camera access in your browser settings to use the scanner.'
-        );
-      } else {
-        setError('Could not start the camera. Please ensure it is not being used by another application.');
-      }
+      // This is a fallback for errors during operation, after permission is granted.
+      console.error('Barcode scanner runtime error:', err);
+      setError('An unexpected error occurred while using the camera.');
+      setHasPermission(false);
     },
-    paused: !open,
+    // Only start the scanner if the dialog is open and we have confirmed permission
+    paused: !open || hasPermission !== true,
   });
 
   return (
@@ -52,17 +80,27 @@ export function BarcodeScannerDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
-          {error ? (
+          {hasPermission === null && (
+             <div className="flex flex-col items-center justify-center h-full p-4 text-center text-white">
+                <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                <p>Requesting camera permission...</p>
+                <p className="text-sm text-white/70 mt-1">Please check your browser for a permission prompt.</p>
+             </div>
+          )}
+          {hasPermission === false && (
             <div className="flex items-center justify-center h-full p-4">
               <Alert variant="destructive">
                 <AlertTitle>Camera Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             </div>
-          ) : (
-            <video ref={ref} className="w-full h-full object-cover" />
           )}
-           <div className="absolute inset-0 border-4 border-primary/50 rounded-md pointer-events-none" />
+          {hasPermission === true && (
+            <>
+              <video ref={ref} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 border-4 border-primary/50 rounded-md pointer-events-none" />
+            </>
+          )}
         </div>
         <Button variant="outline" onClick={() => onOpenChange(false)}>
           Cancel
