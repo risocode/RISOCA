@@ -121,10 +121,6 @@ export default function ReceiptPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const {toast} = useToast();
 
-  const [inputMethod, setInputMethod] = useState<'upload' | 'camera' | 'manual'>(
-    'upload'
-  );
-
   const form = useForm<ReceiptFormData>({
     resolver: zodResolver(ReceiptFormSchema),
     defaultValues: {
@@ -154,14 +150,6 @@ export default function ReceiptPage() {
     categories: receiptCategories,
   } = useReceipts();
   const uniqueCategories = Object.keys(receiptCategories).length;
-
-  useEffect(() => {
-    if (inputMethod === 'camera') {
-      cameraInputRef.current?.click();
-      // Switch back to the upload tab to avoid getting stuck
-      setInputMethod('upload');
-    }
-  }, [inputMethod]);
 
   const resizeImage = (
     dataUrl: string,
@@ -298,13 +286,7 @@ export default function ReceiptPage() {
 
   const renderInitialState = () => (
     <div className="w-full text-center animate-enter">
-      <Tabs
-        defaultValue={inputMethod}
-        onValueChange={(value) =>
-          setInputMethod(value as 'upload' | 'camera' | 'manual')
-        }
-        className="w-full"
-      >
+      <Tabs defaultValue="upload" className="w-full">
         <TabsList className="grid w-full h-12 grid-cols-3 p-1">
           <TabsTrigger value="upload" className="h-full text-base">
             <Upload className="mr-2" /> Upload
@@ -336,26 +318,22 @@ export default function ReceiptPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 PNG, JPG, WEBP (max 10MB)
               </p>
-              <Input
-                ref={fileInputRef}
-                type="file"
-                className="sr-only"
-                accept="image/png, image/jpeg, image/webp"
-                onChange={handleFileChange}
-              />
-               <Input
-                ref={cameraInputRef}
-                type="file"
-                className="sr-only"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileChange}
-              />
             </div>
           )}
         </TabsContent>
-        <TabsContent value="camera">
-          {/* This tab is now a trigger for the native camera. */}
+        <TabsContent value="camera" className="pt-6">
+          <div
+            className="relative flex flex-col items-center justify-center w-full p-10 transition-colors border-2 border-dashed rounded-xl cursor-pointer bg-primary/5 hover:bg-primary/10 border-primary/20 hover:border-primary/40"
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera className="w-12 h-12 mx-auto text-primary/80" />
+            <p className="mt-4 text-lg font-medium text-foreground">
+              Open Camera
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Capture a photo of your receipt
+            </p>
+          </div>
         </TabsContent>
         <TabsContent value="manual" className="pt-6">
           <Card>
@@ -549,6 +527,21 @@ export default function ReceiptPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <Input
+        ref={fileInputRef}
+        type="file"
+        className="sr-only"
+        accept="image/png, image/jpeg, image/webp"
+        onChange={handleFileChange}
+      />
+      <Input
+        ref={cameraInputRef}
+        type="file"
+        className="sr-only"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+      />
     </div>
   );
 
@@ -1079,7 +1072,7 @@ export default function ReceiptPage() {
     );
 
   return (
-    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4 opacity-0 animate-page-enter">
+    <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4">
       <header>
         <h1 className="text-2xl font-bold">Expenses</h1>
       </header>
@@ -1090,12 +1083,14 @@ export default function ReceiptPage() {
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         <TabsContent value="add" className="pt-4">
-          <div className="flex flex-col justify-start w-full">
+          <div className="flex flex-col justify-start w-full animate-page-enter">
             {renderContent()}
           </div>
         </TabsContent>
         <TabsContent value="history" className="pt-4">
-          <HistoryTabContent />
+          <div className="animate-page-enter">
+            <HistoryTabContent />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
