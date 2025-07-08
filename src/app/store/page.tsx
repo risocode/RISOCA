@@ -107,6 +107,10 @@ export default function StorePage() {
     useState<SaleTransaction | null>(null);
   const {toast} = useToast();
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [isItemDeleteAlertOpen, setIsItemDeleteAlertOpen] = useState(false);
+  const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(
+    null
+  );
 
   const form = useForm<SaleItemFormData>({
     resolver: zodResolver(SaleItemFormSchema),
@@ -169,6 +173,21 @@ export default function StorePage() {
       'input[name="itemName"]'
     ) as HTMLInputElement | null;
     input?.focus();
+  };
+
+  const handleOpenDeleteAlert = (index: number) => {
+    setItemToDeleteIndex(index);
+    setIsItemDeleteAlertOpen(true);
+  };
+
+  const handleConfirmDeleteItem = () => {
+    if (itemToDeleteIndex !== null) {
+      setReceiptItems((prev) =>
+        prev.filter((_, i) => i !== itemToDeleteIndex)
+      );
+      setItemToDeleteIndex(null);
+    }
+    setIsItemDeleteAlertOpen(false);
   };
 
   const handleFinalSubmit = async () => {
@@ -404,7 +423,7 @@ export default function StorePage() {
 
                 <Button type="submit" className="w-full">
                   <PlusCircle className="mr-2" />
-                  Add to Sale
+                  Add Item
                 </Button>
               </form>
             </Form>
@@ -428,6 +447,7 @@ export default function StorePage() {
                     <TableHead className="text-center">Qty</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead className="text-right">Subtotal</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -444,6 +464,16 @@ export default function StorePage() {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         ₱{item.total.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDeleteAlert(index)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <span className="sr-only">Remove item</span>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -589,6 +619,31 @@ export default function StorePage() {
             >
               {isVoiding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Yes, Void Transaction
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={isItemDeleteAlertOpen}
+        onOpenChange={setIsItemDeleteAlertOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this item from the sale?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDeleteIndex(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteItem}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Remove
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
