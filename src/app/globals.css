@@ -85,11 +85,6 @@
   .logo-glow {
     filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.8)) drop-shadow(0 0 20px hsl(var(--accent) / 0.5));
   }
-  
-  body.camera-active .main-site-header,
-  body.camera-active .main-bottom-nav {
-    display: none;
-  }
 }
 
 /* Custom Print Styles */

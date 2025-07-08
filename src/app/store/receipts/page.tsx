@@ -9,7 +9,6 @@ import {
   X,
   ServerCrash,
   Camera,
-  XCircle,
   Pencil,
   PlusCircle,
   Trash2,
@@ -119,16 +118,12 @@ export default function ReceiptPage() {
     useState<DiagnoseReceiptOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const {toast} = useToast();
 
   const [inputMethod, setInputMethod] = useState<'upload' | 'camera' | 'manual'>(
     'upload'
   );
-  const [hasCameraPermission, setHasCameraPermission] = useState<
-    boolean | null
-  >(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const form = useForm<ReceiptFormData>({
     resolver: zodResolver(ReceiptFormSchema),
@@ -161,39 +156,12 @@ export default function ReceiptPage() {
   const uniqueCategories = Object.keys(receiptCategories).length;
 
   useEffect(() => {
-    let stream: MediaStream | null = null;
-    const isCameraActive = inputMethod === 'camera' && !imagePreview;
-
-    if (isCameraActive) {
-      document.body.classList.add('camera-active');
-      const getCameraPermission = async () => {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {facingMode: 'environment'},
-          });
-          setHasCameraPermission(true);
-
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-        }
-      };
-
-      getCameraPermission();
-    } else {
-      document.body.classList.remove('camera-active');
+    if (inputMethod === 'camera') {
+      cameraInputRef.current?.click();
+      // Switch back to the upload tab to avoid getting stuck
+      setInputMethod('upload');
     }
-
-    return () => {
-      document.body.classList.remove('camera-active');
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [inputMethod, imagePreview]);
+  }, [inputMethod]);
 
   const resizeImage = (
     dataUrl: string,
@@ -260,37 +228,6 @@ export default function ReceiptPage() {
     }
   };
 
-  const handleCapture = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !hasCameraPermission) return;
-
-    const context = canvas.getContext('2d');
-    if (!context) return;
-
-    setIsProcessingImage(true);
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg');
-
-    try {
-      const resizedDataUrl = await resizeImage(dataUrl);
-      const blob = await (await fetch(resizedDataUrl)).blob();
-      const previewUrl = URL.createObjectURL(blob);
-
-      setImagePreview(previewUrl);
-      setImageData(resizedDataUrl);
-      setError(null);
-      setDiagnosis(null);
-    } catch (err) {
-      console.error('Failed to resize and process image', err);
-      setError('Could not process the captured image. Please try again.');
-    } finally {
-      setIsProcessingImage(false);
-    }
-  };
-
   const handleScanReceipt = async () => {
     if (!imageData || !imagePreview) {
       setError('Please select an image first.');
@@ -353,11 +290,8 @@ export default function ReceiptPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    setHasCameraPermission(null);
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
     }
     form.reset({merchantName: '', items: [{name: '', price: 0}]});
   };
@@ -409,11 +343,19 @@ export default function ReceiptPage() {
                 accept="image/png, image/jpeg, image/webp"
                 onChange={handleFileChange}
               />
+               <Input
+                ref={cameraInputRef}
+                type="file"
+                className="sr-only"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileChange}
+              />
             </div>
           )}
         </TabsContent>
         <TabsContent value="camera">
-          {/* This UI is just a trigger; the full-screen view is handled separately */}
+          {/* This tab is now a trigger for the native camera. */}
         </TabsContent>
         <TabsContent value="manual" className="pt-6">
           <Card>
@@ -609,58 +551,6 @@ export default function ReceiptPage() {
       </Tabs>
     </div>
   );
-
-  if (inputMethod === 'camera' && !imagePreview) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
-        <video
-          ref={videoRef}
-          className="absolute inset-0 object-cover w-full h-full"
-          autoPlay
-          muted
-          playsInline
-        />
-        <canvas ref={canvasRef} className="hidden" />
-
-        {hasCameraPermission === false && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-4 text-center text-white bg-black/70">
-            <XCircle className="w-16 h-16 mb-4" />
-            <h2 className="text-xl font-semibold">Camera Access Denied</h2>
-            <p className="max-w-xs mt-2 text-neutral-300">
-              Enable camera permissions to use this feature.
-            </p>
-          </div>
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center p-8 bg-gradient-to-t from-black/80 to-transparent">
-          <Button
-            onClick={handleCapture}
-            disabled={!hasCameraPermission || isProcessingImage}
-            className="w-20 h-20 p-2 bg-white/30 rounded-full border-4 border-white backdrop-blur-sm hover:bg-white/50"
-            size="icon"
-          >
-            {isProcessingImage ? (
-              <Loader2 className="w-8 h-8 text-white animate-spin" />
-            ) : (
-              <span className="block w-full h-full bg-white rounded-full" />
-            )}
-          </Button>
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            setInputMethod('upload');
-            handleReset();
-          }}
-          className="absolute z-20 text-white bg-black/30 top-6 right-6 hover:bg-black/50 hover:text-white backdrop-blur-sm"
-        >
-          <X className="w-6 h-6" />
-        </Button>
-      </div>
-    );
-  }
 
   const renderContent = () => {
     if (isLoading) return renderLoadingState();
