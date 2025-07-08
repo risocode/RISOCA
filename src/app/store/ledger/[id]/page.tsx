@@ -17,6 +17,7 @@ import {
   addLedgerTransaction,
   deleteLedgerTransaction,
   deleteCustomer,
+  updateCustomerName,
 } from '@/app/actions';
 import {
   LedgerTransactionSchema,
@@ -50,6 +51,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -63,6 +73,7 @@ import {
   Loader2,
   Plus,
   Minus,
+  Pencil,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -80,6 +91,7 @@ import {Badge} from '@/components/ui/badge';
 import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
 import {cn} from '@/lib/utils';
+import {Label} from '@/components/ui/label';
 
 const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
 type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
@@ -99,6 +111,11 @@ export default function CustomerLedgerPage() {
   const [alertAction, setAlertAction] = useState<'deleteTransaction' | 'deleteCustomer' | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedCredits, setSelectedCredits] = useState<Set<string>>(new Set());
+
+  // State for edit name dialog
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [newName, setNewName] = useState('');
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -290,6 +307,37 @@ export default function CustomerLedgerPage() {
     setAlertAction(null);
     setDeletingId(null);
   };
+
+  const handleOpenEditModal = () => {
+    if (customer) {
+      setNewName(customer.name);
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleNameUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customer) return;
+    setIsUpdatingName(true);
+
+    const response = await updateCustomerName(customer.id, newName);
+
+    if (response.success) {
+      toast({
+        variant: 'success',
+        title: 'Name Updated',
+        description: "The customer's name has been changed.",
+      });
+      setIsEditModalOpen(false);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: response.message || 'An error occurred.',
+      });
+    }
+    setIsUpdatingName(false);
+  };
   
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -320,35 +368,46 @@ export default function CustomerLedgerPage() {
               <span className="sr-only">Back to Ledger</span>
             </Link>
           </Button>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-bold truncate">{customer?.name}</h1>
-            <p className="text-muted-foreground">
-              Balance: <span className={cn('font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</span>
-            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleOpenEditModal}
+              disabled={customer?.status === 'deleted'}
+            >
+              <Pencil className="h-5 w-5" />
+              <span className="sr-only">Edit Name</span>
+            </Button>
           </div>
         </div>
-        <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span tabIndex={0}>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => openDeleteAlert('deleteCustomer')}
-                    disabled={cannotDeleteCustomer}
-                    className={cannotDeleteCustomer ? 'pointer-events-none' : ''}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {cannotDeleteCustomer && (
-                <TooltipContent>
-                  <p>{customer?.status === 'deleted' ? 'Customer is already deleted.' : 'Cannot delete customer with an outstanding balance.'}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex items-center gap-4">
+          <p className="text-muted-foreground text-right">
+            Balance: <span className={cn('font-bold', balance > 0 ? 'text-destructive' : 'text-success')}>{formatCurrency(balance)}</span>
+          </p>
+          <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDeleteAlert('deleteCustomer')}
+                      disabled={cannotDeleteCustomer}
+                      className={cannotDeleteCustomer ? 'pointer-events-none' : ''}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {cannotDeleteCustomer && (
+                  <TooltipContent>
+                    <p>{customer?.status === 'deleted' ? 'Customer is already deleted.' : 'Cannot delete customer with an outstanding balance.'}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+        </div>
       </header>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -519,6 +578,36 @@ export default function CustomerLedgerPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Edit Customer Name</DialogTitle>
+                <DialogDescription>
+                    Update the name for this customer. This will not affect past records.
+                </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleNameUpdate} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="customerName">Customer Name</Label>
+                    <Input
+                        id="customerName"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        required
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={isUpdatingName}>
+                        {isUpdatingName && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Changes
+                    </Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

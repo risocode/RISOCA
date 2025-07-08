@@ -415,6 +415,25 @@ export async function addCustomer(data: {
   }
 }
 
+export async function updateCustomerName(
+  id: string,
+  name: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    if (!name.trim()) {
+      return {success: false, message: 'Customer name cannot be empty.'};
+    }
+    const customerRef = doc(db, 'customers', id);
+    await updateDoc(customerRef, {name});
+    return {success: true};
+  } catch (error) {
+    console.error('Error updating customer name: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not update name: ${message}`};
+  }
+}
+
 export async function addLedgerTransaction(
   transactionData: LedgerTransactionInput
 ): Promise<{success: boolean; message?: string}> {
