@@ -199,7 +199,7 @@ export function DailyPerformanceChart() {
     },
     expenses: {
       label: 'Expenses',
-      color: 'hsl(var(--accent))',
+      color: 'hsl(var(--destructive))',
     },
   };
 
