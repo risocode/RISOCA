@@ -305,10 +305,6 @@ export default function WalletPage() {
     .reverse();
 
   const renderCurrentDayCard = () => {
-    if (isLoading) {
-      return <Skeleton className="h-64 w-full" />;
-    }
-
     if (openDay) {
       const {dailySales, dailyExpenses, profit} =
         enrichedHistory.find((e) => e.id === openDay.id) || {};
@@ -554,6 +550,21 @@ export default function WalletPage() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6">
+        <header>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Wallet /> Daily Wallet
+          </h1>
+        </header>
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
       <header>
@@ -666,30 +677,7 @@ export default function WalletPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                Array.from({length: 3}).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-24 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-20 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-20 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-20 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-20 mx-auto" />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Skeleton className="h-5 w-20 mx-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : enrichedHistory.length > 0 ? (
+              {enrichedHistory.length > 0 ? (
                 enrichedHistory.map((entry) => (
                   <TableRow key={entry.id}>
                     <TableCell className="text-center font-medium">
@@ -715,11 +703,11 @@ export default function WalletPage() {
                     <TableCell
                       className={cn(
                         'text-center font-mono',
-                        entry.profit >= 0 ? 'text-success' : 'text-destructive'
+                        (entry.profit || 0) >= 0 ? 'text-success' : 'text-destructive'
                       )}
                     >
                       <div className="flex items-center justify-center">
-                        {entry.profit >= 0 ? (
+                        {(entry.profit || 0) >= 0 ? (
                           <TrendingUp className="mr-1" />
                         ) : (
                           <TrendingDown className="mr-1" />
