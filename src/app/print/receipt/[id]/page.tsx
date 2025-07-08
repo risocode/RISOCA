@@ -90,7 +90,7 @@ export default function PrintReceiptPage() {
             className="w-auto h-8"
           />
           <Image
-            src="/risoca.png"
+            src="/risoca.png?v=7"
             alt="RiSoCa Logo Text"
             width={96}
             height={29}

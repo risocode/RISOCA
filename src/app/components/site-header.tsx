@@ -15,7 +15,7 @@ export function SiteHeader() {
           className="w-auto h-9"
         />
         <Image
-          src="/risoca.png"
+          src="/risoca.png?v=7"
           alt="RiSoCa Logo Text"
           width={120}
           height={37}
