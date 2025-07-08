@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect, useMemo} from 'react';
@@ -141,14 +142,14 @@ export default function CustomerLedgerPage() {
           if (customerData.status === 'deleted') {
              toast({
               variant: 'destructive',
-              title: 'This customer has been deleted.',
+              title: 'Customer Deleted',
               duration: 2000,
             });
           }
         } else {
           toast({
             variant: 'destructive',
-            title: 'This customer may have been deleted. Redirecting...',
+            title: 'Customer not found.',
             duration: 1000,
           });
           router.push('/store/ledger');
@@ -250,8 +251,8 @@ export default function CustomerLedgerPage() {
 
     if (response.success) {
       toast({
+        variant: 'success',
         title: 'Transaction Added',
-        description: 'The transaction has been successfully recorded.',
       });
       form.reset({
         type: data.type,
@@ -262,7 +263,7 @@ export default function CustomerLedgerPage() {
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }
@@ -289,7 +290,7 @@ export default function CustomerLedgerPage() {
       if (alertAction === 'deleteCustomer') {
         toast({
           variant: 'destructive',
-          title: 'Customer deleted',
+          title: 'Customer Deleted',
         });
         router.push('/store/ledger');
       } else {
@@ -299,7 +300,7 @@ export default function CustomerLedgerPage() {
         });
       }
     } else {
-      toast({variant: 'destructive', title: 'Action Failed', description: response?.message || 'An error occurred.'});
+      toast({variant: 'destructive', title: 'Error', description: response?.message || 'An error occurred.'});
     }
 
     setIsDeleting(false);
@@ -326,13 +327,12 @@ export default function CustomerLedgerPage() {
       toast({
         variant: 'success',
         title: 'Name Updated',
-        description: "The customer's name has been changed.",
       });
       setIsEditModalOpen(false);
     } else {
       toast({
         variant: 'destructive',
-        title: 'Update Failed',
+        title: 'Error',
         description: response.message || 'An error occurred.',
       });
     }

@@ -122,7 +122,7 @@ export default function InventoryPage() {
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: 'Could not fetch products data.',
+          description: 'Could not fetch products.',
         });
         setIsLoading(false);
       }
@@ -168,16 +168,14 @@ export default function InventoryPage() {
 
     if (response.success) {
       toast({
+        variant: 'success',
         title: `Product ${editingItem ? 'Updated' : 'Added'}`,
-        description: `The product has been successfully ${
-          editingItem ? 'updated' : 'added'
-        }.`,
       });
       setIsDialogOpen(false);
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }
@@ -198,12 +196,11 @@ export default function InventoryPage() {
       toast({
         variant: 'destructive',
         title: 'Product Deleted',
-        description: 'The product has been successfully deleted.',
       });
     } else {
       toast({
         variant: 'destructive',
-        title: 'Deletion Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }
@@ -216,7 +213,6 @@ export default function InventoryPage() {
     setIsScannerOpen(false);
     toast({
       title: 'Barcode Scanned',
-      description: `Barcode value set to: ${result}`,
     });
   };
 

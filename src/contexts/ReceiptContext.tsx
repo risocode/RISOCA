@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -56,9 +57,9 @@ export function ReceiptsProvider({children}: {children: ReactNode}) {
         console.error('Error fetching receipts from Firestore:', error);
         toast({
           variant: 'destructive',
-          title: 'Database Connection Error',
+          title: 'Database Error',
           description:
-            'Could not connect to Firestore. Please check your security rules in the Firebase console and refresh the page.',
+            'Could not fetch receipts. Check rules.',
         });
       }
     );

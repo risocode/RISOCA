@@ -245,15 +245,14 @@ export default function WalletPage() {
     if (response.success) {
       toast({
         variant: 'success',
-        title: 'Day Started!',
-        description: 'Your cash wallet for today is now open.',
+        title: 'Day Started',
       });
       startDayForm.reset();
       setCounts({});
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message,
       });
     }
@@ -267,15 +266,14 @@ export default function WalletPage() {
     if (response.success) {
       toast({
         variant: 'success',
-        title: 'Day Closed!',
-        description: 'Your cash wallet for today is now closed.',
+        title: 'Day Closed',
       });
       endDayForm.reset();
       setEndCounts({});
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message,
       });
     }

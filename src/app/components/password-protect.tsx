@@ -116,8 +116,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
       setIsPasskeyRegistered(true);
       toast({
           variant: 'success',
-          title: isMobile ? 'Fingerprint Enabled' : 'Passkey Created',
-          description: isMobile ? 'You can now use your fingerprint to log in.' : 'You can now use your passkey for faster logins.',
+          title: 'Passkey Created',
       });
       onSuccess();
     } catch (err: any) {

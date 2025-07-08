@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useRef, type ChangeEvent, useEffect} from 'react';
@@ -282,13 +283,8 @@ export default function ReceiptPage() {
       const response = await scanAndNotify({photoDataUri: imageData});
       setDiagnosis(response.diagnosis);
       toast({
+        variant: 'success',
         title: 'Scan Complete',
-        description: response.notificationStatus.success
-          ? 'Notified on Telegram.'
-          : 'Telegram notification failed.',
-        variant: response.notificationStatus.success
-          ? 'default'
-          : 'destructive',
       });
     } catch (e) {
       console.error(e);
@@ -312,13 +308,8 @@ export default function ReceiptPage() {
       const response = await submitManualReceipt(payload);
       setDiagnosis(response.diagnosis);
       toast({
+        variant: 'success',
         title: 'Receipt Submitted',
-        description: response.notificationStatus.success
-          ? 'Notified on Telegram.'
-          : 'Telegram notification failed.',
-        variant: response.notificationStatus.success
-          ? 'default'
-          : 'destructive',
       });
       form.reset();
     } catch (e) {

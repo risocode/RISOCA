@@ -103,7 +103,7 @@ export default function LedgerPage() {
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: 'Could not fetch customers data.',
+          description: 'Could not fetch customers.',
         });
         setIsLoading(false);
       }
@@ -122,7 +122,7 @@ export default function LedgerPage() {
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description: 'Could not fetch transactions data.',
+          description: 'Could not fetch transactions.',
         });
       }
     );
@@ -141,14 +141,13 @@ export default function LedgerPage() {
       toast({
         variant: 'success',
         title: 'Customer Added',
-        description: 'The new customer has been added to the ledger.',
       });
       setIsDialogOpen(false);
       form.reset();
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }

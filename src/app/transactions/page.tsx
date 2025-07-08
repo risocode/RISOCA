@@ -214,7 +214,7 @@ export default function TransactionsPage() {
           toast({
             variant: 'destructive',
             title: 'Database Error',
-            description: `Could not fetch ${name} data.`,
+            description: `Could not fetch ${name}.`,
           });
           if (initialLoads > 0) {
             initialLoads--;

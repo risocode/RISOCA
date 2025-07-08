@@ -53,8 +53,8 @@ export default function HomePage() {
     console.error(`Error fetching ${collectionName}:`, error);
     toast({
       variant: 'destructive',
-      title: 'Database Permission Error',
-      description: `Could not fetch data from '${collectionName}'. Please check your Firestore security rules in the Firebase console.`,
+      title: 'Database Error',
+      description: `Could not fetch ${collectionName}. Check rules.`,
       duration: 10000,
     });
   }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {useState, useEffect} from 'react';
@@ -78,8 +79,7 @@ export default function SalesHistoryPage() {
         toast({
           variant: 'destructive',
           title: 'Database Error',
-          description:
-            'Could not fetch sales data. Check your Firestore security rules.',
+          description: 'Could not fetch sales.',
         });
         setIsLoading(false);
       }
@@ -101,13 +101,13 @@ export default function SalesHistoryPage() {
 
     if (response.success) {
       toast({
+        variant: 'destructive',
         title: 'Transaction Voided',
-        description: 'The transaction has been successfully voided.',
       });
     } else {
       toast({
         variant: 'destructive',
-        title: 'Action Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }

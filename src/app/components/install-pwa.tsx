@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -49,9 +50,8 @@ export function InstallPwa() {
     
     if (outcome === 'accepted') {
       toast({
-        title: 'App Installed!',
-        description: 'Thank you for installing the RiSoCa app.',
         variant: 'success',
+        title: 'App Installed',
       });
     }
   };

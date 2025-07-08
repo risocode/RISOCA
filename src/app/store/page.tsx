@@ -194,8 +194,8 @@ export default function StorePage() {
     if (receiptItems.length === 0) {
       toast({
         variant: 'destructive',
-        title: 'Empty Sale',
-        description: 'Please add at least one item to the receipt.',
+        title: 'Error',
+        description: 'Cannot submit an empty sale.',
       });
       return;
     }
@@ -210,15 +210,15 @@ export default function StorePage() {
 
     if (response.success) {
       toast({
-        title: 'Success',
-        description: 'Sales report submitted and inventory updated.',
+        variant: 'success',
+        title: 'Sale Submitted',
       });
       setReceiptItems([]);
       setCustomerName('');
     } else {
       toast({
         variant: 'destructive',
-        title: 'Submission Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }
@@ -233,13 +233,13 @@ export default function StorePage() {
 
     if (response.success) {
       toast({
+        variant: 'destructive',
         title: 'Transaction Voided',
-        description: 'The transaction has been removed.',
       });
     } else {
       toast({
         variant: 'destructive',
-        title: 'Voiding Failed',
+        title: 'Error',
         description: response.message || 'An unknown error occurred.',
       });
     }
@@ -256,13 +256,11 @@ export default function StorePage() {
       form.setValue('itemId', foundItem.id);
       toast({
         title: 'Item Found',
-        description: `${foundItem.name} added to the form.`,
       });
     } else {
       toast({
         variant: 'destructive',
         title: 'Item Not Found',
-        description: 'No product with this barcode exists in your inventory.',
       });
     }
   };
