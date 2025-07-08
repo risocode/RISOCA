@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -108,6 +109,7 @@ export default function WalletPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [counts, setCounts] = useState<Record<string, string>>({});
+  const [endCounts, setEndCounts] = useState<Record<string, string>>({});
   const {toast} = useToast();
 
   const startDayForm = useForm<StartDayFormData>({
@@ -127,12 +129,30 @@ export default function WalletPage() {
     }, 0);
   }, [counts]);
 
+  const endDayTotal = useMemo(() => {
+    return denominations.reduce((acc, denom) => {
+      const count = Number(endCounts[String(denom.value)]) || 0;
+      return acc + count * denom.value;
+    }, 0);
+  }, [endCounts]);
+
   useEffect(() => {
     startDayForm.setValue('startingCash', startDayTotal);
   }, [startDayTotal, startDayForm]);
 
+  useEffect(() => {
+    endDayForm.setValue('endingCash', endDayTotal);
+  }, [endDayTotal, endDayForm]);
+
   const handleCountChange = (denomValue: number, countStr: string) => {
     setCounts((prev) => ({
+      ...prev,
+      [String(denomValue)]: countStr,
+    }));
+  };
+
+  const handleEndCountChange = (denomValue: number, countStr: string) => {
+    setEndCounts((prev) => ({
       ...prev,
       [String(denomValue)]: countStr,
     }));
@@ -251,6 +271,7 @@ export default function WalletPage() {
         description: 'Your cash wallet for today is now closed.',
       });
       endDayForm.reset();
+      setEndCounts({});
     } else {
       toast({
         variant: 'destructive',
@@ -326,19 +347,64 @@ export default function WalletPage() {
                     </p>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Ending Cash Breakdown</Label>
+                  <div className="grid grid-cols-[1fr_80px_1fr] items-center gap-x-4 gap-y-2 text-sm">
+                    <Label className="font-semibold text-muted-foreground">
+                      Denomination
+                    </Label>
+                    <Label className="text-center font-semibold text-muted-foreground">
+                      Qty
+                    </Label>
+                    <Label className="text-right font-semibold text-muted-foreground">
+                      Total
+                    </Label>
+                    {denominations.map((denom) => (
+                      <React.Fragment key={denom.value}>
+                        <Label
+                          htmlFor={`end-denom-${denom.value}`}
+                          className="text-muted-foreground"
+                        >
+                          {denom.label}
+                        </Label>
+                        <Input
+                          id={`end-denom-${denom.value}`}
+                          type="number"
+                          min="0"
+                          className="h-8 text-center"
+                          placeholder="0"
+                          onChange={(e) =>
+                            handleEndCountChange(denom.value, e.target.value)
+                          }
+                          value={endCounts[String(denom.value)] || ''}
+                        />
+                        <p className="text-right font-mono text-foreground">
+                          {formatCurrency(
+                            (Number(endCounts[String(denom.value)]) || 0) *
+                              denom.value
+                          )}
+                        </p>
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-between items-baseline text-xl font-bold">
+                  <span className="text-foreground">Total Ending Cash</span>
+                  <span className="font-mono text-primary">
+                    {formatCurrency(endDayTotal)}
+                  </span>
+                </div>
+
                 <FormField
                   control={endDayForm.control}
                   name="endingCash"
                   render={({field}) => (
-                    <FormItem>
-                      <FormLabel>Ending Cash</FormLabel>
+                    <FormItem className="!hidden">
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="Enter final cash amount"
-                          {...field}
-                        />
+                        <Input {...field} readOnly />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -352,7 +418,7 @@ export default function WalletPage() {
                   className="w-full"
                 >
                   {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                  Close Day
+                  Close Day with {formatCurrency(endDayTotal)}
                 </Button>
               </CardFooter>
             </form>
