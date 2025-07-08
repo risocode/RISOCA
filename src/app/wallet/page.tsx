@@ -590,7 +590,7 @@ export default function WalletPage() {
                 <Bar
                   dataKey="startingCash"
                   name="Start"
-                  fill="hsl(var(--secondary))"
+                  fill="hsl(var(--muted-foreground))"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
