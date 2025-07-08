@@ -46,7 +46,14 @@ import {
 import {Input} from '@/components/ui/input';
 import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
-import {UserPlus, Loader2, ChevronRight, Info, Search} from 'lucide-react';
+import {
+  UserPlus,
+  Loader2,
+  ChevronRight,
+  Info,
+  Search,
+  Users,
+} from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 
 const AddCustomerFormSchema = z.object({
@@ -154,53 +161,54 @@ export default function LedgerPage() {
     setIsSubmitting(false);
   };
 
-  const {processedCustomers, totalBalance, totalCredit, totalPayment} =
-    useMemo(() => {
-      const customerBalances: Record<string, number> = {};
-      const customerPayments: Record<string, number> = {};
+  const {processedCustomers, totalBalance, topDebtors} = useMemo(() => {
+    const customerBalances: Record<string, number> = {};
+    const customerPayments: Record<string, number> = {};
 
-      transactions.forEach((tx) => {
-        if (tx.status === 'deleted') return;
+    transactions
+      .filter((tx) => tx.status !== 'deleted')
+      .forEach((tx) => {
+        const currentBalance = customerBalances[tx.customerId] || 0;
         if (tx.type === 'credit') {
-          customerBalances[tx.customerId] =
-            (customerBalances[tx.customerId] || 0) + tx.amount;
+          customerBalances[tx.customerId] = currentBalance + tx.amount;
         } else {
-          customerBalances[tx.customerId] =
-            (customerBalances[tx.customerId] || 0) - tx.amount;
+          customerBalances[tx.customerId] = currentBalance - tx.amount;
           customerPayments[tx.customerId] =
             (customerPayments[tx.customerId] || 0) + tx.amount;
         }
       });
 
-      let customersWithDetails: CustomerWithDetails[] = customers
-        .filter((c) => c.status !== 'deleted')
-        .map((c) => ({
-          ...c,
-          balance: customerBalances[c.id] || 0,
-          paid: customerPayments[c.id] || 0,
-        }));
+    const allCustomersWithDetails: CustomerWithDetails[] = customers
+      .filter((c) => c.status !== 'deleted')
+      .map((c) => ({
+        ...c,
+        balance: customerBalances[c.id] || 0,
+        paid: customerPayments[c.id] || 0,
+      }));
 
-      if (searchTerm) {
-        customersWithDetails = customersWithDetails.filter((c) =>
-          c.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
+    const topDebtors = allCustomersWithDetails
+      .filter((c) => c.balance > 0)
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 3);
 
-      const totalCredit = transactions
-        .filter((tx) => tx.type === 'credit' && tx.status !== 'deleted')
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const totalPayment = transactions
-        .filter((tx) => tx.type === 'payment' && tx.status !== 'deleted')
-        .reduce((sum, tx) => sum + tx.amount, 0);
-      const totalBalance = totalCredit - totalPayment;
+    let filteredCustomers = allCustomersWithDetails;
+    if (searchTerm) {
+      filteredCustomers = filteredCustomers.filter((c) =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-      return {
-        processedCustomers: customersWithDetails,
-        totalBalance,
-        totalCredit,
-        totalPayment,
-      };
-    }, [customers, transactions, searchTerm]);
+    const totalBalance = Object.values(customerBalances).reduce(
+      (sum, bal) => sum + bal,
+      0
+    );
+
+    return {
+      processedCustomers: filteredCustomers,
+      totalBalance,
+      topDebtors,
+    };
+  }, [customers, transactions, searchTerm]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -209,117 +217,141 @@ export default function LedgerPage() {
     })}`;
 
   return (
-    <>
-      <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4 opacity-0 animate-page-enter">
-        <header>
-          <h1 className="text-2xl font-bold">Credit Ledger</h1>
-        </header>
+    <div className="p-4 md:p-6 space-y-4">
+      <header>
+        <h1 className="text-2xl font-bold">Credit Ledger</h1>
+      </header>
 
-        <Card className="shadow-lg text-secondary-foreground bg-secondary">
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg font-normal">
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle>Ledger Overview</CardTitle>
+          <CardDescription>
+            A summary of your outstanding credit across all customers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 md:grid-cols-2">
+          <div className="flex flex-col items-center justify-center p-6 rounded-lg bg-secondary text-secondary-foreground text-center">
+            <h3 className="text-lg font-normal text-secondary-foreground/80">
               Total Outstanding Balance
-            </CardTitle>
-            <p className="text-5xl font-bold tracking-tighter !mt-2">
+            </h3>
+            <p className="text-5xl font-bold tracking-tighter mt-2 text-destructive">
               {formatCurrency(totalBalance)}
             </p>
-          </CardHeader>
-          <CardContent className="flex justify-between text-sm">
-            <div>
-              <p className="text-secondary-foreground/80">Total Credit</p>
-              <p className="font-semibold">{formatCurrency(totalCredit)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-secondary-foreground/80">Total Paid</p>
-              <p className="font-semibold">{formatCurrency(totalPayment)}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Customer List</CardTitle>
-              <CardDescription>
-                Select a customer to view their transaction history.
-              </CardDescription>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search customers..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="px-4 py-2 border-b grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-4">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                Name
-              </h4>
-              <h4 className="text-sm font-medium text-muted-foreground text-center">
-                Balance
-              </h4>
-              <h4 className="text-sm font-medium text-muted-foreground text-center">
-                Paid
-              </h4>
-              <span className="sr-only">Action</span>
-            </div>
-            <div>
-              {isLoading ? (
-                Array.from({length: 5}).map((_, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 gap-4 border-b"
-                  >
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-6 w-20 justify-self-center" />
-                    <Skeleton className="h-6 w-20 justify-self-center" />
-                    <Skeleton className="h-5 w-5 justify-self-end" />
-                  </div>
-                ))
-              ) : processedCustomers.length > 0 ? (
-                processedCustomers.map((customer) => (
-                  <Link
-                    key={customer.id}
-                    href={`/store/ledger/${customer.id}`}
-                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
-                  >
-                    <span className="font-medium truncate">
-                      {customer.name}
-                    </span>
-                    <span
-                      className={`font-mono text-center ${
-                        customer.balance > 0
-                          ? 'text-destructive'
-                          : 'text-success'
-                      }`}
+          </div>
+          <div className="space-y-3">
+            <h3 className="font-semibold text-center md:text-left text-lg">
+              Top 3 Debtors
+            </h3>
+            {isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : topDebtors.length > 0 ? (
+              <ul className="space-y-2">
+                {topDebtors.map((customer) => (
+                  <li key={customer.id}>
+                    <Link
+                      href={`/store/ledger/${customer.id}`}
+                      className="flex justify-between items-center p-3 rounded-md hover:bg-muted transition-colors border"
                     >
-                      {formatCurrency(customer.balance)}
-                    </span>
-                    <span className="font-mono text-center text-muted-foreground">
-                      {formatCurrency(customer.paid)}
-                    </span>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
-                  </Link>
-                ))
-              ) : (
-                <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
-                  <Info className="w-8 h-8 mb-2" />
-                  <p>
-                    {searchTerm
-                      ? `No customers found for "${searchTerm}"`
-                      : 'No customers yet. Add one to get started.'}
-                  </p>
+                      <span className="font-medium">{customer.name}</span>
+                      <span className="font-mono text-destructive font-semibold">
+                        {formatCurrency(customer.balance)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-4 text-muted-foreground border-dashed border rounded-lg h-full">
+                <Users className="w-8 h-8 mb-2" />
+                <p>No customers with outstanding balances.</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Customer List</CardTitle>
+            <CardDescription>
+              Select a customer to view their transaction history.
+            </CardDescription>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search customers..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="px-4 py-2 border-b grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-4">
+            <h4 className="text-sm font-medium text-muted-foreground">Name</h4>
+            <h4 className="text-sm font-medium text-muted-foreground text-center">
+              Balance
+            </h4>
+            <h4 className="text-sm font-medium text-muted-foreground text-center">
+              Paid
+            </h4>
+            <span className="sr-only">Action</span>
+          </div>
+          <div>
+            {isLoading ? (
+              Array.from({length: 5}).map((_, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 gap-4 border-b"
+                >
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-6 w-20 justify-self-center" />
+                  <Skeleton className="h-6 w-20 justify-self-center" />
+                  <Skeleton className="h-5 w-5 justify-self-end" />
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              ))
+            ) : processedCustomers.length > 0 ? (
+              processedCustomers.map((customer) => (
+                <Link
+                  key={customer.id}
+                  href={`/store/ledger/${customer.id}`}
+                  className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
+                >
+                  <span className="font-medium truncate">{customer.name}</span>
+                  <span
+                    className={`font-mono text-center ${
+                      customer.balance > 0 ? 'text-destructive' : 'text-success'
+                    }`}
+                  >
+                    {formatCurrency(customer.balance)}
+                  </span>
+                  <span className="font-mono text-center text-muted-foreground">
+                    {formatCurrency(customer.paid)}
+                  </span>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
+                </Link>
+              ))
+            ) : (
+              <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
+                <Info className="w-8 h-8 mb-2" />
+                <p>
+                  {searchTerm
+                    ? `No customers found for "${searchTerm}"`
+                    : 'No customers yet. Add one to get started.'}
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button
@@ -404,6 +436,6 @@ export default function LedgerPage() {
           </Form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
