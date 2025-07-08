@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -174,14 +173,14 @@ export default function HomePage() {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <CardTitle>Sales History</CardTitle>
                 <CardDescription>
                   Your most recent transactions.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="text-sm text-muted-foreground">Show</span>
                 <Button
                   variant={historyLimit === 5 ? 'secondary' : 'outline'}
