@@ -1,8 +1,7 @@
-
 'use client';
 
 import Link from 'next/link';
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   collection,
   query,
@@ -64,16 +63,20 @@ export default function HomePage() {
     });
   };
 
-  const handleFirestoreError = (error: Error, collectionName: string) => {
-    console.error(`Error fetching ${collectionName}:`, error);
-    toast({
-      variant: 'destructive',
-      title: 'Database Error',
-      description: `Could not fetch ${collectionName}. Check rules.`,
-      duration: 10000,
-    });
-  };
+  const handleFirestoreError = useCallback(
+    (error: Error, collectionName: string) => {
+      console.error(`Error fetching ${collectionName}:`, error);
+      toast({
+        variant: 'destructive',
+        title: 'Database Error',
+        description: `Could not fetch ${collectionName}. Check rules.`,
+        duration: 10000,
+      });
+    },
+    [toast]
+  );
 
+  // Effect for fetching sales history (paginated)
   useEffect(() => {
     setIsLoadingHistory(true);
     const historyQuery = query(
@@ -95,8 +98,11 @@ export default function HomePage() {
         setIsLoadingHistory(false);
       }
     );
+    return () => unsubHistory();
+  }, [historyLimit, handleFirestoreError]);
 
-    setIsLoadingTotals(true);
+  // Effect for fetching total sales (all time)
+  useEffect(() => {
     const salesQuery = query(collection(db, 'saleTransactions'));
     const unsubSales = onSnapshot(
       salesQuery,
@@ -112,12 +118,8 @@ export default function HomePage() {
         setIsLoadingTotals(false);
       }
     );
-
-    return () => {
-      unsubHistory();
-      unsubSales();
-    };
-  }, [toast, historyLimit]);
+    return () => unsubSales();
+  }, [handleFirestoreError]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -126,7 +128,7 @@ export default function HomePage() {
     })}`;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -206,7 +208,7 @@ export default function HomePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingHistory ? (
+                {isLoadingHistory && recentSales.length === 0 ? (
                   Array.from({length: historyLimit}).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell>
