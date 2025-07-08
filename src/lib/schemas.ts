@@ -40,6 +40,7 @@ export type SaleTransaction = SaleTransactionInput & {
 
 export const CustomerSchema = z.object({
   name: z.string().min(1, 'Customer name is required.'),
+  status: z.enum(['active', 'deleted']).default('active'),
 });
 
 export type CustomerInput = z.infer<typeof CustomerSchema>;
@@ -47,7 +48,6 @@ export type CustomerInput = z.infer<typeof CustomerSchema>;
 export type Customer = CustomerInput & {
   id: string;
   createdAt: Timestamp;
-  status?: 'active' | 'deleted';
 };
 
 export const LedgerTransactionSchema = z.object({

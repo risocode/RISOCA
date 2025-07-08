@@ -380,8 +380,12 @@ export default function CustomerLedgerPage() {
                              <FormField control={form.control} name="amount" render={({field}) => (
                                 <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
                                     <Input type="number" step="0.01" {...field} onChange={(e) => {
-                                        field.onChange(e);
-                                        setSelectedCredits(new Set());
+                                        field.onChange(e.target.valueAsNumber);
+                                        // When amount is manually changed, clear selections
+                                        if (selectedCredits.size > 0) {
+                                          setSelectedCredits(new Set());
+                                          form.setValue('description', '');
+                                        }
                                     }}/>
                                 </FormControl><FormMessage/></FormItem>
                             )}/>

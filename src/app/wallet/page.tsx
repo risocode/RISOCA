@@ -237,7 +237,7 @@ export default function WalletPage() {
     if (!openDay && latestClosedDay?.endingCash) {
       startDayForm.setValue('startingCash', latestClosedDay.endingCash);
     }
-  }, [openDay, latestClosedDay, startDayForm]);
+  }, [openDay, latestClosedDay, startDayForm.setValue]);
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
