@@ -199,7 +199,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
           <Link href="/">
             <div className="flex items-center justify-center mb-4">
               <Image
-                src="/logo.png?v=7"
+                src="/logo.png?v=8"
                 alt="App Logo"
                 width={40}
                 height={40}
@@ -208,7 +208,7 @@ export function PasswordProtect({onSuccess}: PasswordProtectProps) {
                 className="w-auto h-9"
               />
               <Image
-                src="/risoca.png?v=7"
+                src="/risoca.png?v=8"
                 alt="RiSoCa Logo Text"
                 width={120}
                 height={37}

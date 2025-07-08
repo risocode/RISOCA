@@ -82,7 +82,7 @@ export default function PrintReceiptPage() {
       <header className="text-center mb-4 space-y-2">
         <div className="flex items-center justify-center gap-1">
           <Image
-            src="/logo.png?v=7"
+            src="/logo.png?v=8"
             alt="App Logo"
             width={32}
             height={32}
@@ -90,7 +90,7 @@ export default function PrintReceiptPage() {
             className="w-auto h-8"
           />
           <Image
-            src="/risoca.png?v=7"
+            src="/risoca.png?v=8"
             alt="RiSoCa Logo Text"
             width={96}
             height={29}

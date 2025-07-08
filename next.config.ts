@@ -7,6 +7,19 @@ const withPWA = withPWAInit({
   skipWaiting: true,
   extendDefaultRuntimeCaching: true, // Important: extends the default caching rules
   runtimeCaching: [
+    // This rule forces the PWA to check the network first for icons and the manifest
+    // to ensure the latest versions are always displayed.
+    {
+      urlPattern: /\.(?:ico|png|webmanifest)$/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'icons-and-manifest-cache',
+        expiration: {
+          maxEntries: 20,
+          maxAgeSeconds: 24 * 60 * 60, // 1 day
+        },
+      },
+    },
     // This rule ensures that all POST requests, which are used by
     // Next.js Server Actions, are always fetched from the network and not cached.
     // This prevents stale data issues and errors when the PWA is offline.

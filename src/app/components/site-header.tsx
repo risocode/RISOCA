@@ -6,7 +6,7 @@ export function SiteHeader() {
     <header className="flex items-center justify-center p-4">
       <Link href="/" className="flex items-center justify-center">
         <Image
-          src="/logo.png?v=7"
+          src="/logo.png?v=8"
           alt="App Logo"
           width={40}
           height={40}
@@ -15,7 +15,7 @@ export function SiteHeader() {
           className="w-auto h-9"
         />
         <Image
-          src="/risoca.png?v=7"
+          src="/risoca.png?v=8"
           alt="RiSoCa Logo Text"
           width={120}
           height={37}
