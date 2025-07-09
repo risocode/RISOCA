@@ -21,7 +21,6 @@ import type {
   SaleTransaction,
 } from '@/lib/schemas';
 import {format} from 'date-fns';
-import {BarcodeScannerDialog} from '@/components/barcode-scanner-dialog';
 
 import {
   Card,
@@ -58,7 +57,6 @@ import {
   ChevronsUpDown,
   History,
   FileWarning,
-  ScanLine,
   Printer,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
@@ -102,7 +100,6 @@ export default function StorePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
   const [customerName, setCustomerName] = useState('');
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [voidingTransaction, setVoidingTransaction] =
     useState<SaleTransaction | null>(null);
   const {toast} = useToast();
@@ -247,24 +244,6 @@ export default function StorePage() {
     setIsVoiding(false);
   };
 
-  const handleBarcodeScanned = (result: string) => {
-    setIsScannerOpen(false);
-    const foundItem = inventory.find((item) => item.barcode === result);
-    if (foundItem) {
-      form.setValue('itemName', foundItem.name);
-      form.setValue('unitPrice', foundItem.price);
-      form.setValue('itemId', foundItem.id);
-      toast({
-        title: 'Item Found',
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Item Not Found',
-      });
-    }
-  };
-
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
 
   return (
@@ -283,21 +262,12 @@ export default function StorePage() {
                 onSubmit={form.handleSubmit(handleAddItem)}
                 className="space-y-4 p-4 border rounded-lg bg-background"
               >
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="Customer Name (Optional)"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="flex-grow"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsScannerOpen(true)}
-                  >
-                    <ScanLine className="mr-2" /> Scan Barcode
-                  </Button>
-                </div>
+                <Input
+                  placeholder="Customer Name (Optional)"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="flex-grow"
+                />
 
                 <FormField
                   control={form.control}
@@ -588,12 +558,6 @@ export default function StorePage() {
           </CardFooter>
         </Card>
       </div>
-
-      <BarcodeScannerDialog
-        open={isScannerOpen}
-        onOpenChange={setIsScannerOpen}
-        onScan={handleBarcodeScanned}
-      />
 
       <AlertDialog
         open={!!voidingTransaction}

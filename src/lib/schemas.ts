@@ -6,7 +6,6 @@ export const InventoryItemSchema = z.object({
   cost: z.coerce.number().min(0, 'Cost must be non-negative.'),
   price: z.coerce.number().min(0, 'Price must be non-negative.'),
   stock: z.coerce.number().min(0, 'Stock must be non-negative.'),
-  barcode: z.string().optional(),
 });
 
 export type InventoryItemInput = z.infer<typeof InventoryItemSchema>;

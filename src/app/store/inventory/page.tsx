@@ -77,9 +77,7 @@ import {
   Trash2,
   Loader2,
   Search,
-  ScanLine,
 } from 'lucide-react';
-import {BarcodeScannerDialog} from '@/components/barcode-scanner-dialog';
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -87,7 +85,6 @@ export default function InventoryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -101,7 +98,6 @@ export default function InventoryPage() {
       cost: 0,
       price: 0,
       stock: 0,
-      barcode: '',
     },
   });
 
@@ -141,10 +137,8 @@ export default function InventoryPage() {
 
   const displayedItems = useMemo(() => {
     const filtered = searchTerm
-      ? items.filter(
-          (item) =>
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.barcode?.includes(searchTerm)
+      ? items.filter((item) =>
+          item.name.toLowerCase().includes(searchTerm.toLowerCase())
         )
       : [...items];
 
@@ -168,10 +162,9 @@ export default function InventoryPage() {
         cost: item.cost || 0,
         price: item.price,
         stock: item.stock,
-        barcode: item.barcode || '',
       });
     } else {
-      form.reset({name: '', cost: 0, price: 0, stock: 0, barcode: ''});
+      form.reset({name: '', cost: 0, price: 0, stock: 0});
     }
     setIsDialogOpen(true);
   };
@@ -226,14 +219,6 @@ export default function InventoryPage() {
     setDeletingItemId(null);
   };
 
-  const handleBarcodeScanned = (result: string) => {
-    form.setValue('barcode', result);
-    setIsScannerOpen(false);
-    toast({
-      title: 'Barcode Scanned',
-    });
-  };
-
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-4 opacity-0 animate-page-enter">
@@ -270,29 +255,6 @@ export default function InventoryPage() {
                         <FormControl>
                           <Input placeholder="e.g., T-Shirt" {...field} />
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="barcode"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Barcode</FormLabel>
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <Input placeholder="e.g., 123456789" {...field} />
-                          </FormControl>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setIsScannerOpen(true)}
-                          >
-                            <ScanLine className="h-5 w-5" />
-                          </Button>
-                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -410,7 +372,6 @@ export default function InventoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="px-2 md:px-4">Product Name</TableHead>
-                  <TableHead className="px-2 md:px-4">Barcode</TableHead>
                   <TableHead className="px-2 md:px-4">Price</TableHead>
                   <TableHead className="text-center px-2 md:px-4">
                     Stock
@@ -424,9 +385,6 @@ export default function InventoryPage() {
                 {isLoading
                   ? Array.from({length: 5}).map((_, i) => (
                       <TableRow key={i}>
-                        <TableCell className="p-2 md:p-4">
-                          <Skeleton className="h-5 w-3/4" />
-                        </TableCell>
                         <TableCell className="p-2 md:p-4">
                           <Skeleton className="h-5 w-3/4" />
                         </TableCell>
@@ -451,9 +409,6 @@ export default function InventoryPage() {
                         <TableCell className="p-2 md:p-4 font-medium">
                           {item.name}
                         </TableCell>
-                        <TableCell className="p-2 md:p-4 font-mono text-xs">
-                          {item.barcode || 'N/A'}
-                        </TableCell>
                         <TableCell className="p-2 md:p-4 whitespace-nowrap">
                           ₱{item.price.toFixed(2)}
                         </TableCell>
@@ -477,7 +432,7 @@ export default function InventoryPage() {
                     ))
                   : !isLoading && (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={4} className="h-24 text-center">
                           {searchTerm
                             ? `No products found for "${searchTerm}"`
                             : 'No products yet. Add your first one to get started.'}
@@ -489,12 +444,6 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       </div>
-
-      <BarcodeScannerDialog
-        open={isScannerOpen}
-        onOpenChange={setIsScannerOpen}
-        onScan={handleBarcodeScanned}
-      />
 
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
