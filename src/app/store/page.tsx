@@ -58,6 +58,8 @@ import {
   History,
   FileWarning,
   Printer,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
 import {
@@ -354,7 +356,43 @@ export default function StorePage() {
                       <FormItem>
                         <FormLabel>Qty</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="1" {...field} />
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="1"
+                              className="pr-20 text-center no-spinners"
+                              onChange={(e) =>
+                                field.onChange(parseInt(e.target.value, 10) || 1)
+                              }
+                              min="1"
+                            />
+                            <div className="absolute inset-y-0 right-0.5 flex items-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  field.onChange(Math.max(1, (field.value || 1) - 1))
+                                }
+                                disabled={field.value <= 1}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  field.onChange((field.value || 0) + 1)
+                                }
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -371,6 +409,7 @@ export default function StorePage() {
                             type="number"
                             step="0.01"
                             placeholder="0.00"
+                            className="no-spinners"
                             {...field}
                           />
                         </FormControl>

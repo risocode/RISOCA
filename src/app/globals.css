@@ -89,6 +89,17 @@
   .logo-glow {
     filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.8)) drop-shadow(0 0 20px hsl(var(--accent) / 0.5));
   }
+  
+  /* Hide number input arrows */
+  .no-spinners::-webkit-outer-spin-button,
+  .no-spinners::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .no-spinners {
+    -moz-appearance: textfield; /* Firefox */
+  }
 }
 
 /* Custom Print Styles */
