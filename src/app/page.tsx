@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -363,9 +364,9 @@ export default function HomePage() {
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
               <BestSellersReport />
               <Button asChild variant="outline" className="w-full">
-                <Link href="/transactions">
+                <Link href="/store/history">
                   <History className="mr-2" />
-                  View Full Transaction History
+                  View Sales Transaction History
                 </Link>
               </Button>
             </div>
