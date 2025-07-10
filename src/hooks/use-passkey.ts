@@ -25,9 +25,12 @@ export function usePasskey() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check for WebAuthn support on component mount
+    const isMobile = /Mobi/i.test(window.navigator.userAgent);
+
+    // Check for WebAuthn support on component mount and if it's a mobile device
     setIsSupported(
-      typeof window !== 'undefined' &&
+      isMobile &&
+        typeof window !== 'undefined' &&
         window.PublicKeyCredential &&
         window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
     );

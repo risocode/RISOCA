@@ -99,11 +99,11 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Passkey Management</CardTitle>
+            <CardTitle>Fingerprint Login</CardTitle>
             <CardDescription>
-              Register this device to log in quickly and securely with its
-              built-in security (e.g., fingerprint, face, or PIN). Keys are
-              stored only on this device.
+              Register your mobile device to log in quickly and securely with
+              its built-in fingerprint or face scanner. Keys are stored only on
+              this device.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -165,8 +165,8 @@ export default function SettingsPage() {
                 </div>
               </>
             ) : (
-              <p className="text-destructive">
-                Passkeys are not supported on this browser or device.
+              <p className="text-destructive font-medium p-4 border border-destructive/50 bg-destructive/10 rounded-md text-center">
+                Fingerprint/Face login is only available on mobile devices.
               </p>
             )}
           </CardContent>
