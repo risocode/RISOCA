@@ -218,7 +218,9 @@ export default function WalletPage() {
 
   const {enrichedHistory, openDay, latestClosedDay, todayClosed} = useMemo(() => {
     const openDay = walletHistory.find((entry) => entry.status === 'open');
-    const todayClosed = walletHistory.find((entry) => isSameDay(parseISO(entry.date), startOfToday()));
+    const todayClosed = walletHistory.find((entry) =>
+        isSameDay(parseISO(entry.date), startOfToday()) && entry.status === 'closed'
+    );
     const latestClosedDay = walletHistory.find(
       (entry) => entry.status === 'closed'
     );
