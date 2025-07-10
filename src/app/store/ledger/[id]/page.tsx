@@ -175,11 +175,11 @@ export default function CustomerLedgerPage() {
       type: 'credit',
       amount: 0,
       description: '',
-      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+      items: [],
     },
   });
 
-  const {fields, append, remove, replace} = useFieldArray({
+  const {fields, append, remove} = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -202,7 +202,7 @@ export default function CustomerLedgerPage() {
       type: form.getValues('type'),
       amount: 0,
       description: '',
-      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+      items: [],
     });
     setSelectedCredits(new Set());
     // Clear any previous errors when tab switches
@@ -359,7 +359,7 @@ export default function CustomerLedgerPage() {
           (item) => item.itemName && item.itemName.trim() !== '' && item.total > 0
         ) || [];
 
-      if (validItems.length === 0) {
+      if (data.amount === 0) {
         form.setError('amount', {type: 'manual', message: 'Amount must not be 0.'});
         setIsSubmitting(false);
         return;
@@ -409,7 +409,6 @@ export default function CustomerLedgerPage() {
         description: '',
         items: [],
       });
-      replace([{itemName: '', quantity: 1, unitPrice: 0, total: 0}]);
       setSelectedCredits(new Set());
       setIsSheetOpen(false);
     } else {
@@ -499,11 +498,7 @@ export default function CustomerLedgerPage() {
   };
 
   const handleRemoveItem = (index: number) => {
-    if (fields.length > 1) {
-      remove(index);
-    } else {
-      replace([{itemName: '', quantity: 1, unitPrice: 0, total: 0}]);
-    }
+    remove(index);
   };
 
   const formatCurrency = (value: number) =>
@@ -790,12 +785,14 @@ export default function CustomerLedgerPage() {
                           Add to Credit
                         </Label>
                         <div className="space-y-2">
-                           <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                           {fields.length > 0 && (
+                            <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
                                 <Label>Item</Label>
                                 {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-center">Qty</Label>}
                                 {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-right">Price</Label>}
                                 <span className="sr-only">Delete</span>
                             </div>
+                           )}
                           {fields.map((field, index) => {
                             const currentItem = form.watch(`items.${index}`);
                             const currentItemName = currentItem.itemName;
@@ -817,7 +814,7 @@ export default function CustomerLedgerPage() {
                                       />
                                     </FormControl>
                                   </FormItem>
-                                ) : (
+                                ) : hasItemSelected ? (
                                   <FormField
                                     name={`items.${index}.itemName`}
                                     control={form.control}
@@ -921,6 +918,8 @@ export default function CustomerLedgerPage() {
                                       </FormItem>
                                     )}
                                   />
+                                ) : (
+                                  <div className='col-span-full' />
                                 )}
 
                                 {isCashItem ? (
