@@ -219,82 +219,61 @@ export async function submitSaleTransaction(
       const transactionRef = doc(db, 'saleTransactions', newId);
 
       const updatedSaleItems: SaleItem[] = [];
-
-      // Step 1: Handle new inventory items first
+      const newInventoryItems: {ref: DocumentReference, data: InventoryItemInput}[] = [];
+      const inventoryToUpdate = new Map<string, {ref: DocumentReference, quantity: number}>();
+      
+      // Step 1: Prepare all data. Separate new items from existing ones.
       for (const item of saleData.items) {
         if (!item.itemId) {
-          // This is a new item, create it.
-          const newItemId = `${format(
-            new Date(),
-            'yyyyMMdd_HHmmss'
-          )}-I-${uuidv4().substring(0, 6)}`;
+          // This is a new item to be created.
+          const newItemId = `${format(new Date(), 'yyyyMMdd_HHmmss')}-I-${uuidv4().substring(0, 6)}`;
           const newItemRef = doc(db, 'inventory', newItemId);
-          const newInventoryItem: InventoryItemInput = {
-            name: item.itemName,
-            price: item.unitPrice,
-            cost: 0, // Default cost
-            stock: 100, // Default stock
-          };
-          transaction.set(newItemRef, {
-            ...newInventoryItem,
-            createdAt: serverTimestamp(),
+          newInventoryItems.push({
+            ref: newItemRef,
+            data: {
+              name: item.itemName,
+              price: item.unitPrice,
+              cost: 0,
+              stock: 100,
+            }
           });
-          // Update the sale item with the new ID
-          updatedSaleItems.push({...item, itemId: newItemId});
+          updatedSaleItems.push({ ...item, itemId: newItemId });
         } else {
+          // This is an existing item to be updated.
+          const existing = inventoryToUpdate.get(item.itemId);
+          inventoryToUpdate.set(item.itemId, {
+            ref: doc(db, 'inventory', item.itemId),
+            quantity: (existing?.quantity || 0) + item.quantity
+          });
           updatedSaleItems.push(item);
         }
       }
 
-      // Step 2: Aggregate all inventory items and their quantities for stock deduction.
-      const inventoryMap = new Map<
-        string,
-        {ref: DocumentReference; quantity: number}
-      >();
-      for (const item of updatedSaleItems) {
-        if (item.itemId) {
-          const existing = inventoryMap.get(item.itemId);
-          inventoryMap.set(item.itemId, {
-            ref: doc(db, 'inventory', item.itemId),
-            quantity: (existing?.quantity || 0) + item.quantity,
-          });
-        }
-      }
+      // Step 2: Read Phase. Read all required inventory documents.
+      const inventoryRefs = Array.from(inventoryToUpdate.values()).map(i => i.ref);
+      const inventoryDocs = inventoryRefs.length > 0
+        ? await Promise.all(inventoryRefs.map(ref => transaction.get(ref)))
+        : [];
 
-      // Step 3: Read all required inventory documents.
-      const inventoryRefs = Array.from(inventoryMap.values()).map(
-        (i) => i.ref
-      );
-      const inventoryDocs =
-        inventoryRefs.length > 0
-          ? await Promise.all(inventoryRefs.map((ref) => transaction.get(ref)))
-          : [];
+      const inventoryUpdates: {ref: DocumentReference, newStock: number}[] = [];
 
-      const inventoryUpdates: {ref: DocumentReference; newStock: number}[] = [];
-
-      // Step 4: Validate stock levels.
+      // Step 3: Validate stock levels from the read data.
       for (const inventoryDoc of inventoryDocs) {
         if (!inventoryDoc.exists()) {
-          throw new Error(
-            `Inventory item with ID ${inventoryDoc.id} not found.`
-          );
+          throw new Error(`Inventory item with ID ${inventoryDoc.id} not found.`);
         }
-        const required = inventoryMap.get(inventoryDoc.id)!;
+        const required = inventoryToUpdate.get(inventoryDoc.id)!;
         const currentStock = inventoryDoc.data().stock as number;
         if (currentStock < required.quantity) {
-          throw new Error(
-            `Insufficient stock for "${
-              inventoryDoc.data().name
-            }". Available: ${currentStock}, Requested: ${required.quantity}.`
-          );
+          throw new Error(`Insufficient stock for "${inventoryDoc.data().name}". Available: ${currentStock}, Requested: ${required.quantity}.`);
         }
         inventoryUpdates.push({
           ref: inventoryDoc.ref,
-          newStock: currentStock - required.quantity,
+          newStock: currentStock - required.quantity
         });
       }
 
-      // Step 5: Perform all write operations.
+      // Step 4: Write Phase. Perform all write operations now.
       // Write 1: Create the main sale transaction document with updated items.
       transaction.set(transactionRef, {
         ...saleData,
@@ -303,14 +282,22 @@ export async function submitSaleTransaction(
         createdAt: serverTimestamp(),
         status: 'active',
       });
-
-      // Write 2: Update all inventory items' stock.
-      for (const update of inventoryUpdates) {
-        transaction.update(update.ref, {stock: update.newStock});
+      
+      // Write 2: Create all new inventory items.
+      for (const { ref, data } of newInventoryItems) {
+        transaction.set(ref, {
+          ...data,
+          createdAt: serverTimestamp(),
+        });
       }
 
-      // Write 3: Update the counter.
-      transaction.set(counterRef, {currentNumber: newReceiptNumber});
+      // Write 3: Update all existing inventory items' stock.
+      for (const update of inventoryUpdates) {
+        transaction.update(update.ref, { stock: update.newStock });
+      }
+
+      // Write 4: Update the receipt counter.
+      transaction.set(counterRef, { currentNumber: newReceiptNumber });
     });
 
     return {success: true, transactionId: transactionId};
