@@ -14,6 +14,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 *   **Dashboard:** View a history of your scanned receipts and see a summary of your spending. Data is loaded in real-time from Firestore.
 *   **Triple Input:** Upload an image, use your device's camera, or enter receipt details manually.
 *   **Responsive UI:** A clean, modern interface built with Next.js, ShadCN UI, and Tailwind CSS.
+*   **Passwordless Security:** Secure your application with an initial password, then add Passkeys (fingerprint, face ID, hardware keys) for quick and secure access.
 
 ## Getting Started
 
@@ -112,6 +113,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     
     # Password & WebAuthn Relying Party
     SITE_PASSWORD=YOUR_CHOSEN_PASSWORD
+    # For local development (testing on your machine)
     RP_ID=localhost
     RP_ORIGIN=http://localhost:9002
     ```
@@ -131,7 +133,9 @@ This application is ready to be deployed to any static hosting provider like Ver
 
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
-3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Make sure to update `RP_ID` and `RP_ORIGIN` to match your Vercel deployment URL.**
+3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Make sure to update `RP_ID` and `RP_ORIGIN` to match your Vercel deployment URL.** For example, if your site is `https://my-risoca-app.vercel.app`, you would set:
+    * `RP_ID=my-risoca-app.vercel.app`
+    * `RP_ORIGIN=https://my-risoca-app.vercel.app`
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
