@@ -3,7 +3,7 @@
 
 import React, {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
-import {useForm, useWatch} from 'react-hook-form';
+import {useForm, useWatch, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
 import {
@@ -85,14 +85,19 @@ import {
 import {Separator} from '@/components/ui/separator';
 import {Badge} from '@/components/ui/badge';
 
-const SaleItemFormSchema = z.object({
+const SaleItemSchema = z.object({
   itemId: z.string().optional(),
   itemName: z.string().min(1, 'Item name is required.'),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1.'),
-  unitPrice: z.coerce.number().min(0, 'Unit price cannot be negative.'),
+  unitPrice: z.coerce.number().min(0, 'Price cannot be negative.'),
+  total: z.coerce.number(),
 });
 
-type SaleItemFormData = z.infer<typeof SaleItemFormSchema>;
+const SaleFormSchema = z.object({
+  items: z.array(SaleItemSchema).min(1, 'Please add at least one item.'),
+});
+
+type SaleFormData = z.infer<typeof SaleFormSchema>;
 
 export default function StorePage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -107,26 +112,36 @@ export default function StorePage() {
   const [voidingTransaction, setVoidingTransaction] =
     useState<SaleTransaction | null>(null);
   const {toast} = useToast();
-  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [popoverStates, setPopoverStates] = useState<Record<number, boolean>>(
+    {}
+  );
   const [isItemDeleteAlertOpen, setIsItemDeleteAlertOpen] = useState(false);
   const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(
     null
   );
-  const [searchValue, setSearchValue] = useState('');
 
-  const form = useForm<SaleItemFormData>({
-    resolver: zodResolver(SaleItemFormSchema),
+  const form = useForm<SaleFormData>({
+    resolver: zodResolver(SaleFormSchema),
     defaultValues: {
-      itemName: '',
-      quantity: 1,
-      unitPrice: 0,
+      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
     },
   });
 
-  const {control} = form;
-  const quantity = useWatch({control, name: 'quantity'});
-  const unitPrice = useWatch({control, name: 'unitPrice'});
-  const subtotal = (quantity || 0) * (unitPrice || 0);
+  const {fields, append, remove, update} = useFieldArray({
+    control: form.control,
+    name: 'items',
+  });
+
+  const formItems = useWatch({control: form.control, name: 'items'});
+
+  useEffect(() => {
+    formItems.forEach((item, index) => {
+      const newTotal = (item.quantity || 0) * (item.unitPrice || 0);
+      if (item.total !== newTotal) {
+        update(index, {...item, total: newTotal});
+      }
+    });
+  }, [formItems, update]);
 
   useEffect(() => {
     const inventoryQuery = query(
@@ -162,20 +177,24 @@ export default function StorePage() {
     };
   }, []);
 
-  const handleAddItem = (data: SaleItemFormData) => {
-    const total = data.quantity * data.unitPrice;
-    setReceiptItems((prev) => [...prev, {...data, total}]);
+  const handleAddItemsToSale = (data: SaleFormData) => {
+    const validItems = data.items.filter(
+      (item) => item.itemName && item.quantity > 0 && item.total >= 0
+    );
+
+    if (validItems.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No items to add',
+        description: 'Please fill out at least one item.',
+      });
+      return;
+    }
+
+    setReceiptItems((prev) => [...prev, ...validItems]);
     form.reset({
-      itemName: '',
-      quantity: 1,
-      unitPrice: 0,
-      itemId: undefined,
+      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
     });
-    setSearchValue('');
-    const input = document.querySelector(
-      'input[name="itemName"]'
-    ) as HTMLInputElement | null;
-    input?.focus();
   };
 
   const handleOpenDeleteAlert = (index: number) => {
@@ -252,7 +271,7 @@ export default function StorePage() {
   };
 
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
-  
+
   const change = useMemo(() => {
     const received = parseFloat(receivedMoney);
     if (!isNaN(received) && received >= grandTotal) {
@@ -271,7 +290,7 @@ export default function StorePage() {
     <>
       <div className="p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
         <Card className="shadow-sm">
-          <CardHeader className="text-center">
+          <CardHeader>
             <CardTitle>Record Sale</CardTitle>
             <CardDescription>
               Add items to build the transaction receipt.
@@ -280,8 +299,8 @@ export default function StorePage() {
           <CardContent>
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(handleAddItem)}
-                className="space-y-4 p-4 border rounded-lg bg-background"
+                onSubmit={form.handleSubmit(handleAddItemsToSale)}
+                className="space-y-4"
               >
                 <Input
                   placeholder="Customer Name (Optional)"
@@ -290,184 +309,148 @@ export default function StorePage() {
                   className="flex-grow"
                 />
 
-                <FormField
-                  control={form.control}
-                  name="itemName"
-                  render={({field}) => (
-                    <FormItem>
-                      <FormLabel>Item</FormLabel>
-                      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                'w-full justify-between',
-                                !field.value && 'text-muted-foreground'
-                              )}
-                            >
-                              {field.value || 'Select or type an item'}
-                              <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command
-                            filter={(value, search) =>
-                              value.toLowerCase().includes(search.toLowerCase())
-                                ? 1
-                                : 0
-                            }
-                          >
-                            <CommandInput
-                              placeholder="Search inventory..."
-                              value={searchValue}
-                              onValueChange={(search) => {
-                                setSearchValue(search);
-                                form.setValue('itemName', search);
-                                form.setValue('itemId', undefined);
-                                form.setValue('unitPrice', 0);
-                              }}
-                            />
-                            <CommandList>
-                              <CommandEmpty>
-                                <div className="p-4 text-center text-sm text-muted-foreground">
-                                  No inventory item found.{' '}
-                                  {searchValue && (
-                                    <button
-                                      type="button"
-                                      className="text-primary hover:underline"
-                                      onClick={() => {
-                                        form.setValue('itemName', searchValue);
-                                        setPopoverOpen(false);
-                                      }}
-                                    >
-                                      (Record Item)
-                                    </button>
-                                  )}
-                                </div>
-                              </CommandEmpty>
-                              <CommandGroup>
-                                {inventory.map((item) => (
-                                  <CommandItem
-                                    value={item.name}
-                                    key={item.id}
-                                    onSelect={() => {
-                                      form.setValue('itemName', item.name);
-                                      form.setValue('unitPrice', item.price);
-                                      form.setValue('itemId', item.id);
-                                      setSearchValue(item.name);
-                                      setPopoverOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        'mr-2 h-4 w-4',
-                                        field.value === item.name
-                                          ? 'opacity-100'
-                                          : 'opacity-0'
-                                      )}
-                                    />
-                                    <span>{item.name}</span>
-                                    <span className="ml-auto text-xs text-muted-foreground">
-                                      Stock: {item.stock}
-                                    </span>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Qty</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              {...field}
-                              type="number"
-                              placeholder="1"
-                              className="pr-20 text-center no-spinners"
-                              onChange={(e) =>
-                                field.onChange(parseInt(e.target.value, 10) || 1)
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
+                    <Label>Item</Label>
+                    <Label className="text-center">Qty</Label>
+                    <Label className="text-center">Price</Label>
+                  </div>
+                  {fields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
+                    >
+                      <FormField
+                        name={`items.${index}.itemName`}
+                        control={form.control}
+                        render={({field: formField}) => (
+                          <FormItem>
+                            <Popover
+                              open={popoverStates[index] ?? false}
+                              onOpenChange={(open) =>
+                                setPopoverStates((prev) => ({
+                                  ...prev,
+                                  [index]: open,
+                                }))
                               }
-                              min="1"
-                            />
-                            <div className="absolute inset-y-0 right-0.5 flex items-center">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  field.onChange(Math.max(1, (field.value || 1) - 1))
-                                }
-                                disabled={field.value <= 1}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() =>
-                                  field.onChange((field.value || 0) + 1)
-                                }
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="unitPrice"
-                    render={({field}) => (
-                      <FormItem>
-                        <FormLabel>Price</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            className="no-spinners"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            >
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      'w-full justify-between h-10',
+                                      !formField.value && 'text-muted-foreground'
+                                    )}
+                                  >
+                                    {formField.value || 'Select item'}
+                                    <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command
+                                  filter={(value, search) =>
+                                    value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                                  }
+                                >
+                                  <CommandInput placeholder="Search inventory..." />
+                                  <CommandList>
+                                    <CommandEmpty>No item found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {inventory.map((item) => (
+                                        <CommandItem
+                                          value={item.name}
+                                          key={item.id}
+                                          onSelect={() => {
+                                            update(index, {
+                                              ...form.getValues(`items.${index}`),
+                                              itemName: item.name,
+                                              unitPrice: item.price,
+                                              itemId: item.id,
+                                            });
+                                            setPopoverStates((prev) => ({...prev, [index]: false}));
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              'mr-2 h-4 w-4',
+                                              formField.value === item.name ? 'opacity-100' : 'opacity-0'
+                                            )}
+                                          />
+                                          {item.name}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        name={`items.${index}.quantity`}
+                        control={form.control}
+                        render={({field: formField}) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="Qty"
+                                {...formField}
+                                className="text-center no-spinners"
+                                onChange={(e) => formField.onChange(parseInt(e.target.value, 10) || 1)}
+                                min="1"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        name={`items.${index}.unitPrice`}
+                        control={form.control}
+                        render={({field: formField}) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="Price"
+                                {...formField}
+                                className="no-spinners text-right"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(index)}
+                        disabled={fields.length <= 1}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
 
-                {subtotal > 0 && (
-                  <div className="text-right text-lg font-medium pr-1 pt-2">
-                    <span className="text-muted-foreground">Subtotal: </span>
-                    <span className="font-mono font-bold text-foreground">
-                      ₱{subtotal.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-
-                <Button type="submit" className="w-full">
-                  <PlusCircle className="mr-2" />
-                  Add Item
-                </Button>
+                <div className="flex justify-between items-center mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({itemName: '', quantity: 1, unitPrice: 0, total: 0})}
+                  >
+                    <Plus className="mr-2" /> Add Item
+                  </Button>
+                  <Button type="submit" size="sm">
+                    <PlusCircle className="mr-2" /> Add to Sale
+                  </Button>
+                </div>
               </form>
             </Form>
           </CardContent>
@@ -531,7 +514,9 @@ export default function StorePage() {
                   </p>
                 </div>
                 <div className="grid grid-cols-2 items-center gap-4">
-                  <Label htmlFor="received-money" className="text-base">Received Money:</Label>
+                  <Label htmlFor="received-money" className="text-base">
+                    Received Money:
+                  </Label>
                   <Input
                     id="received-money"
                     type="number"
@@ -541,7 +526,7 @@ export default function StorePage() {
                     onChange={(e) => setReceivedMoney(e.target.value)}
                   />
                 </div>
-                 {change !== null && (
+                {change !== null && (
                   <div className="flex justify-between items-baseline text-lg text-primary">
                     <p className="font-bold">Change:</p>
                     <p className="font-bold font-mono">
@@ -557,15 +542,17 @@ export default function StorePage() {
           </Card>
         )}
 
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={handleFinalSubmit}
-          disabled={isSubmitting || receiptItems.length === 0}
-        >
-          {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-          Submit Sale
-        </Button>
+        {receiptItems.length > 0 && (
+            <Button
+            size="lg"
+            className="w-full"
+            onClick={handleFinalSubmit}
+            disabled={isSubmitting || receiptItems.length === 0}
+            >
+            {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+            Submit Sale
+            </Button>
+        )}
 
         <Card className="shadow-sm">
           <CardHeader>
