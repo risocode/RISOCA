@@ -352,8 +352,9 @@ export default function CustomerLedgerPage() {
 
     if (data.type === 'credit') {
       const validItems =
-        data.items?.filter((item) => item.itemName && item.itemName.trim() !== '') ||
-        [];
+        data.items?.filter(
+          (item) => item.itemName && item.itemName.trim() !== '' && item.total > 0
+        ) || [];
 
       if (validItems.length === 0) {
         toast({
@@ -365,7 +366,12 @@ export default function CustomerLedgerPage() {
         return;
       }
 
-      const allDescriptions = validItems.map((item) => item.itemName);
+      const allDescriptions = validItems.map((item) => {
+        if (item.itemName === 'Cash') {
+          return `Cash: ${formatCurrency(item.total)}`;
+        }
+        return item.itemName;
+      });
 
       payload = {
         customerId,
@@ -788,19 +794,19 @@ export default function CustomerLedgerPage() {
                             const currentItemName = form.watch(
                               `items.${index}.itemName`
                             );
-                            const isCashAdvance =
-                              currentItemName === 'Cash Advance';
+                            const isCashItem =
+                              currentItemName === 'Cash';
 
                             return (
                               <div
                                 key={field.id}
                                 className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
                               >
-                                {isCashAdvance ? (
+                                {isCashItem ? (
                                   <FormItem>
                                     <FormControl>
                                       <Input
-                                        value="Cash Advance"
+                                        value="Cash"
                                         disabled
                                         className="font-semibold"
                                       />
@@ -912,7 +918,7 @@ export default function CustomerLedgerPage() {
                                   />
                                 )}
 
-                                {isCashAdvance ? (
+                                {isCashItem ? (
                                   <FormField
                                     name={`items.${index}.total`}
                                     control={form.control}
@@ -1090,7 +1096,7 @@ export default function CustomerLedgerPage() {
                             size="sm"
                             onClick={() => {
                               append({
-                                itemName: 'Cash Advance',
+                                itemName: 'Cash',
                                 quantity: 1,
                                 unitPrice: 0,
                                 total: 0,
@@ -1098,7 +1104,7 @@ export default function CustomerLedgerPage() {
                             }}
                             className="gap-2"
                           >
-                            <DollarSign /> Add Cash Advance
+                            <DollarSign /> Add Cash
                           </Button>
                         </div>
                       </div>
