@@ -111,15 +111,11 @@ const SaleFormSchema = z.object({
 type SaleFormData = z.infer<typeof SaleFormSchema>;
 
 const ELoadSchema = z.object({
-  phoneNumber: z.string().min(1, 'Phone number is required'),
-  amount: z.coerce
-    .number()
-    .min(1, 'Amount must be greater than zero.'),
+  amount: z.coerce.number().min(1, 'Amount must be greater than zero.'),
 });
 type ELoadFormData = z.infer<typeof ELoadSchema>;
 
 const GcashSchema = z.object({
-  phoneNumber: z.string().min(1, 'Phone number is required'),
   amount: z.coerce
     .number()
     .min(1, 'Cash-in amount must be greater than zero.'),
@@ -159,12 +155,12 @@ export default function StorePage() {
 
   const eLoadForm = useForm<ELoadFormData>({
     resolver: zodResolver(ELoadSchema),
-    defaultValues: {phoneNumber: '', amount: 0},
+    defaultValues: {amount: 0},
   });
 
   const gcashForm = useForm<GcashFormData>({
     resolver: zodResolver(GcashSchema),
-    defaultValues: {phoneNumber: '', amount: 0},
+    defaultValues: {amount: 0},
   });
 
   const {fields, append, remove, update} = useFieldArray({
@@ -321,7 +317,7 @@ export default function StorePage() {
     setReceiptItems((prev) => [
       ...prev,
       {
-        itemName: `E-Load to ${data.phoneNumber}`,
+        itemName: 'E-Load',
         quantity: 1,
         unitPrice: data.amount,
         total: data.amount,
@@ -337,7 +333,7 @@ export default function StorePage() {
     setReceiptItems((prev) => [
       ...prev,
       {
-        itemName: `Gcash Cash-In`,
+        itemName: 'Gcash Cash-In',
         quantity: 1,
         unitPrice: data.amount,
         total: data.amount,
@@ -819,28 +815,13 @@ export default function StorePage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>E-Load Transaction</DialogTitle>
-            <DialogDescription>
-              Enter the phone number and load amount.
-            </DialogDescription>
+            <DialogDescription>Enter the load amount.</DialogDescription>
           </DialogHeader>
           <Form {...eLoadForm}>
             <form
               onSubmit={eLoadForm.handleSubmit(handleELoadSubmit)}
               className="space-y-4 py-4"
             >
-              <FormField
-                name="phoneNumber"
-                control={eLoadForm.control}
-                render={({field}) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="09xxxxxxxxx" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 name="amount"
                 control={eLoadForm.control}
@@ -866,13 +847,13 @@ export default function StorePage() {
           </Form>
         </DialogContent>
       </Dialog>
-      
+
       <Dialog open={isGcashDialogOpen} onOpenChange={setIsGcashDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Gcash Cash-In</DialogTitle>
             <DialogDescription>
-              Enter the phone number and cash-in amount. A 2% service fee will be added.
+              Enter the cash-in amount. A 2% service fee will be added.
             </DialogDescription>
           </DialogHeader>
           <Form {...gcashForm}>
@@ -880,19 +861,6 @@ export default function StorePage() {
               onSubmit={gcashForm.handleSubmit(handleGcashSubmit)}
               className="space-y-4 py-4"
             >
-              <FormField
-                name="phoneNumber"
-                control={gcashForm.control}
-                render={({field}) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="09xxxxxxxxx" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 name="amount"
                 control={gcashForm.control}
