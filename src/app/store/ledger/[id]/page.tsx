@@ -153,6 +153,7 @@ export default function CustomerLedgerPage() {
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [isInventoryLoading, setIsInventoryLoading] = useState(true);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -175,7 +176,6 @@ export default function CustomerLedgerPage() {
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
-    reValidateMode: 'onSubmit',
     defaultValues: {
       type: 'credit',
       amount: 0,
@@ -274,6 +274,12 @@ export default function CustomerLedgerPage() {
     };
   }, [customerId, router, toast]);
 
+  useEffect(() => {
+    if (!isCustomerLoading && !isInventoryLoading && !isTransactionsLoading) {
+      setIsLoading(false);
+    }
+  }, [isCustomerLoading, isInventoryLoading, isTransactionsLoading]);
+
   const {balance, totalCredit, totalPaid} = useMemo(() => {
     let credit = 0;
     let payment = 0;
@@ -314,13 +320,12 @@ export default function CustomerLedgerPage() {
   }, [transactions, paidCreditIds]);
   
   const sortedFields = useMemo(() => {
-    return fields
-      .map((field, index) => ({ field, index })) // Keep original index
-      .sort((a, b) => {
-        if (a.field.itemName === 'Cash' && b.field.itemName !== 'Cash') return 1;
-        if (a.field.itemName !== 'Cash' && b.field.itemName === 'Cash') return -1;
-        return 0;
-      });
+    const fieldsWithOriginalIndex = fields.map((field, index) => ({ field, index }));
+
+    const itemFields = fieldsWithOriginalIndex.filter(f => f.field.itemName !== 'Cash');
+    const cashFields = fieldsWithOriginalIndex.filter(f => f.field.itemName === 'Cash');
+    
+    return [...itemFields, ...cashFields];
   }, [fields]);
 
   useEffect(() => {
@@ -385,10 +390,16 @@ export default function CustomerLedgerPage() {
         return;
     }
 
-    if (data.amount === 0) {
+    if (data.amount === 0 && data.type !== 'credit') {
       form.setError('amount', {type: 'manual', message: 'Amount must not be 0.'});
       setIsSubmitting(false);
       return;
+    }
+    
+    if (data.type === 'credit' && data.amount === 0 && data.items && data.items.length > 0) {
+        form.setError('amount', { type: 'manual', message: 'Total credit cannot be zero. Please check item prices and quantities.' });
+        setIsSubmitting(false);
+        return;
     }
 
     let payload: LedgerTransactionInput;
@@ -543,7 +554,7 @@ export default function CustomerLedgerPage() {
     if(type === 'item') {
       append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 });
     } else {
-      append({ itemName: 'Cash', quantity: 1, unitPrice: 0, total: undefined });
+      append({ itemName: 'Cash', quantity: 1, unitPrice: 0, total: 0 });
     }
     if (fields.length === 0) {
       setShowItemHeaders(true);
@@ -561,21 +572,11 @@ export default function CustomerLedgerPage() {
   const cannotDeleteCustomer =
     balance !== 0 || customer?.status === 'deleted';
 
-  const isLoading = isCustomerLoading || isInventoryLoading || isTransactionsLoading;
-
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
-        <Skeleton className="h-8 w-1/2" />
-        <Skeleton className="h-4 w-1/3" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-1/3" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-40 w-full" />
-          </CardContent>
-        </Card>
+      <div className="p-6 space-y-4 flex flex-col h-full items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading customer data...</p>
       </div>
     );
   }
@@ -886,10 +887,10 @@ export default function CustomerLedgerPage() {
                                                   type="number"
                                                   step="0.01"
                                                   placeholder="0.00"
-                                                  value={amountField.value === undefined ? '' : amountField.value}
+                                                  value={amountField.value || ''}
                                                   onChange={(e) => {
                                                     const value = e.target.value;
-                                                    amountField.onChange(value === '' ? undefined : parseFloat(value));
+                                                    amountField.onChange(value === '' ? '' : parseFloat(value));
                                                   }}
                                                   className="no-spinners text-right"
                                                 />
@@ -908,83 +909,7 @@ export default function CustomerLedgerPage() {
                                   </div>
                                 )
                             }
-                            
-                            if (!currentItem.itemName) {
-                              return (
-                                <div key={field.id} className="flex items-center gap-2">
-                                  <div className="flex-grow">
-                                    <FormField
-                                        name={`items.${index}.itemName`}
-                                        control={form.control}
-                                        render={({field: formField}) => (
-                                            <FormItem>
-                                              <Popover>
-                                                  <PopoverTrigger asChild>
-                                                  <FormControl>
-                                                      <Button
-                                                      variant="outline"
-                                                      role="combobox"
-                                                      className={cn(
-                                                          'w-full justify-between',
-                                                          !formField.value &&
-                                                          'text-muted-foreground'
-                                                      )}
-                                                      >
-                                                      {formField.value || 'Select or type an item'}
-                                                      <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                                                      </Button>
-                                                  </FormControl>
-                                                  </PopoverTrigger>
-                                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                  <Command
-                                                      filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}
-                                                  >
-                                                      <CommandInput
-                                                        placeholder="Search inventory..."
-                                                        onValueChange={(search) => form.setValue(`items.${index}.itemName`, search)}
-                                                      />
-                                                      <CommandList>
-                                                      <CommandEmpty>No item found.</CommandEmpty>
-                                                      <CommandGroup>
-                                                          {inventory.map((item) => (
-                                                          <CommandItem
-                                                              value={item.name}
-                                                              key={item.id}
-                                                              onSelect={() => {
-                                                                form.setValue(`items.${index}.itemId`, item.id);
-                                                                form.setValue(`items.${index}.itemName`, item.name);
-                                                                form.setValue(`items.${index}.unitPrice`, item.price);
-                                                                const qty = form.getValues(`items.${index}.quantity`) || 1;
-                                                                form.setValue(`items.${index}.quantity`, qty);
-                                                                form.setValue(`items.${index}.total`, item.price * qty);
-                                                              }}
-                                                          >
-                                                              <Check className={cn('mr-2 h-4 w-4', formField.value === item.name ? 'opacity-100' : 'opacity-0')}/>
-                                                              <span>{item.name}</span>
-                                                              <span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
-                                                          </CommandItem>
-                                                          ))}
-                                                      </CommandGroup>
-                                                      </CommandList>
-                                                  </Command>
-                                                  </PopoverContent>
-                                              </Popover>
-                                            </FormItem>
-                                        )}
-                                    />
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveItem(index)}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              );
-                            }
-                            
+
                             return (
                               <div
                                 key={field.id}
