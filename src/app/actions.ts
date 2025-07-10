@@ -442,12 +442,13 @@ export async function addCustomer(data: {
   try {
     await runTransaction(db, async (transaction) => {
       const timestamp = new Date();
+      
+      // Sanitize the first name and create the custom ID
+      const firstName = data.name.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '');
+      const formattedTimestamp = format(timestamp, 'ddMMyy_HHmmss');
       const shortUuid = uuidv4().substring(0, 6);
+      const customerId = `${firstName}-${formattedTimestamp}-${shortUuid}`;
 
-      const customerId = `${format(
-        timestamp,
-        'yyyyMMdd_HHmmss'
-      )}-C-${shortUuid}`;
       const customerRef = doc(db, 'customers', customerId);
       transaction.set(customerRef, {
         name: data.name,
