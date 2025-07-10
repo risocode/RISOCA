@@ -94,7 +94,6 @@ import {
   ChevronsUpDown,
   Check,
   Package,
-  DollarSign,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -138,6 +137,8 @@ const TransactionFormSchema = LedgerTransactionSchema.omit({
   customerId: true,
 }).extend({
   items: z.array(SaleItemSchema).optional(),
+  cashAdvanceAmount: z.coerce.number().min(0).optional(),
+  cashAdvanceDescription: z.string().optional(),
 });
 type TransactionFormData = z.infer<typeof TransactionFormSchema>;
 
@@ -168,7 +169,6 @@ export default function CustomerLedgerPage() {
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [creditMode, setCreditMode] = useState<'item' | 'cash'>('item');
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -177,6 +177,8 @@ export default function CustomerLedgerPage() {
       amount: 0,
       description: '',
       items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+      cashAdvanceAmount: 0,
+      cashAdvanceDescription: '',
     },
   });
 
@@ -187,24 +189,27 @@ export default function CustomerLedgerPage() {
 
   const formType = useWatch({control: form.control, name: 'type'});
   const formItems = useWatch({control: form.control, name: 'items'});
+  const cashAdvanceAmount = useWatch({control: form.control, name: 'cashAdvanceAmount'});
 
   useEffect(() => {
-    if (formType === 'credit' && creditMode === 'item' && formItems) {
-      const total = formItems.reduce(
+    if (formType === 'credit') {
+      const itemsTotal = formItems?.reduce(
         (sum, item) => sum + (item.total || 0),
         0
-      );
-      form.setValue('amount', total, {shouldValidate: true});
+      ) || 0;
+      const totalAmount = itemsTotal + (cashAdvanceAmount || 0);
+      form.setValue('amount', totalAmount, {shouldValidate: true});
     }
-  }, [formItems, formType, creditMode, form]);
+  }, [formItems, cashAdvanceAmount, formType, form]);
 
   useEffect(() => {
     // Reset fields when switching main transaction type
     replace([{itemName: '', quantity: 1, unitPrice: 0, total: 0}]);
     form.setValue('amount', 0);
     form.setValue('description', '');
+    form.setValue('cashAdvanceAmount', 0);
+    form.setValue('cashAdvanceDescription', '');
     setSelectedCredits(new Set());
-    setCreditMode('item');
   }, [formType, replace, form]);
 
   useEffect(() => {
@@ -353,39 +358,29 @@ export default function CustomerLedgerPage() {
     let payload: LedgerTransactionInput;
 
     if (data.type === 'credit') {
-      if (creditMode === 'item') {
         const validItems = data.items?.filter(item => item.itemName && item.itemName.trim() !== '') || [];
-        if (validItems.length === 0) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Please add at least one item.' });
+        const hasCashAdvance = (data.cashAdvanceAmount || 0) > 0;
+
+        if (validItems.length === 0 && !hasCashAdvance) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Please add at least one item or a cash advance.' });
           setIsSubmitting(false);
           return;
         }
+        
+        const itemDescriptions = validItems.map(item => item.itemName);
+        const allDescriptions = [...itemDescriptions];
+        if (hasCashAdvance && data.cashAdvanceDescription) {
+            allDescriptions.push(data.cashAdvanceDescription);
+        }
+
         payload = {
           customerId,
           type: 'credit',
           amount: data.amount,
-          description: validItems.map(item => item.itemName).join(', '),
+          description: allDescriptions.join(', ') || 'Credit Transaction',
           items: validItems,
         };
-      } else { // Cash mode
-        if (!data.description?.trim()) {
-           toast({ variant: 'destructive', title: 'Error', description: 'Description is required for cash credit.' });
-           setIsSubmitting(false);
-           return;
-        }
-         if (data.amount <= 0) {
-           toast({ variant: 'destructive', title: 'Error', description: 'Amount must not be 0.' });
-           setIsSubmitting(false);
-           return;
-        }
-        payload = {
-          customerId,
-          type: 'credit',
-          amount: data.amount,
-          description: data.description,
-          items: [],
-        };
-      }
+      
     } else { // Payment
       payload = {
         customerId,
@@ -782,9 +777,9 @@ export default function CustomerLedgerPage() {
                         Payment
                       </TabsTrigger>
                     </TabsList>
-                    <TabsContent value="credit" className="pt-4">
-                      {creditMode === 'item' ? (
-                        <div className="space-y-4">
+                    <TabsContent value="credit" className="pt-4 space-y-6">
+                      <div className="space-y-4 p-4 border rounded-lg">
+                          <Label className="text-base font-semibold">Credit by Item</Label>
                           <div className="space-y-2">
                             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
                               <Label>Item</Label>
@@ -1037,80 +1032,60 @@ export default function CustomerLedgerPage() {
                               );
                             })}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setCreditMode('item');
-                                append({
-                                  itemName: '',
-                                  quantity: 1,
-                                  unitPrice: 0,
-                                  total: 0,
-                                });
-                              }}
-                              className="gap-2"
-                            >
-                              <Package /> Add Item
-                            </Button>
-                             <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCreditMode('cash')}
-                              className="gap-2"
-                            >
-                              <DollarSign /> Add Cash Credit
-                            </Button>
-                          </div>
-                          <Separator />
-                          <FormField
-                            control={form.control}
-                            name="amount"
-                            render={({field}) => (
-                              <FormItem>
-                                <FormLabel>Total Amount (₱)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    {...field}
-                                    disabled
-                                    className="font-bold text-lg"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      ) : (
-                         <div className="space-y-4">
-                           <FormField control={form.control} name="description" render={({field}) => (
-                                <FormItem><FormLabel>Description</FormLabel><FormControl>
-                                    <Input placeholder="e.g., Cash advance" {...field}/>
-                                </FormControl><FormMessage/></FormItem>
-                            )}/>
-                           <FormField control={form.control} name="amount" render={({field}) => (
-                                <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                    <Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
-                                </FormControl><FormMessage/></FormItem>
-                            )}/>
-                             <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCreditMode('item')}
-                              className="gap-2"
-                            >
-                              <Package /> Back to Item Credit
-                            </Button>
-                         </div>
-                      )}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              append({
+                                itemName: '',
+                                quantity: 1,
+                                unitPrice: 0,
+                                total: 0,
+                              });
+                            }}
+                            className="gap-2"
+                          >
+                            <Package /> Add Item
+                          </Button>
+                      </div>
+
+                      <div className="space-y-4 p-4 border rounded-lg">
+                         <Label className="text-base font-semibold">Credit by Cash (Optional)</Label>
+                         <FormField control={form.control} name="cashAdvanceDescription" render={({field}) => (
+                              <FormItem><FormLabel>Description</FormLabel><FormControl>
+                                  <Input placeholder="e.g., Cash advance" {...field}/>
+                              </FormControl><FormMessage/></FormItem>
+                          )}/>
+                         <FormField control={form.control} name="cashAdvanceAmount" render={({field}) => (
+                              <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
+                                  <Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber || 0)} />
+                              </FormControl><FormMessage/></FormItem>
+                          )}/>
+                      </div>
+
+                      <Separator />
+                      <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({field}) => (
+                          <FormItem>
+                            <FormLabel>Total Credit Amount (₱)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                {...field}
+                                disabled
+                                className="font-bold text-lg"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </TabsContent>
-                    <TabsContent value="payment" className="pt-4">
+                    <TabsContent value="payment" className="pt-4 space-y-6">
                       <>
                         <FormField
                           control={form.control}
