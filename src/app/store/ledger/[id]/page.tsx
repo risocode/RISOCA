@@ -1,6 +1,7 @@
 
 'use client';
 
+import * as React from 'react';
 import {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
@@ -338,7 +339,7 @@ export default function CustomerLedgerPage() {
   }, [fields]);
 
   const hasProductItems = useMemo(() => {
-    return fields.some((f) => f.itemName !== 'Cash' && f.itemName);
+    return fields.some((f) => f.itemId && f.itemName !== 'Cash');
   }, [fields]);
 
   useEffect(() => {
