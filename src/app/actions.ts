@@ -880,8 +880,8 @@ export async function verifyNewRegistration(
     const {credentialPublicKey, credentialID, counter} = registrationInfo;
 
     const newAuthenticator: Authenticator = {
-      credentialID,
-      credentialPublicKey,
+      credentialID: Buffer.from(credentialID),
+      credentialPublicKey: Buffer.from(credentialPublicKey),
       counter,
       credentialDeviceType: registrationInfo.credentialDeviceType,
       transports: response.response.transports || [],
@@ -943,7 +943,11 @@ export async function verifyExistingAuthentication(
       expectedChallenge: challenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      authenticator,
+      authenticator: {
+        ...authenticator,
+        credentialID: Buffer.from(authenticator.credentialID),
+        credentialPublicKey: Buffer.from(authenticator.credentialPublicKey),
+      },
       requireUserVerification: false,
     });
   } catch (error) {
@@ -973,12 +977,10 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   const authenticators: Authenticator[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    // When retrieving from Firestore, the binary data might be in a specific format (e.g., Firestore's bytes type).
+    // When retrieving from Firestore, the binary data is in a specific object format.
     // It needs to be converted back to a Buffer for the simplewebauthn library.
-    // The exact conversion depends on how Firestore's Node.js SDK returns it.
-    // Assuming `data.credentialID` and `data.credentialPublicKey` are Firestore Bytes objects.
-    const credentialID = Buffer.from(data.credentialID.toUint8Array());
-    const credentialPublicKey = Buffer.from(data.credentialPublicKey.toUint8Array());
+    const credentialID = Buffer.from(data.credentialID.data);
+    const credentialPublicKey = Buffer.from(data.credentialPublicKey.data);
 
     authenticators.push({
       id: doc.id, 
