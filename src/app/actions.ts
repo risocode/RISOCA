@@ -210,18 +210,48 @@ export async function submitSaleTransaction(
 
       // Format the receipt number with leading zeros
       const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
-      
-      const newId = `${format(new Date(),'yyyyMMdd_HHmmss')}-S-${formattedReceiptNumber}`;
+
+      const newId = `${format(
+        new Date(),
+        'yyyyMMdd_HHmmss'
+      )}-S-${formattedReceiptNumber}`;
       transactionId = newId;
       const transactionRef = doc(db, 'saleTransactions', newId);
 
+      const updatedSaleItems: SaleItem[] = [];
 
-      // Step 1: Aggregate all inventory items and their quantities.
+      // Step 1: Handle new inventory items first
+      for (const item of saleData.items) {
+        if (!item.itemId) {
+          // This is a new item, create it.
+          const newItemId = `${format(
+            new Date(),
+            'yyyyMMdd_HHmmss'
+          )}-I-${uuidv4().substring(0, 6)}`;
+          const newItemRef = doc(db, 'inventory', newItemId);
+          const newInventoryItem: InventoryItemInput = {
+            name: item.itemName,
+            price: item.unitPrice,
+            cost: 0, // Default cost
+            stock: 100, // Default stock
+          };
+          transaction.set(newItemRef, {
+            ...newInventoryItem,
+            createdAt: serverTimestamp(),
+          });
+          // Update the sale item with the new ID
+          updatedSaleItems.push({...item, itemId: newItemId});
+        } else {
+          updatedSaleItems.push(item);
+        }
+      }
+
+      // Step 2: Aggregate all inventory items and their quantities for stock deduction.
       const inventoryMap = new Map<
         string,
         {ref: DocumentReference; quantity: number}
       >();
-      for (const item of saleData.items) {
+      for (const item of updatedSaleItems) {
         if (item.itemId) {
           const existing = inventoryMap.get(item.itemId);
           inventoryMap.set(item.itemId, {
@@ -231,7 +261,7 @@ export async function submitSaleTransaction(
         }
       }
 
-      // Step 2: Read all required inventory documents first.
+      // Step 3: Read all required inventory documents.
       const inventoryRefs = Array.from(inventoryMap.values()).map(
         (i) => i.ref
       );
@@ -242,7 +272,7 @@ export async function submitSaleTransaction(
 
       const inventoryUpdates: {ref: DocumentReference; newStock: number}[] = [];
 
-      // Step 3: Validate stock levels.
+      // Step 4: Validate stock levels.
       for (const inventoryDoc of inventoryDocs) {
         if (!inventoryDoc.exists()) {
           throw new Error(
@@ -264,21 +294,22 @@ export async function submitSaleTransaction(
         });
       }
 
-      // Step 4: Perform all write operations.
-      // Write 1: Create the main sale transaction document.
+      // Step 5: Perform all write operations.
+      // Write 1: Create the main sale transaction document with updated items.
       transaction.set(transactionRef, {
         ...saleData,
+        items: updatedSaleItems,
         receiptNumber: formattedReceiptNumber,
         createdAt: serverTimestamp(),
         status: 'active',
       });
 
-      // Write 2: Update all inventory items.
+      // Write 2: Update all inventory items' stock.
       for (const update of inventoryUpdates) {
         transaction.update(update.ref, {stock: update.newStock});
       }
 
-      // Write 3: Update the counter
+      // Write 3: Update the counter.
       transaction.set(counterRef, {currentNumber: newReceiptNumber});
     });
 
