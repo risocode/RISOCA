@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
 import {useForm, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/table';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
+import {Label} from '@/components/ui/label';
 import {
   Form,
   FormControl,
@@ -102,6 +103,7 @@ export default function StorePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
   const [customerName, setCustomerName] = useState('');
+  const [receivedMoney, setReceivedMoney] = useState('');
   const [voidingTransaction, setVoidingTransaction] =
     useState<SaleTransaction | null>(null);
   const {toast} = useToast();
@@ -216,6 +218,7 @@ export default function StorePage() {
       });
       setReceiptItems([]);
       setCustomerName('');
+      setReceivedMoney('');
     } else {
       toast({
         variant: 'destructive',
@@ -249,6 +252,20 @@ export default function StorePage() {
   };
 
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
+  
+  const change = useMemo(() => {
+    const received = parseFloat(receivedMoney);
+    if (!isNaN(received) && received >= grandTotal) {
+      return received - grandTotal;
+    }
+    return null;
+  }, [receivedMoney, grandTotal]);
+
+  const formatCurrency = (value: number) =>
+    `₱${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
 
   return (
     <>
@@ -506,11 +523,32 @@ export default function StorePage() {
                 </TableBody>
               </Table>
               <Separator className="my-4" />
-              <div className="flex justify-between items-baseline px-2">
-                <p className="text-lg font-bold">Total:</p>
-                <p className="text-2xl font-bold font-mono">
-                  ₱{grandTotal.toFixed(2)}
-                </p>
+              <div className="space-y-4 px-2">
+                <div className="flex justify-between items-baseline">
+                  <p className="text-lg font-bold">Total:</p>
+                  <p className="text-2xl font-bold font-mono">
+                    {formatCurrency(grandTotal)}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 items-center gap-4">
+                  <Label htmlFor="received-money" className="text-base">Received Money:</Label>
+                  <Input
+                    id="received-money"
+                    type="number"
+                    placeholder="0.00"
+                    className="text-right text-base no-spinners"
+                    value={receivedMoney}
+                    onChange={(e) => setReceivedMoney(e.target.value)}
+                  />
+                </div>
+                 {change !== null && (
+                  <div className="flex justify-between items-baseline text-lg text-primary">
+                    <p className="font-bold">Change:</p>
+                    <p className="font-bold font-mono">
+                      {formatCurrency(change)}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
             <CardFooter className="flex-col items-center justify-center p-4 text-center text-xs text-muted-foreground">
