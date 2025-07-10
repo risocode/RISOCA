@@ -62,11 +62,6 @@ const rpName = 'RiSoCa Store';
 const origin = process.env.RP_ORIGIN || `http://${rpID}:9002`;
 
 // Fixed user for this single-user application
-// The `id` must be a Buffer, not a string.
-const webAuthnUser = {
-  id: Buffer.from('risoca-admin-user', 'utf8'),
-  name: 'RiSoCa Admin',
-};
 const webAuthnUserIdString = 'risoca-admin-user';
 
 type NotificationStatus = {
@@ -834,8 +829,8 @@ export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreat
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
-    userID: webAuthnUser.id,
-    userName: webAuthnUser.name,
+    userID: webAuthnUserIdString,
+    userName: rpName,
     // Don't recommend existing authenticators - we want to register new ones
     excludeCredentials: authenticators.map((auth) => ({
       id: auth.credentialID,
@@ -977,7 +972,17 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   const querySnapshot = await getDocs(q);
   const authenticators: Authenticator[] = [];
   querySnapshot.forEach((doc) => {
-    authenticators.push({id: doc.id, ...doc.data()} as Authenticator);
+    const data = doc.data();
+    // Convert Firestore binary data back to Buffer
+    const credentialID = Buffer.from(data.credentialID.toUint8Array());
+    const credentialPublicKey = Buffer.from(data.credentialPublicKey.toUint8Array());
+
+    authenticators.push({
+      id: doc.id, 
+      ...data,
+      credentialID,
+      credentialPublicKey,
+    } as Authenticator);
   });
   return authenticators;
 }
