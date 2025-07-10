@@ -421,6 +421,8 @@ export async function verifyPassword(
 ): Promise<{success: boolean}> {
   if (!process.env.SITE_PASSWORD) {
     console.error('SITE_PASSWORD environment variable is not set.');
+    // In a real app, you might want to disable password check if it's not set.
+    // For this app, we'll assume if it's not set, it's always incorrect.
     return {success: false};
   }
   const isCorrect = password === process.env.SITE_PASSWORD;

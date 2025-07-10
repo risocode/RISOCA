@@ -7,6 +7,7 @@ import {BottomNav} from './components/bottom-nav';
 import {SiteHeader} from '@/app/components/site-header';
 import {InstallPwa} from './components/install-pwa';
 import {headers} from 'next/headers';
+import {SiteProtection} from './components/site-protection';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -46,10 +47,17 @@ export default async function RootLayout({
   const headersList = headers();
   const pathname = headersList.get('x-next-pathname') || '';
   const isPrintRoute = pathname.startsWith('/print');
+  const isPublicStoreRoute = pathname.startsWith('/store');
+
+  const mainContent = (
+    <div className="relative flex flex-col h-full">
+      <SiteHeader />
+      <main className="flex-1 pb-24 overflow-y-auto">{children}</main>
+      <BottomNav />
+    </div>
+  );
 
   // For print routes, render a completely minimal HTML document.
-  // This prevents the main app's UI, providers, and scripts from
-  // loading on the print page, which resolves all errors.
   if (isPrintRoute) {
     return (
       <html lang="en" className="h-full">
@@ -60,7 +68,6 @@ export default async function RootLayout({
     );
   }
 
-  // For all other routes, render the full application layout.
   return (
     <html lang="en" className="h-full">
       <head>
@@ -79,16 +86,15 @@ export default async function RootLayout({
           href="/favicon-16x16.png?v=8"
         />
         <link rel="shortcut icon" href="/favicon.ico?v=8" />
+        <link rel="manifest" href="/manifest.webmanifest?v=8" />
       </head>
       <body className="font-body antialiased h-full bg-background">
         <ReceiptsProvider>
-          <div className="relative flex flex-col h-full">
-            <SiteHeader />
-            <main className="flex-1 pb-24 overflow-y-auto">
-              {children}
-            </main>
-            <BottomNav />
-          </div>
+          {isPublicStoreRoute ? (
+            mainContent
+          ) : (
+            <SiteProtection>{mainContent}</SiteProtection>
+          )}
         </ReceiptsProvider>
         <Toaster />
         <InstallPwa />
