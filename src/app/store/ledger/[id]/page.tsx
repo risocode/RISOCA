@@ -454,28 +454,11 @@ export default function CustomerLedgerPage() {
         return;
       }
 
-      const itemDescriptions = validItems.map((item) => {
-        return item.itemName === 'Cash'
-          ? `Cash: ${formatCurrency(item.total)}`
-          : `${item.itemName} (x${item.quantity})`;
-      });
-
-      let finalDescription = 'Credit Transaction';
-      if (itemDescriptions.length > 0) {
-        if (itemDescriptions.length <= 2) {
-          finalDescription = itemDescriptions.join(', ');
-        } else {
-          finalDescription = `${itemDescriptions[0]} and ${
-            itemDescriptions.length - 1
-          } more items`;
-        }
-      }
-
       payload = {
         customerId,
         type: 'credit',
         amount: data.amount,
-        description: finalDescription,
+        description: 'Credit Transaction',
         items: validItems,
       };
     } else {
