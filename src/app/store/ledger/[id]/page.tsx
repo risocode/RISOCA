@@ -37,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Table,
@@ -94,6 +95,7 @@ import {
   Check,
   Package,
   DollarSign,
+  ChevronDown,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -153,6 +155,7 @@ export default function CustomerLedgerPage() {
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [isInventoryLoading, setIsInventoryLoading] = useState(true);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -174,6 +177,7 @@ export default function CustomerLedgerPage() {
   const [popoverStates, setPopoverStates] = useState<Record<number, boolean>>(
     {}
   );
+  const [openTransaction, setOpenTransaction] = useState<string | null>(null);
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -277,8 +281,11 @@ export default function CustomerLedgerPage() {
     };
   }, [customerId, router, toast]);
 
-  const isLoading =
-    isCustomerLoading || isTransactionsLoading || isInventoryLoading;
+  useEffect(() => {
+    if (!isCustomerLoading && !isTransactionsLoading && !isInventoryLoading) {
+      setIsLoading(false);
+    }
+  }, [isCustomerLoading, isTransactionsLoading, isInventoryLoading]);
 
   const {balance, totalCredit, totalPaid} = useMemo(() => {
     let credit = 0;
@@ -325,7 +332,7 @@ export default function CustomerLedgerPage() {
       ...field,
       originalIndex: index,
     }));
-    const itemFields = fieldsWithOriginalIndex.filter(f => f.itemName !== 'Cash');
+    const itemFields = fieldsWithOriginalIndex.filter(f => !f.itemId && f.itemName !== 'Cash' || (f.itemId && f.itemName !== 'Cash'));
     const cashFields = fieldsWithOriginalIndex.filter(f => f.itemName === 'Cash');
     return [...itemFields, ...cashFields];
   }, [fields]);
@@ -389,8 +396,12 @@ export default function CustomerLedgerPage() {
   };
 
   const handleSelectAllCredits = () => {
-    const allIds = new Set(outstandingCreditTransactions.map((tx) => tx.id));
-    setSelectedCredits(allIds);
+    if (selectedCredits.size === outstandingCreditTransactions.length) {
+      setSelectedCredits(new Set());
+    } else {
+      const allIds = new Set(outstandingCreditTransactions.map((tx) => tx.id));
+      setSelectedCredits(allIds);
+    }
   };
 
   const handleFormSubmit = async (data: TransactionFormData) => {
@@ -596,6 +607,11 @@ export default function CustomerLedgerPage() {
     })}`;
   };
 
+  const toggleTransactionRow = (txId: string) => {
+    setOpenTransaction((prev) => (prev === txId ? null : txId));
+  };
+
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4 flex flex-col h-full items-center justify-center">
@@ -734,6 +750,7 @@ export default function CustomerLedgerPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-center">Type</TableHead>
                   <TableHead>Description</TableHead>
@@ -743,65 +760,113 @@ export default function CustomerLedgerPage() {
               </TableHeader>
               <TableBody>
                 {transactions.length > 0 ? (
-                  transactions.map((tx) => (
-                    <TableRow
-                      key={tx.id}
-                      className={cn(tx.status === 'deleted' && 'opacity-50')}
-                    >
-                      <TableCell
+                  transactions.map((tx) => {
+                    const isOpen = openTransaction === tx.id;
+                    const hasItems = tx.type === 'credit' && tx.items && tx.items.length > 0;
+                    return (
+                    <React.Fragment key={tx.id}>
+                      <TableRow
                         className={cn(
-                          tx.status === 'deleted' && 'line-through'
+                          tx.status === 'deleted' && 'opacity-50',
+                          hasItems && 'cursor-pointer'
                         )}
+                        onClick={() => hasItems && toggleTransactionRow(tx.id)}
                       >
-                        {format(tx.createdAt.toDate(), 'PP')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {tx.status === 'deleted' ? (
-                          <Badge variant="destructive">Deleted</Badge>
-                        ) : (
-                          <Badge
-                            variant={
-                              tx.type === 'credit' ? 'destructive' : 'success'
-                            }
-                          >
-                            {tx.type}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'max-w-[200px] truncate',
-                          tx.status === 'deleted' && 'line-through'
-                        )}
-                      >
-                        {tx.description ||
-                          (tx.items ? `${tx.items.length} items` : 'Payment')}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right font-mono',
-                          tx.status === 'deleted' && 'line-through'
-                        )}
-                      >
-                        {formatCurrency(tx.amount)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            openDeleteAlert('deleteTransaction', tx.id)
-                          }
-                          disabled={tx.status === 'deleted'}
+                        <TableCell className="p-2 align-middle">
+                          {hasItems ? (
+                            <ChevronDown
+                              className={cn(
+                                'h-5 w-5 transition-transform',
+                                isOpen && 'rotate-180'
+                              )}
+                            />
+                          ) : (
+                            <div className="w-5 h-5" />
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            tx.status === 'deleted' && 'line-through'
+                          )}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          {format(tx.createdAt.toDate(), 'PP')}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {tx.status === 'deleted' ? (
+                            <Badge variant="destructive">Deleted</Badge>
+                          ) : (
+                            <Badge
+                              variant={
+                                tx.type === 'credit' ? 'destructive' : 'success'
+                              }
+                            >
+                              {tx.type}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'max-w-[200px] truncate',
+                            tx.status === 'deleted' && 'line-through'
+                          )}
+                        >
+                          {tx.description || (tx.items ? `${tx.items.length} items` : 'Payment')}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right font-mono',
+                            tx.status === 'deleted' && 'line-through'
+                          )}
+                        >
+                          {formatCurrency(tx.amount)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteAlert('deleteTransaction', tx.id);
+                            }}
+                            disabled={tx.status === 'deleted'}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && hasItems && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="p-2 bg-muted/50">
+                              <div className="p-2 bg-background rounded-md">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="h-8">Item Name</TableHead>
+                                      <TableHead className="h-8 text-center w-24">Qty</TableHead>
+                                      <TableHead className="h-8 text-right w-32">Unit Price</TableHead>
+                                      <TableHead className="h-8 text-right w-32">Amount</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {tx.items!.map((item, index) => (
+                                      <TableRow key={index} className="border-none">
+                                        <TableCell className="py-1 font-medium">{item.itemName}</TableCell>
+                                        <TableCell className="py-1 text-center">{item.quantity}</TableCell>
+                                        <TableCell className="py-1 text-right font-mono">{formatCurrency(item.unitPrice)}</TableCell>
+                                        <TableCell className="py-1 text-right font-mono">{formatCurrency(item.total)}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                      )}
+                    </React.Fragment>
+                  )})
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No transactions yet for this customer.
                     </TableCell>
                   </TableRow>
@@ -890,7 +955,7 @@ export default function CustomerLedgerPage() {
                             <DollarSign /> Add Cash
                           </Button>
                         </div>
-
+                        
                         {hasProductItems && (
                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
                             <Label className="text-center">Item</Label>
@@ -913,7 +978,7 @@ export default function CustomerLedgerPage() {
                                   className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
                                 >
                                   <div className="col-span-2 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                    Cash
+                                    Cash Advance
                                   </div>
                                   <FormField
                                     name={`items.${originalIndex}.total`}
@@ -925,9 +990,7 @@ export default function CustomerLedgerPage() {
                                             type="number"
                                             step="0.01"
                                             placeholder="0.00"
-                                            value={
-                                              amountField.value || ''
-                                            }
+                                            {...amountField}
                                             onChange={(e) => {
                                               const value = e.target.value;
                                               amountField.onChange(
@@ -1271,7 +1334,7 @@ export default function CustomerLedgerPage() {
                                 onClick={handleSelectAllCredits}
                                 className="h-auto p-0"
                               >
-                                Select All
+                                {selectedCredits.size === outstandingCreditTransactions.length ? 'Deselect All' : 'Select All'}
                               </Button>
                             )}
                           </div>
