@@ -236,12 +236,7 @@ export default function WalletPage() {
         .filter((r) => isSameDay(r.createdAt.toDate(), entryDate))
         .reduce((sum, r) => sum + r.total, 0);
 
-      let profit;
-      if (entry.status === 'closed' && entry.endingCash !== null) {
-        profit = entry.endingCash - entry.startingCash;
-      } else {
-        profit = dailySales - dailyExpenses;
-      }
+      const profit = dailySales - dailyExpenses;
 
       return {...entry, dailySales, dailyExpenses, profit};
     });
@@ -656,8 +651,8 @@ export default function WalletPage() {
             <Wallet className="w-6 h-6" /> Overall Wallet Profit
           </CardTitle>
           <CardDescription className="text-center">
-            This is the total profit from all closed days, calculated as (Ending
-            Cash - Starting Cash).
+            This is the total profit from all closed days, calculated as (Daily
+            Sales - Daily Expenses).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
