@@ -253,7 +253,7 @@ export default function WalletPage() {
     return {
       enrichedHistory: enriched,
       openDay: openDayEntry,
-      todayClosed: todayClosedEntry,
+      todayClosed: !!todayClosedEntry,
       latestClosedDay: latestClosedDayEntry,
     };
   }, [walletHistory, sales, receipts]);
@@ -267,8 +267,7 @@ export default function WalletPage() {
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const response = await startDay(data.startingCash, todayStr);
+    const response = await startDay(data.startingCash);
     if (response.success) {
       toast({
         variant: 'success',
