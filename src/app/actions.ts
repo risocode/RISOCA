@@ -658,3 +658,5 @@ export async function closeDay(
     return {success: false, message: `Could not close day: ${message}`};
   }
 }
+
+    

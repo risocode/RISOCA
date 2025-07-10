@@ -4,7 +4,7 @@
 import {useState, useEffect, useMemo} from 'react';
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
-import {useForm, useWatch} from 'react-hook-form';
+import {useForm, useWatch, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {
   collection,
@@ -25,6 +25,7 @@ import {
   type Customer,
   type LedgerTransaction,
   type LedgerTransactionInput,
+  SaleItemSchema
 } from '@/lib/schemas';
 
 import {
@@ -86,6 +87,7 @@ import {
   Minus,
   Pencil,
   Info,
+  PlusCircle,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -112,8 +114,10 @@ import {
 } from '@/components/ui/collapsible';
 import {Separator} from '@/components/ui/separator';
 
-const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true});
-type TransactionFormData = Omit<LedgerTransactionInput, 'customerId' | 'paidCreditIds'>;
+const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true}).extend({
+    items: z.array(SaleItemSchema.omit({itemId: true})).optional()
+});
+type TransactionFormData = z.infer<typeof TransactionFormSchema>;
 
 export default function CustomerLedgerPage() {
   const params = useParams();
@@ -143,10 +147,33 @@ export default function CustomerLedgerPage() {
       type: 'credit',
       amount: 0,
       description: '',
+      items: [],
     },
   });
 
+  const { fields, append, remove, replace } = useFieldArray({
+    control: form.control,
+    name: "items",
+  });
+
   const formType = useWatch({ control: form.control, name: 'type' });
+  const formItems = useWatch({ control: form.control, name: 'items' });
+
+  useEffect(() => {
+    if (formType === 'credit' && formItems && formItems.length > 0) {
+      const total = formItems.reduce((sum, item) => sum + (item.total || 0), 0);
+      form.setValue('amount', total, { shouldValidate: true });
+    }
+  }, [formItems, formType, form]);
+
+  useEffect(() => {
+    // Reset fields when switching transaction type
+    replace([]);
+    form.setValue('amount', 0);
+    form.setValue('description', '');
+    setSelectedCredits(new Set());
+  }, [formType, replace, form]);
+
 
   useEffect(() => {
     if (!customerId) return;
@@ -265,9 +292,22 @@ export default function CustomerLedgerPage() {
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
     
+    if (data.type === 'credit' && (!data.items || data.items.length === 0)) {
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please add at least one item for a credit transaction.',
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload: LedgerTransactionInput = {
       customerId,
-      ...data,
+      type: data.type,
+      amount: data.amount,
+      description: data.description,
+      items: data.items,
     };
 
     if (data.type === 'payment' && selectedCredits.size > 0) {
@@ -285,6 +325,7 @@ export default function CustomerLedgerPage() {
         type: data.type,
         amount: 0,
         description: '',
+        items: []
       });
       setSelectedCredits(new Set());
       setIsSheetOpen(false);
@@ -551,61 +592,134 @@ export default function CustomerLedgerPage() {
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
-                        
-                         <FormField control={form.control} name="amount" render={({field}) => (
-                            <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                <Input type="number" step="0.01" {...field} onChange={(e) => {
-                                    field.onChange(e.target.valueAsNumber);
-                                    if (selectedCredits.size > 0) {
-                                      setSelectedCredits(new Set());
-                                      form.setValue('description', '');
-                                    }
-                                }}/>
-                            </FormControl><FormMessage/></FormItem>
-                        )}/>
-                         <FormField control={form.control} name="description" render={({field}) => (
-                            <FormItem><FormLabel>Description</FormLabel><FormControl>
-                                <Textarea placeholder="e.g., Groceries, Payment for invoice #123" {...field}/>
-                            </FormControl><FormMessage/></FormItem>
-                        )}/>
-                        
-                        {formType === 'payment' && (
-                            <div className="space-y-2">
-                                <FormLabel>Pay off specific credits (optional)</FormLabel>
-                                <Card className="max-h-60 overflow-y-auto">
-                                    <CardContent className="p-2">
-                                    {outstandingCreditTransactions.length > 0 ? (
-                                        outstandingCreditTransactions.map(tx => (
-                                            <div
-                                              key={tx.id}
-                                              className="flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted has-[:checked]:bg-primary/10"
+
+                         {formType === 'credit' ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Items</Label>
+                                    <div className="space-y-2 mt-2">
+                                    {fields.map((field, index) => (
+                                        <div key={field.id} className="flex items-start gap-2">
+                                            <FormField
+                                                name={`items.${index}.itemName`}
+                                                control={form.control}
+                                                render={({ field: formField }) => (
+                                                <FormItem className="flex-grow">
+                                                    <FormControl>
+                                                    <Input placeholder="Item name" {...formField} onChange={(e) => {
+                                                        formField.onChange(e);
+                                                        const price = form.getValues(`items.${index}.unitPrice`);
+                                                        form.setValue(`items.${index}.total`, price || 0);
+                                                    }}/>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                name={`items.${index}.unitPrice`}
+                                                control={form.control}
+                                                render={({ field: formField }) => (
+                                                <FormItem className="w-32">
+                                                    <FormControl>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="Price"
+                                                        {...formField}
+                                                        onChange={(e) => {
+                                                            const value = parseFloat(e.target.value) || 0;
+                                                            formField.onChange(value);
+                                                            form.setValue(`items.${index}.total`, value);
+                                                        }}
+                                                    />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                                )}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => remove(index)}
                                             >
-                                                <Checkbox
-                                                    id={`credit-${tx.id}`}
-                                                    checked={selectedCredits.has(tx.id)}
-                                                    onCheckedChange={() => handleCreditSelection(tx.id)}
-                                                />
-                                                <label
-                                                    htmlFor={`credit-${tx.id}`}
-                                                    className="flex justify-between items-center w-full text-sm font-normal cursor-pointer"
-                                                >
-                                                    <div>
-                                                        <p className="font-medium">{tx.description || 'Credit'}</p>
-                                                        <p className="text-xs text-muted-foreground">{format(tx.createdAt.toDate(), 'PP')}</p>
-                                                    </div>
-                                                    <span className="font-mono">{formatCurrency(tx.amount)}</span>
-                                                </label>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground text-center p-4">
-                                            No outstanding credits found.
-                                        </p>
-                                    )}
-                                    </CardContent>
-                                </Card>
+                                                <Trash2 className="w-4 h-4 text-destructive" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 })}
+                                    >
+                                        <PlusCircle className="mr-2" /> Add Item
+                                    </Button>
+                                    </div>
+                                </div>
+                                <Separator />
+                                <FormField control={form.control} name="amount" render={({field}) => (
+                                    <FormItem><FormLabel>Total Amount (₱)</FormLabel><FormControl>
+                                        <Input type="number" step="0.01" {...field} disabled />
+                                    </FormControl><FormMessage/></FormItem>
+                                )}/>
                             </div>
-                        )}
+                        ) : (
+                            <>
+                                <FormField control={form.control} name="amount" render={({field}) => (
+                                    <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
+                                        <Input type="number" step="0.01" {...field} onChange={(e) => {
+                                            field.onChange(e.target.valueAsNumber);
+                                            if (selectedCredits.size > 0) {
+                                            setSelectedCredits(new Set());
+                                            form.setValue('description', '');
+                                            }
+                                        }}/>
+                                    </FormControl><FormMessage/></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="description" render={({field}) => (
+                                    <FormItem><FormLabel>Description</FormLabel><FormControl>
+                                        <Textarea placeholder="e.g., Payment for invoice #123" {...field}/>
+                                    </FormControl><FormMessage/></FormItem>
+                                )}/>
+                                <div className="space-y-2">
+                                    <FormLabel>Pay off specific credits (optional)</FormLabel>
+                                    <Card className="max-h-60 overflow-y-auto">
+                                        <CardContent className="p-2">
+                                        {outstandingCreditTransactions.length > 0 ? (
+                                            outstandingCreditTransactions.map(tx => (
+                                                <div
+                                                key={tx.id}
+                                                className="flex items-center space-x-3 p-2 rounded-md transition-colors hover:bg-muted has-[:checked]:bg-primary/10"
+                                                >
+                                                    <Checkbox
+                                                        id={`credit-${tx.id}`}
+                                                        checked={selectedCredits.has(tx.id)}
+                                                        onCheckedChange={() => handleCreditSelection(tx.id)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`credit-${tx.id}`}
+                                                        className="flex justify-between items-center w-full text-sm font-normal cursor-pointer"
+                                                    >
+                                                        <div>
+                                                            <p className="font-medium">{tx.description || 'Credit'}</p>
+                                                            <p className="text-xs text-muted-foreground">{format(tx.createdAt.toDate(), 'PP')}</p>
+                                                        </div>
+                                                        <span className="font-mono">{formatCurrency(tx.amount)}</span>
+                                                    </label>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground text-center p-4">
+                                                No outstanding credits found.
+                                            </p>
+                                        )}
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </>
+                         )}
 
                         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                             <SheetClose asChild>
@@ -687,3 +801,5 @@ export default function CustomerLedgerPage() {
     </>
   );
 }
+
+    
