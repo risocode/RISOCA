@@ -23,6 +23,7 @@ import {
   type DocumentReference,
   type Timestamp,
   setDoc,
+  orderBy,
 } from 'firebase/firestore';
 import type {
   InventoryItemInput,
@@ -466,6 +467,7 @@ export async function addCustomer(data: {
           amount: data.amount,
           description: data.description || 'Initial balance',
           status: 'active',
+          paidAmount: 0,
           createdAt: serverTimestamp(),
         });
       }
@@ -509,13 +511,13 @@ export async function addLedgerTransaction(
       )}-L-${uuidv4().substring(0, 6)}`;
       const docRef = doc(db, 'ledger', newId);
 
-      // If it's a credit transaction with items, deduct from inventory
-      if (transactionData.type === 'credit' && transactionData.items) {
+      // Handle credit transaction
+      if (transactionData.type === 'credit') {
         const updatedSaleItems: SaleItem[] = [];
         const newInventoryItems: {ref: DocumentReference, data: InventoryItemInput}[] = [];
         const inventoryToUpdate = new Map<string, {ref: DocumentReference, quantity: number}>();
         
-        for (const item of transactionData.items) {
+        for (const item of transactionData.items || []) {
           if (!item.itemId) {
             const newItemId = `${format(new Date(), 'yyyyMMdd_HHmmss')}-I-${uuidv4().substring(0, 6)}`;
             const newItemRef = doc(db, 'inventory', newItemId);
@@ -553,10 +555,56 @@ export async function addLedgerTransaction(
           transaction.update(update.ref, { stock: update.newStock });
         }
 
-        transaction.set(docRef, { ...transactionData, items: updatedSaleItems, status: 'active', createdAt: serverTimestamp() });
+        transaction.set(docRef, { 
+          ...transactionData, 
+          items: updatedSaleItems, 
+          status: 'active', 
+          paidAmount: 0,
+          createdAt: serverTimestamp() 
+        });
 
-      } else {
-        // For payments or non-itemized credits
+      } else { // Handle payment transaction
+        
+        // If specific credits are paid off, update their `paidAmount`
+        if (transactionData.paidCreditIds && transactionData.paidCreditIds.length > 0) {
+            for (const creditId of transactionData.paidCreditIds) {
+                const creditRef = doc(db, 'ledger', creditId);
+                const creditDoc = await transaction.get(creditRef);
+                if (creditDoc.exists()) {
+                    const creditData = creditDoc.data() as LedgerTransaction;
+                    const remainingBalance = creditData.amount - (creditData.paidAmount || 0);
+                    transaction.update(creditRef, { paidAmount: creditData.amount }); // Mark as fully paid
+                }
+            }
+        } else {
+            // This is a general payment, apply it to the oldest outstanding credits (FIFO)
+            let paymentRemaining = transactionData.amount;
+            const outstandingCreditsQuery = query(
+              collection(db, 'ledger'),
+              where('customerId', '==', transactionData.customerId),
+              where('type', '==', 'credit'),
+              where('status', '==', 'active'),
+              orderBy('createdAt', 'asc')
+            );
+            
+            const outstandingCreditsSnap = await getDocs(outstandingCreditsQuery);
+
+            for (const creditDoc of outstandingCreditsSnap.docs) {
+                if (paymentRemaining <= 0) break;
+
+                const creditData = creditDoc.data() as LedgerTransaction;
+                const creditRef = creditDoc.ref;
+                const paidAmount = creditData.paidAmount || 0;
+                const remainingOnCredit = creditData.amount - paidAmount;
+
+                if (remainingOnCredit > 0) {
+                    const amountToPay = Math.min(paymentRemaining, remainingOnCredit);
+                    transaction.update(creditRef, { paidAmount: paidAmount + amountToPay });
+                    paymentRemaining -= amountToPay;
+                }
+            }
+        }
+
         transaction.set(docRef, {
           ...transactionData,
           status: 'active',
@@ -604,6 +652,11 @@ export async function deleteLedgerTransaction(
             }
         }
         
+        // This is a simplified deletion. A more robust system would also handle
+        // rolling back payments if a credit is deleted, but that adds significant complexity.
+        // For now, we accept that deleting credits/payments can lead to accounting discrepancies
+        // if not done carefully by the user.
+        
         transaction.update(transactionRef, {
             status: 'deleted',
             deletedAt: serverTimestamp(),
@@ -639,15 +692,24 @@ export async function deleteCustomer(
     const ledgerSnapshot = await getDocs(ledgerQuery);
 
     const balance = ledgerSnapshot.docs.reduce((acc, doc) => {
-      const data = doc.data();
+      const data = doc.data() as LedgerTransaction;
       if (data.status === 'deleted') return acc;
-      return acc + (data.type === 'credit' ? data.amount : -data.amount);
+      if (data.type === 'credit') {
+          return acc + (data.amount - (data.paidAmount || 0));
+      }
+      // Note: This balance calculation assumes payments are general and not double-counted.
+      // A more robust calculation might be needed if payments can be linked. For deletion check, this is okay.
+      return acc - data.amount;
     }, 0);
 
-    if (balance !== 0) {
+    const totalCredit = ledgerSnapshot.docs.filter(d => d.data().type === 'credit' && d.data().status !== 'deleted').reduce((acc, doc) => acc + doc.data().amount, 0);
+    const totalPaid = ledgerSnapshot.docs.filter(d => d.data().type === 'payment' && d.data().status !== 'deleted').reduce((acc, doc) => acc + doc.data().amount, 0);
+    const finalBalance = totalCredit - totalPaid;
+
+    if (finalBalance > 0) {
       return {
         success: false,
-        message: 'Cannot delete customer with an outstanding balance.',
+        message: `Cannot delete customer with an outstanding balance of ₱${finalBalance.toFixed(2)}.`,
       };
     }
 

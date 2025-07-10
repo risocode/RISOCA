@@ -57,6 +57,7 @@ export const LedgerTransactionSchema = z.object({
   description: z.string().optional(),
   items: z.array(SaleItemSchema).optional(),
   paidCreditIds: z.array(z.string()).optional(),
+  paidAmount: z.number().optional(), // Amount paid towards a credit
 });
 
 export type LedgerTransactionInput = z.infer<typeof LedgerTransactionSchema>;

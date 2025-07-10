@@ -78,8 +78,8 @@ import {
 } from '@/components/ui/sheet';
 import {
   Tooltip,
-  TooltipContent,
   TooltipProvider,
+  TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {Button} from '@/components/ui/button';
@@ -304,29 +304,20 @@ export default function CustomerLedgerPage() {
     return {balance, totalCredit: credit, totalPaid: payment};
   }, [transactions]);
 
-  const paidCreditIds = useMemo(() => {
-    const ids = new Set<string>();
-    transactions.forEach((tx) => {
-      if (tx.type === 'payment' && tx.paidCreditIds) {
-        tx.paidCreditIds.forEach((id) => ids.add(id));
-      }
-    });
-    return ids;
-  }, [transactions]);
-
   const outstandingCreditTransactions = useMemo(() => {
     return transactions
       .filter(
         (tx) =>
           tx.type === 'credit' &&
-          !paidCreditIds.has(tx.id) &&
-          tx.status !== 'deleted'
+          tx.status !== 'deleted' &&
+          tx.amount > (tx.paidAmount || 0)
       )
+      .map(tx => ({...tx, remainingAmount: tx.amount - (tx.paidAmount || 0)}))
       .sort(
         (a, b) =>
           a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()
       );
-  }, [transactions, paidCreditIds]);
+  }, [transactions]);
 
   const sortedFields = useMemo(() => {
     const fieldsWithOriginalIndex = fields.map((field, index) => ({
@@ -369,7 +360,7 @@ export default function CustomerLedgerPage() {
     const selectedTxs = outstandingCreditTransactions.filter((tx) =>
       selectedCredits.has(tx.id)
     );
-    const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
+    const total = selectedTxs.reduce((sum, tx) => sum + (tx.remainingAmount || 0), 0);
 
     if (selectedTxs.length > 0) {
       form.setValue('amount', total, {shouldValidate: false});
@@ -460,6 +451,7 @@ export default function CustomerLedgerPage() {
         amount: data.amount,
         description: 'Credit Transaction',
         items: validItems,
+        paidAmount: 0,
       };
     } else {
       // Payment
@@ -609,7 +601,7 @@ export default function CustomerLedgerPage() {
   }
 
   const cannotDeleteCustomer =
-    balance !== 0 || customer?.status === 'deleted';
+    balance > 0 || customer?.status === 'deleted';
 
   return (
     <>
@@ -665,7 +657,7 @@ export default function CustomerLedgerPage() {
                     <p>
                       {customer?.status === 'deleted'
                         ? 'Customer is already deleted.'
-                        : 'Cannot delete customer with an outstanding balance.'}
+                        : `Cannot delete customer with an outstanding balance of ${formatCurrency(balance)}.`}
                     </p>
                   </TooltipContent>
                 )}
@@ -797,7 +789,7 @@ export default function CustomerLedgerPage() {
                             tx.status === 'deleted' && 'line-through'
                           )}
                         >
-                          {tx.description || (tx.items ? `${tx.items.length} items` : 'Payment')}
+                          {tx.description || (tx.items ? 'Credit Transaction' : 'Payment')}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -945,7 +937,7 @@ export default function CustomerLedgerPage() {
                         
                         {hasProductItems && (
                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
-                            <Label className="text-center">Item</Label>
+                            <Label>Item</Label>
                             <Label className="text-center">Qty</Label>
                             <Label className="text-center">Price</Label>
                           </div>
@@ -985,6 +977,7 @@ export default function CustomerLedgerPage() {
                                                   ? ''
                                                   : parseFloat(value) || 0
                                               );
+                                              update(originalIndex, {...currentItem, unitPrice: parseFloat(value) || 0})
                                             }}
                                             className="no-spinners text-right"
                                           />
@@ -1108,7 +1101,7 @@ export default function CustomerLedgerPage() {
                                     </FormItem>
                                   )}
                                 />
-                                {showFields ? (
+                                {showFields && (
                                   <>
                                     <FormField
                                       name={`items.${originalIndex}.quantity`}
@@ -1234,8 +1227,6 @@ export default function CustomerLedgerPage() {
                                       <Trash2 className="w-4 h-4 text-destructive" />
                                     </Button>
                                   </>
-                                ) : (
-                                  <div className="col-span-3" />
                                 )}
                               </div>
                             );
@@ -1283,7 +1274,7 @@ export default function CustomerLedgerPage() {
                                     );
                                     if (selectedCredits.size > 0) {
                                       setSelectedCredits(new Set());
-                                      form.setValue('description', '');
+                                      form.setValue('description', 'Payment');
                                     }
                                   }}
                                 />
@@ -1356,7 +1347,7 @@ export default function CustomerLedgerPage() {
                                         </p>
                                       </div>
                                       <span className="font-mono">
-                                        {formatCurrency(tx.amount)}
+                                        {formatCurrency(tx.remainingAmount)}
                                       </span>
                                     </label>
                                   </div>
