@@ -319,6 +319,12 @@ export default function CustomerLedgerPage() {
         (a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()
       );
   }, [transactions, paidCreditIds]);
+  
+  const sortedFields = useMemo(() => {
+    const itemFields = fields.filter(f => f.itemName !== 'Cash');
+    const cashFields = fields.filter(f => f.itemName === 'Cash');
+    return [...itemFields, ...cashFields];
+  }, [fields]);
 
   useEffect(() => {
     const totalAmount =
@@ -540,29 +546,24 @@ export default function CustomerLedgerPage() {
     if(type === 'item') {
       append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 });
     } else {
-      append({ itemName: 'Cash', quantity: 1, unitPrice: 0, total: 0 });
+      append({ itemName: 'Cash', quantity: 1, unitPrice: 0, total: undefined });
     }
     if (!showItemHeaders) {
       setShowItemHeaders(true);
     }
   };
 
-  const formatCurrency = (value: number) =>
-    `₱${value.toLocaleString('en-US', {
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `₱${value.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+  };
 
   const cannotDeleteCustomer =
     balance !== 0 || customer?.status === 'deleted';
 
-  const sortedFields = useMemo(() => {
-    return fields.sort((a, b) => {
-        if (a.itemName === 'Cash' && b.itemName !== 'Cash') return 1;
-        if (a.itemName !== 'Cash' && b.itemName === 'Cash') return -1;
-        return 0;
-    });
-  }, [fields]);
 
   if (isLoading) {
     return (
@@ -861,7 +862,7 @@ export default function CustomerLedgerPage() {
                         
                         {showItemHeaders && (
                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
-                            <Label>Item</Label>
+                            <Label className="text-center">Item</Label>
                             <Label className="text-center">Qty</Label>
                             <Label className="text-center">Price</Label>
                           </div>
@@ -874,7 +875,7 @@ export default function CustomerLedgerPage() {
                             if (currentItem.itemName === 'Cash') {
                                 return(
                                   <div key={field.id} className="grid grid-cols-[1fr_110px_auto] items-start gap-2">
-                                    <div className="flex col-span-2 h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <div className="col-span-1 flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
                                         Cash
                                     </div>
                                     <FormField
@@ -888,9 +889,10 @@ export default function CustomerLedgerPage() {
                                                   step="0.01"
                                                   placeholder="0.00"
                                                   {...amountField}
+                                                  value={amountField.value === 0 ? '' : amountField.value}
                                                   onChange={(e) => {
                                                     const value = e.target.value;
-                                                    amountField.onChange(value === '' ? '' : parseFloat(value));
+                                                    amountField.onChange(value === '' ? undefined : parseFloat(value));
                                                   }}
                                                   className="no-spinners text-right"
                                                 />
@@ -915,7 +917,69 @@ export default function CustomerLedgerPage() {
                                 key={field.id}
                                 className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
                               >
-                                {currentItem.itemName ? (
+                                {!currentItem.itemName ? (
+                                    <div className="col-span-full">
+                                      <FormField
+                                          name={`items.${originalIndex}.itemName`}
+                                          control={form.control}
+                                          render={({field: formField}) => (
+                                              <FormItem>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        className={cn(
+                                                            'w-full justify-between',
+                                                            !formField.value &&
+                                                            'text-muted-foreground'
+                                                        )}
+                                                        >
+                                                        {formField.value || 'Select or type an item'}
+                                                        <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                                        </Button>
+                                                    </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                    <Command
+                                                        filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}
+                                                    >
+                                                        <CommandInput
+                                                          placeholder="Search inventory..."
+                                                          onValueChange={(search) => form.setValue(`items.${originalIndex}.itemName`, search)}
+                                                        />
+                                                        <CommandList>
+                                                        <CommandEmpty>No item found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {inventory.map((item) => (
+                                                            <CommandItem
+                                                                value={item.name}
+                                                                key={item.id}
+                                                                onSelect={() => {
+                                                                  form.setValue(`items.${originalIndex}.itemId`, item.id);
+                                                                  form.setValue(`items.${originalIndex}.itemName`, item.name);
+                                                                  form.setValue(`items.${originalIndex}.unitPrice`, item.price);
+                                                                  const qty = form.getValues(`items.${originalIndex}.quantity`) || 1;
+                                                                  form.setValue(`items.${originalIndex}.quantity`, qty);
+                                                                  form.setValue(`items.${originalIndex}.total`, item.price * qty);
+                                                                }}
+                                                            >
+                                                                <Check className={cn('mr-2 h-4 w-4', formField.value === item.name ? 'opacity-100' : 'opacity-0')}/>
+                                                                <span>{item.name}</span>
+                                                                <span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
+                                                            </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                              </FormItem>
+                                          )}
+                                      />
+                                    </div>
+                                ) : (
                                     <>
                                         <FormField
                                             name={`items.${originalIndex}.itemName`}
@@ -1004,68 +1068,6 @@ export default function CustomerLedgerPage() {
                                           <Trash2 className="w-4 h-4 text-destructive" />
                                         </Button>
                                     </>
-                                ) : (
-                                    <div className="col-span-full">
-                                        <FormField
-                                            name={`items.${originalIndex}.itemName`}
-                                            control={form.control}
-                                            render={({field: formField}) => (
-                                                <FormItem>
-                                                  <Popover>
-                                                      <PopoverTrigger asChild>
-                                                      <FormControl>
-                                                          <Button
-                                                          variant="outline"
-                                                          role="combobox"
-                                                          className={cn(
-                                                              'w-full justify-between',
-                                                              !formField.value &&
-                                                              'text-muted-foreground'
-                                                          )}
-                                                          >
-                                                          {formField.value || 'Select or type an item'}
-                                                          <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                                                          </Button>
-                                                      </FormControl>
-                                                      </PopoverTrigger>
-                                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                      <Command
-                                                          filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}
-                                                      >
-                                                          <CommandInput
-                                                            placeholder="Search inventory..."
-                                                            onValueChange={(search) => form.setValue(`items.${originalIndex}.itemName`, search)}
-                                                          />
-                                                          <CommandList>
-                                                          <CommandEmpty>No item found.</CommandEmpty>
-                                                          <CommandGroup>
-                                                              {inventory.map((item) => (
-                                                              <CommandItem
-                                                                  value={item.name}
-                                                                  key={item.id}
-                                                                  onSelect={() => {
-                                                                    form.setValue(`items.${originalIndex}.itemId`, item.id);
-                                                                    form.setValue(`items.${originalIndex}.itemName`, item.name);
-                                                                    form.setValue(`items.${originalIndex}.unitPrice`, item.price);
-                                                                    const qty = form.getValues(`items.${originalIndex}.quantity`) || 1;
-                                                                    form.setValue(`items.${originalIndex}.quantity`, qty);
-                                                                    form.setValue(`items.${originalIndex}.total`, item.price * qty);
-                                                                  }}
-                                                              >
-                                                                  <Check className={cn('mr-2 h-4 w-4', formField.value === item.name ? 'opacity-100' : 'opacity-0')}/>
-                                                                  <span>{item.name}</span>
-                                                                  <span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
-                                                              </CommandItem>
-                                                              ))}
-                                                          </CommandGroup>
-                                                          </CommandList>
-                                                      </Command>
-                                                      </PopoverContent>
-                                                  </Popover>
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
                                 )}
                               </div>
                             );
