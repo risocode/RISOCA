@@ -817,7 +817,7 @@ export async function getRegistrationOptions(userId: string, userName: string) {
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
     rpID: RP_ID,
-    userID: userId,
+    userID: Buffer.from(userId, 'utf-8'),
     userName: userName,
     // Don't recommend any transports, let the browser decide
     // attestation: 'none',
