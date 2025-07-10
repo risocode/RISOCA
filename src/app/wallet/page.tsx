@@ -236,7 +236,9 @@ export default function WalletPage() {
         .filter((r) => isSameDay(r.createdAt.toDate(), entryDate))
         .reduce((sum, r) => sum + r.total, 0);
       
-      const profit = (entry.endingCash != null && entry.startingCash != null) ? entry.endingCash - entry.startingCash : 0;
+      const profit = (entry.status === 'closed' && entry.endingCash != null && entry.startingCash != null)
+        ? entry.endingCash - entry.startingCash 
+        : null;
 
       return {...entry, dailySales, dailyExpenses, profit};
     });
@@ -378,8 +380,8 @@ export default function WalletPage() {
 
   const renderCurrentDayCard = () => {
     if (openDay) {
-      const {dailySales, dailyExpenses, profit} =
-        enrichedHistory.find((e) => e.id === openDay.id) || {};
+      const openDayData = enrichedHistory.find((e) => e.id === openDay.id);
+      const {dailySales, dailyExpenses} = openDayData || {dailySales:0, dailyExpenses:0};
       return (
         <Card className="shadow-lg animate-enter">
           <CardHeader>
@@ -397,30 +399,17 @@ export default function WalletPage() {
                     {formatCurrency(openDay.startingCash)}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex flex-col items-center">
-                    <p className="text-sm text-muted-foreground">Sales</p>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Sales Today</p>
                     <p className="font-bold text-lg text-primary">
                       {formatCurrency(dailySales)}
                     </p>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <p className="text-sm text-muted-foreground">Expenses</p>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Expenses Today</p>
                     <p className="font-bold text-lg text-destructive">
                       {formatCurrency(dailyExpenses)}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <p className="text-sm text-muted-foreground">Profit/Loss</p>
-                    <p
-                      className={cn(
-                        'font-bold text-lg',
-                        (profit || 0) >= 0
-                          ? 'text-success'
-                          : 'text-destructive'
-                      )}
-                    >
-                      {formatCurrency(profit)}
                     </p>
                   </div>
                 </div>
@@ -651,8 +640,7 @@ export default function WalletPage() {
             <Wallet className="w-6 h-6" /> Overall Wallet Profit
           </CardTitle>
           <CardDescription className="text-center">
-            This is the total profit from all closed days, calculated as (Daily
-            Sales - Daily Expenses).
+            This is the total profit from all closed days, calculated as (Ending Cash - Starting Cash).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -778,17 +766,15 @@ export default function WalletPage() {
                     <TableCell
                       className={cn(
                         'text-center font-mono',
-                        (entry.profit || 0) >= 0
-                          ? 'text-success'
-                          : 'text-destructive'
+                        entry.profit == null ? '' : (entry.profit >= 0 ? 'text-success' : 'text-destructive')
                       )}
                     >
                       <div className="flex items-center justify-center">
-                        {(entry.profit || 0) >= 0 ? (
+                        {entry.profit != null && (entry.profit >= 0 ? (
                           <TrendingUp className="mr-1" />
                         ) : (
                           <TrendingDown className="mr-1" />
-                        )}
+                        ))}
                         {formatCurrency(entry.profit)}
                       </div>
                     </TableCell>
