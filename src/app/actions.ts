@@ -763,17 +763,16 @@ export async function startDay(
 ): Promise<{success: boolean; message?: string}> {
   try {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const walletForTodayQuery = query(
-      collection(db, 'walletHistory'),
-      where('date', '==', todayStr),
-      where('status', '==', 'open')
-    );
-    const existing = await getDocs(walletForTodayQuery);
-    if (!existing.empty) {
-      return {success: false, message: 'A session for today is already open.'};
+    const docRef = doc(db, 'walletHistory', todayStr);
+
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return {
+        success: false,
+        message: 'A session for today has already been recorded.',
+      };
     }
 
-    const docRef = doc(db, 'walletHistory', todayStr);
     await setDoc(docRef, {
       date: todayStr,
       startingCash,

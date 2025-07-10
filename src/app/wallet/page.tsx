@@ -20,7 +20,7 @@ import type {
   SaleTransaction,
   DiagnoseReceiptOutput,
 } from '@/lib/schemas';
-import {format, parseISO, isSameDay} from 'date-fns';
+import {format, parseISO, isSameDay, startOfToday} from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -216,8 +216,9 @@ export default function WalletPage() {
     return () => unsubs.forEach((unsub) => unsub());
   }, [toast]);
 
-  const {enrichedHistory, openDay, latestClosedDay} = useMemo(() => {
+  const {enrichedHistory, openDay, latestClosedDay, todayClosed} = useMemo(() => {
     const openDay = walletHistory.find((entry) => entry.status === 'open');
+    const todayClosed = walletHistory.find((entry) => isSameDay(parseISO(entry.date), startOfToday()));
     const latestClosedDay = walletHistory.find(
       (entry) => entry.status === 'closed'
     );
@@ -245,7 +246,7 @@ export default function WalletPage() {
       return {...entry, dailySales, dailyExpenses, profit};
     });
 
-    return {enrichedHistory: enriched, openDay, latestClosedDay};
+    return {enrichedHistory: enriched, openDay, latestClosedDay, todayClosed};
   }, [walletHistory, sales, receipts]);
 
   const totalProfit = useMemo(() => {
@@ -492,6 +493,22 @@ export default function WalletPage() {
             </form>
           </Form>
         </Card>
+      );
+    }
+
+    if (todayClosed) {
+      return (
+         <Card className="shadow-lg animate-enter">
+          <CardHeader>
+            <CardTitle>Day Complete</CardTitle>
+            <CardDescription>
+              The session for today, {format(new Date(), 'MMMM d, yyyy')}, has already been closed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center p-10 text-center">
+             <p className="text-muted-foreground">Please come back tomorrow to start a new session.</p>
+          </CardContent>
+         </Card>
       );
     }
 
