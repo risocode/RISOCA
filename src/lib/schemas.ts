@@ -1,5 +1,6 @@
 import {z} from 'zod';
 import type {Timestamp} from 'firebase/firestore';
+import type {AuthenticatorTransport} from '@simplewebauthn/types';
 
 export const InventoryItemSchema = z.object({
   name: z.string().min(1, 'Item name is required.'),
@@ -79,4 +80,15 @@ export const WalletEntrySchema = z.object({
 
 export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
     id: string;
+};
+
+// Schema for storing Passkey authenticators
+export type Authenticator = {
+  credentialID: string; // Stored as Base64URL string
+  credentialPublicKey: string; // Stored as Base64URL string
+  counter: number;
+  credentialDeviceType: 'singleDevice' | 'multiDevice';
+  credentialBackedUp: boolean;
+  transports?: AuthenticatorTransport[];
+  createdAt: string; // ISO 8601 date string
 };

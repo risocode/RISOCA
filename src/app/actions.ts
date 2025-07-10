@@ -30,12 +30,29 @@ import type {
   LedgerTransactionInput,
   SaleTransactionInput,
   SaleItem,
+  Authenticator,
 } from '@/lib/schemas';
 import {format} from 'date-fns';
 import {v4 as uuidv4} from 'uuid';
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+  type VerifiedRegistrationResponse,
+  type VerifiedAuthenticationResponse,
+} from '@simplewebauthn/server';
+import type {
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+} from '@simplewebauthn/types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
+const RP_NAME = 'RiSoCa';
+const RP_ID = process.env.RP_ID || 'localhost';
+const RP_ORIGIN = process.env.RP_ORIGIN || 'http://localhost:9002';
+
 
 type NotificationStatus = {
   success: boolean;
@@ -794,4 +811,107 @@ export async function closeDay(
     return {success: false, message: `Could not close day: ${message}`};
   }
 }
-    
+
+// Passkey Actions
+export async function getRegistrationOptions(userId: string, userName: string) {
+  const options = await generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID: RP_ID,
+    userID: userId,
+    userName: userName,
+    // Don't recommend any transports, let the browser decide
+    // attestation: 'none',
+    // In this simple app, we allow the user to use the same device to log in
+    // multiple times, so we don't need to exclude credentials.
+    excludeCredentials: [],
+  });
+
+  return options;
+}
+
+export async function verifyNewRegistration(
+  response: RegistrationResponseJSON
+): Promise<{verified: boolean; newAuthenticator?: Authenticator}> {
+  try {
+    const verification = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: response.clientDataJSON,
+      expectedOrigin: RP_ORIGIN,
+      expectedRPID: RP_ID,
+      requireUserVerification: true,
+    });
+
+    if (verification.verified && verification.registrationInfo) {
+      const {
+        credentialPublicKey,
+        credentialID,
+        counter,
+        credentialDeviceType,
+        credentialBackedUp,
+      } = verification.registrationInfo;
+
+      const newAuthenticator: Authenticator = {
+        credentialID: Buffer.from(credentialID).toString('base64'),
+        credentialPublicKey: Buffer.from(credentialPublicKey).toString(
+          'base64'
+        ),
+        counter,
+        credentialDeviceType,
+        credentialBackedUp,
+        transports: response.response.transports,
+      };
+      return {verified: true, newAuthenticator};
+    }
+  } catch (error) {
+    console.error(error);
+    return {verified: false};
+  }
+  return {verified: false};
+}
+
+export async function getAuthenticationOptions(
+  authenticators: Authenticator[]
+) {
+  const options = await generateAuthenticationOptions({
+    rpID: RP_ID,
+    allowCredentials: authenticators.map((auth) => ({
+      id: Buffer.from(auth.credentialID, 'base64'),
+      type: 'public-key',
+      transports: auth.transports,
+    })),
+    userVerification: 'preferred',
+  });
+
+  return options;
+}
+
+export async function verifyAuthentication(
+  response: AuthenticationResponseJSON,
+  authenticator: Authenticator
+): Promise<{verified: boolean; newCounter?: number}> {
+  try {
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge: response.clientDataJSON,
+      expectedOrigin: RP_ORIGIN,
+      expectedRPID: RP_ID,
+      authenticator: {
+        ...authenticator,
+        credentialID: Buffer.from(authenticator.credentialID, 'base64'),
+        credentialPublicKey: Buffer.from(
+          authenticator.credentialPublicKey,
+          'base64'
+        ),
+      },
+      requireUserVerification: true,
+    });
+
+    if (verification.verified) {
+      return {verified: true, newCounter: verification.authenticationInfo.newCounter};
+    }
+  } catch (error) {
+    console.error(error);
+    return {verified: false};
+  }
+  return {verified: false};
+}

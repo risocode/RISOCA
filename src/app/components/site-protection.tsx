@@ -6,9 +6,7 @@ import Image from 'next/image';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
-import {
-  verifyPassword,
-} from '@/app/actions';
+import {verifyPassword} from '@/app/actions';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {
@@ -28,10 +26,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {useToast} from '@/hooks/use-toast';
-import {
-  KeyRound,
-  Loader2,
-} from 'lucide-react';
+import {KeyRound, Loader2, Fingerprint} from 'lucide-react';
+import {usePasskey} from '@/hooks/use-passkey';
 
 const PasswordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
@@ -49,6 +45,13 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Checking);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {toast} = useToast();
+  const {
+    authenticators,
+    hasPasskeys,
+    isSupported,
+    loginWithPasskey,
+    isLoading,
+  } = usePasskey();
 
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(PasswordSchema),
@@ -84,7 +87,18 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     }
     setIsSubmitting(false);
   };
-  
+
+  const handlePasskeyLogin = async () => {
+    const {success, error} = await loginWithPasskey();
+    if (success) {
+      sessionStorage.setItem('risoca-auth', 'true');
+      setAuthStep(AuthStep.Authenticated);
+      toast({variant: 'success', title: 'Login Successful'});
+    } else {
+      toast({variant: 'destructive', title: 'Login Failed', description: error});
+    }
+  };
+
   const renderLoginScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm animate-enter">
@@ -126,16 +140,43 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isSubmitting} className="w-full">
-                {isSubmitting && form.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                Unlock
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  {isSubmitting && form.formState.isSubmitting && (
+                    <Loader2 className="mr-2 animate-spin" />
+                  )}
+                  Unlock
+                </Button>
+                {isSupported && hasPasskeys && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handlePasskeyLogin}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 animate-spin" />
+                    ) : (
+                      <Fingerprint className="mr-2" />
+                    )}
+                    Login with Passkey
+                  </Button>
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>
