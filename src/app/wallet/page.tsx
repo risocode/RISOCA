@@ -219,7 +219,8 @@ export default function WalletPage() {
   const {enrichedHistory, openDay, todayClosed, latestClosedDay} = useMemo(() => {
     const today = startOfToday();
     const openDayEntry = walletHistory.find((entry) => entry.status === 'open');
-    const todayClosedEntry = walletHistory.find((entry) =>
+    const todayClosedEntry = walletHistory.find(
+      (entry) =>
         isSameDay(parseISO(entry.date), today) && entry.status === 'closed'
     );
     const latestClosedDayEntry = walletHistory.find(
@@ -238,7 +239,7 @@ export default function WalletPage() {
       const dailyExpenses = receipts
         .filter((r) => isSameDay(r.createdAt.toDate(), entryDate))
         .reduce((sum, r) => sum + r.total, 0);
-      
+
       let profit: number | null = null;
       if (entry.status === 'closed') {
         const endCash = entry.endingCash ?? 0;
@@ -250,18 +251,19 @@ export default function WalletPage() {
     });
 
     return {
-        enrichedHistory: enriched, 
-        openDay: openDayEntry, 
-        todayClosed: todayClosedEntry, 
-        latestClosedDay: latestClosedDayEntry,
+      enrichedHistory: enriched,
+      openDay: openDayEntry,
+      todayClosed: todayClosedEntry,
+      latestClosedDay: latestClosedDayEntry,
     };
-}, [walletHistory, sales, receipts]);
+  }, [walletHistory, sales, receipts]);
 
   const totalProfit = useMemo(() => {
     return enrichedHistory
       .filter((e) => e.status === 'closed' && e.profit !== null)
-      .reduce((acc, e) => acc + (e.profit || 0), 0);
+      .reduce((acc, e) => acc + (e.profit!), 0);
   }, [enrichedHistory]);
+
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
