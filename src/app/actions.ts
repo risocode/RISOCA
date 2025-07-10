@@ -765,13 +765,13 @@ export async function startDay(
   try {
     const docRef = doc(db, 'walletHistory', dateString);
 
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return {
-        success: false,
-        message: 'A session for this date has already been recorded.',
-      };
-    }
+    // const docSnap = await getDoc(docRef);
+    // if (docSnap.exists()) {
+    //   return {
+    //     success: false,
+    //     message: 'A session for this date has already been recorded.',
+    //   };
+    // }
 
     await setDoc(docRef, {
       date: dateString,
