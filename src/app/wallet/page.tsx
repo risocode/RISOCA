@@ -76,7 +76,6 @@ import {cn} from '@/lib/utils';
 import {
   ChartTooltipContent,
   ChartContainer,
-  ChartLegendContent,
 } from '@/components/ui/chart';
 
 type ReceiptDoc = DiagnoseReceiptOutput & {
@@ -251,8 +250,8 @@ export default function WalletPage() {
 
   const totalProfit = useMemo(() => {
     return enrichedHistory
-      .filter((e) => e.status === 'closed' && e.profit != null)
-      .reduce((acc, e) => acc + (e.profit || 0), 0);
+      .filter((e) => e.status === 'closed')
+      .reduce((acc, e) => acc + (e.profit ?? 0), 0);
   }, [enrichedHistory]);
 
   const handleStartDay = async (data: StartDayFormData) => {
