@@ -153,6 +153,7 @@ export default function CustomerLedgerPage() {
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [isInventoryLoading, setIsInventoryLoading] = useState(true);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -273,6 +274,12 @@ export default function CustomerLedgerPage() {
     };
   }, [customerId, router, toast]);
 
+  useEffect(() => {
+    if (!isCustomerLoading && !isTransactionsLoading && !isInventoryLoading) {
+      setIsLoading(false);
+    }
+  }, [isCustomerLoading, isTransactionsLoading, isInventoryLoading]);
+
   const {balance, totalCredit, totalPaid} = useMemo(() => {
     let credit = 0;
     let payment = 0;
@@ -311,16 +318,26 @@ export default function CustomerLedgerPage() {
         (a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()
       );
   }, [transactions, paidCreditIds]);
-  
+
   const sortedFields = useMemo(() => {
     const fieldsWithOriginalIndex = fields.map((field, index) => ({ field, originalIndex: index }));
-    const itemFields = fieldsWithOriginalIndex.filter(f => f.field.itemName !== 'Cash');
-    const cashFields = fieldsWithOriginalIndex.filter(f => f.field.itemName === 'Cash');
-    return [...itemFields, ...cashFields];
+    
+    // Create stable sort: if item names are the same, preserve original order.
+    fieldsWithOriginalIndex.sort((a, b) => {
+      const isCashA = a.field.itemName === 'Cash';
+      const isCashB = b.field.itemName === 'Cash';
+      
+      if (isCashA && !isCashB) return 1; // A (cash) comes after B (item)
+      if (!isCashA && isCashB) return -1; // A (item) comes before B (cash)
+      
+      return a.originalIndex - b.originalIndex; // Preserve original order for same-type items
+    });
+    
+    return fieldsWithOriginalIndex;
   }, [fields]);
 
   const hasProductItems = useMemo(() => {
-    return fields.some(f => f.itemName !== 'Cash');
+    return fields.some(f => f.itemName !== 'Cash' && f.itemName);
   }, [fields]);
 
   useEffect(() => {
@@ -557,8 +574,6 @@ export default function CustomerLedgerPage() {
       maximumFractionDigits: 2,
     })}`;
   };
-
-  const isLoading = isCustomerLoading || isInventoryLoading || isTransactionsLoading;
 
   if (isLoading) {
     return (
@@ -863,7 +878,8 @@ export default function CustomerLedgerPage() {
                            {sortedFields.map(({ field, originalIndex }) => {
                             const index = originalIndex;
                             const currentItem = form.watch(`items.${index}`);
-                            
+                            const showFields = !!currentItem.itemId;
+
                             if (currentItem.itemName === 'Cash') {
                                 return(
                                   <div key={field.id} className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2">
@@ -883,8 +899,12 @@ export default function CustomerLedgerPage() {
                                                   value={amountField.value || ''}
                                                   onChange={(e) => {
                                                     const value = e.target.value;
-                                                    const parsedValue = parseFloat(value);
-                                                    amountField.onChange(isNaN(parsedValue) ? '' : parsedValue);
+                                                    if (value === '') {
+                                                        amountField.onChange('');
+                                                    } else {
+                                                        const parsedValue = parseFloat(value);
+                                                        amountField.onChange(isNaN(parsedValue) ? '' : parsedValue);
+                                                    }
                                                   }}
                                                   className="no-spinners text-right"
                                                 />
@@ -892,20 +912,20 @@ export default function CustomerLedgerPage() {
                                         </FormItem>
                                         )}
                                     />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleRemoveItem(index)}
-                                    >
-                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleRemoveItem(index)}
+                                      >
+                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                      </Button>
+                                    </div>
                                   </div>
                                 )
                             }
                             
-                            const showFields = !!form.watch(`items.${index}.itemId`);
-
                             return (
                               <div key={field.id} className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2">
                                   <FormField
