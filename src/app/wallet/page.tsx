@@ -311,8 +311,9 @@ export default function WalletPage() {
 
   const CustomLegend = (props: any) => {
     const {payload} = props;
-    const hasLoss = chartData.some((d) => (d.profit || 0) < 0);
-
+    const profitExists = chartData.some((d) => (d.profit || 0) >= 0);
+    const lossExists = chartData.some((d) => (d.profit || 0) < 0);
+  
     const legendItems = [
       {
         value: 'Start',
@@ -324,52 +325,54 @@ export default function WalletPage() {
         color: 'hsl(var(--primary))',
         dataKey: 'endingCash',
       },
-      {
+    ];
+  
+    if (profitExists) {
+      legendItems.push({
         value: 'Profit',
         color: 'hsl(var(--success))',
         dataKey: 'profit',
-      },
-    ];
-
-    if (hasLoss) {
+      });
+    }
+    if (lossExists) {
       legendItems.push({
         value: 'Loss',
         color: 'hsl(var(--destructive))',
         dataKey: 'profit',
       });
     }
-
-    const finalPayload = legendItems
-      .map((item) => {
-        const original = payload.find(
-          (p: any) => p.dataKey === item.dataKey
-        );
-        if (original || item.value === 'Loss') {
-          return {
-            ...original,
-            value: item.value,
-            color: item.color,
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
-
-    // Filter out duplicate profit/loss entries if only one type exists
-    const profitExists = chartData.some((d) => (d.profit || 0) >= 0);
-    const lossExists = chartData.some((d) => (d.profit || 0) < 0);
-
-    let filteredPayload = finalPayload;
-    if (!profitExists) {
-      filteredPayload = filteredPayload.filter(
-        (p: any) => p.value !== 'Profit'
-      );
-    }
-    if (!lossExists) {
-      filteredPayload = filteredPayload.filter((p: any) => p.value !== 'Loss');
-    }
-
-    return <ChartLegendContent payload={filteredPayload} />;
+  
+    const finalPayload = legendItems.map((item) => {
+      const original = payload.find((p: any) => p.dataKey === item.dataKey);
+      if (item.value === 'Loss' && original) {
+        // Special case for Loss, we want its own legend item.
+        return {
+          ...original,
+          value: item.value,
+          color: item.color,
+        };
+      }
+      if (item.value === 'Profit' && original) {
+        return {
+          ...original,
+          value: item.value,
+          color: item.color,
+        };
+      }
+      if (original) {
+        return {
+          ...original,
+          value: item.value,
+          color: item.color,
+        };
+      }
+      return null;
+    }).filter(Boolean);
+  
+    // Deduplicate profit entries, since recharts gives one payload item for 'profit' key
+    const uniquePayload = Array.from(new Map(finalPayload.map(item => [item.value, item])).values());
+  
+    return <ChartLegendContent payload={uniquePayload as any} />;
   };
 
   const CustomTooltip = (props: any) => {
