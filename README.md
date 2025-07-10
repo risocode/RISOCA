@@ -113,6 +113,9 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     
     # Password & WebAuthn Relying Party
     SITE_PASSWORD=YOUR_CHOSEN_PASSWORD
+    # For Passkeys to work, these MUST match your website's domain.
+    # RP_ID is the "relying party ID". This should be your site's domain name, without 'www'.
+    # RP_ORIGIN is the full URL, including the protocol (http:// or https://) where the app is hosted.
     # For local development (testing on your machine)
     RP_ID=localhost
     RP_ORIGIN=http://localhost:9002
@@ -145,3 +148,4 @@ This application is ready to be deployed to any static hosting provider like Ver
 5.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
+
