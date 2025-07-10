@@ -2,6 +2,7 @@
 'use client';
 
 import {useState, useEffect, useCallback} from 'react';
+import Image from 'next/image';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
@@ -185,7 +186,25 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const renderPasswordScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm animate-enter">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center items-center">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <Image
+              src="/logo.png?v=8"
+              alt="App Logo"
+              width={40}
+              height={40}
+              priority
+              className="w-auto h-9"
+            />
+            <Image
+              src="/risoca.png?v=8"
+              alt="RiSoCa Logo Text"
+              width={120}
+              height={36}
+              priority
+              className="w-auto h-8"
+            />
+          </div>
           <KeyRound className="mx-auto h-12 w-12 text-primary" />
           <CardTitle className="!mt-4">Protected Area</CardTitle>
           <CardDescription>
@@ -225,7 +244,25 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const renderPasskeyScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md animate-enter">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center items-center">
+           <div className="flex items-center justify-center gap-2 mb-6">
+            <Image
+              src="/logo.png?v=8"
+              alt="App Logo"
+              width={40}
+              height={40}
+              priority
+              className="w-auto h-9"
+            />
+            <Image
+              src="/risoca.png?v=8"
+              alt="RiSoCa Logo Text"
+              width={120}
+              height={36}
+              priority
+              className="w-auto h-8"
+            />
+          </div>
           <Fingerprint className="mx-auto h-12 w-12 text-success" />
           <CardTitle className="!mt-4">Quick Access Setup</CardTitle>
           <CardDescription>
