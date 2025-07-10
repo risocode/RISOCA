@@ -21,7 +21,6 @@ import {
   where,
   writeBatch,
   type DocumentReference,
-  type Timestamp,
   setDoc,
   orderBy,
 } from 'firebase/firestore';
@@ -31,38 +30,12 @@ import type {
   LedgerTransactionInput,
   SaleTransactionInput,
   SaleItem,
-  InventoryItem,
-  Authenticator,
 } from '@/lib/schemas';
 import {format} from 'date-fns';
 import {v4 as uuidv4} from 'uuid';
-import {
-  generateRegistrationOptions,
-  verifyRegistrationResponse,
-  generateAuthenticationOptions,
-  verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import type {
-  VerifiedRegistrationResponse,
-  VerifiedAuthenticationResponse,
-} from '@simplewebauthn/server';
-import type {
-  PublicKeyCredentialCreationOptionsJSON,
-  PublicKeyCredentialRequestOptionsJSON,
-  RegistrationResponseJSON,
-  AuthenticationResponseJSON,
-} from '@simplewebauthn/types';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
-
-// WebAuthn Relying Party configuration
-const rpID = process.env.RP_ID || 'localhost';
-const rpName = 'RiSoCa Store';
-const origin = process.env.RP_ORIGIN || `http://${rpID}:9002`;
-
-// Fixed user for this single-user application
-const webAuthnUserIdString = 'risoca-admin-user';
 
 type NotificationStatus = {
   success: boolean;
@@ -819,191 +792,6 @@ export async function closeDay(
     const message =
       error instanceof Error ? error.message : 'An unknown error occurred.';
     return {success: false, message: `Could not close day: ${message}`};
-  }
-}
-
-// Actions for Passkey / WebAuthn
-export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {
-  const authenticators = await getAuthenticators();
-
-  const options = await generateRegistrationOptions({
-    rpName,
-    rpID,
-    userID: Buffer.from(webAuthnUserIdString, 'utf-8'),
-    userName: rpName,
-    // Don't recommend existing authenticators - we want to register new ones
-    excludeCredentials: authenticators.map((auth) => ({
-      id: Buffer.from(auth.credentialID, 'base64'),
-      type: 'public-key',
-      transports: auth.transports,
-    })),
-    authenticatorSelection: {
-      residentKey: 'required',
-      userVerification: 'preferred',
-    },
-  });
-
-  // Temporarily store the challenge
-  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
-  await setDoc(challengeRef, {challenge: options.challenge});
-
-  return options;
-}
-
-export async function verifyNewRegistration(
-  response: RegistrationResponseJSON
-): Promise<{verified: boolean; message?: string}> {
-  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
-  const challengeSnap = await getDoc(challengeRef);
-  if (!challengeSnap.exists()) {
-    throw new Error('No challenge found for user.');
-  }
-  const {challenge} = challengeSnap.data();
-
-  let verification: VerifiedRegistrationResponse;
-  try {
-    verification = await verifyRegistrationResponse({
-      response,
-      expectedChallenge: challenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-      requireUserVerification: false,
-    });
-  } catch (error) {
-    console.error(error);
-    return {verified: false, message: (error as Error).message};
-  }
-
-  const {verified, registrationInfo} = verification;
-
-  if (verified && registrationInfo) {
-    const {credentialPublicKey, credentialID, counter} = registrationInfo;
-
-    const newAuthenticator: Authenticator = {
-      credentialID: Buffer.from(credentialID).toString('base64'),
-      credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
-      counter,
-      credentialDeviceType: registrationInfo.credentialDeviceType,
-      transports: response.response.transports || [],
-      userId: webAuthnUserIdString,
-      createdAt: serverTimestamp(),
-    };
-    await addDoc(collection(db, 'authenticators'), newAuthenticator);
-  }
-
-  // Delete the challenge
-  await deleteDoc(challengeRef);
-
-  return {verified};
-}
-
-export async function getAuthenticationOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  const authenticators = await getAuthenticators();
-  const options = await generateAuthenticationOptions({
-    allowCredentials: authenticators.map((auth) => ({
-      id: Buffer.from(auth.credentialID, 'base64'),
-      type: 'public-key',
-      transports: auth.transports,
-    })),
-    userVerification: 'preferred',
-  });
-
-  // Temporarily store the challenge
-  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
-  await setDoc(challengeRef, {challenge: options.challenge});
-
-  return options;
-}
-
-export async function verifyExistingAuthentication(
-  response: AuthenticationResponseJSON
-): Promise<{verified: boolean}> {
-  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
-  const challengeSnap = await getDoc(challengeRef);
-  if (!challengeSnap.exists()) {
-    throw new Error('No challenge found.');
-  }
-  const {challenge} = challengeSnap.data();
-
-  const q = query(
-    collection(db, 'authenticators'),
-    where('credentialID', '==', response.id)
-  );
-  const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) {
-      throw new Error(`Could not find authenticator with id ${response.id}`);
-  }
-  
-  const authenticatorDoc = querySnapshot.docs[0];
-
-  const authenticatorData = authenticatorDoc.data() as Authenticator;
-
-  let verification: VerifiedAuthenticationResponse;
-  try {
-    verification = await verifyAuthenticationResponse({
-      response,
-      expectedChallenge: challenge,
-      expectedOrigin: origin,
-      expectedRPID: rpID,
-      authenticator: {
-        credentialID: Buffer.from(authenticatorData.credentialID, 'base64'),
-        credentialPublicKey: Buffer.from(authenticatorData.credentialPublicKey, 'base64'),
-        counter: authenticatorData.counter,
-        transports: authenticatorData.transports,
-      },
-      requireUserVerification: false,
-    });
-  } catch (error) {
-    console.error(error);
-    return {verified: false};
-  }
-
-  const {verified, authenticationInfo} = verification;
-  if (verified) {
-    // Update the authenticator's counter
-    await updateDoc(authenticatorDoc.ref, {
-      counter: authenticationInfo.newCounter,
-    });
-  }
-  
-  await deleteDoc(challengeRef);
-
-  return {verified};
-}
-
-export async function getAuthenticators(): Promise<Authenticator[]> {
-  const q = query(
-    collection(db, 'authenticators'),
-    where('userId', '==', webAuthnUserIdString)
-  );
-  const querySnapshot = await getDocs(q);
-  const authenticators: Authenticator[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    const createdAtTimestamp = data.createdAt as Timestamp;
-
-    authenticators.push({
-      id: doc.id,
-      ...data,
-      createdAt: createdAtTimestamp.toDate(),
-    } as Authenticator);
-  });
-  return authenticators;
-}
-
-export async function deleteAuthenticator(
-  id: string
-): Promise<{success: boolean; message?: string}> {
-  try {
-    const docRef = doc(db, 'authenticators', id);
-    await deleteDoc(docRef);
-    return {success: true};
-  } catch (error) {
-    console.error('Error deleting authenticator from Firestore: ', error);
-    const message =
-      error instanceof Error ? error.message : 'An unknown error occurred.';
-    return {success: false, message: `Could not delete key: ${message}`};
   }
 }
     

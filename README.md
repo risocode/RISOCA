@@ -14,7 +14,7 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
 *   **Dashboard:** View a history of your scanned receipts and see a summary of your spending. Data is loaded in real-time from Firestore.
 *   **Triple Input:** Upload an image, use your device's camera, or enter receipt details manually.
 *   **Responsive UI:** A clean, modern interface built with Next.js, ShadCN UI, and Tailwind CSS.
-*   **Passwordless Security:** Secure your application with an initial password, then add Passkeys (fingerprint, face ID, hardware keys) for quick and secure access.
+*   **Secure:** Access to the application is protected by a password.
 
 ## Getting Started
 
@@ -80,13 +80,6 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
         match /counters/{document=**} {
           allow read, write: if true;
         }
-        // Added for Passkey/WebAuthn functionality
-        match /challenges/{document=**} {
-          allow read, write: if true;
-        }
-        match /authenticators/{document=**} {
-          allow read, write: if true;
-        }
       }
     }
     ```
@@ -111,23 +104,8 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=FROM_FIREBASE_CONFIG
     NEXT_PUBLIC_FIREBASE_APP_ID=FROM_FIREBASE_CONFIG
     
-    # Password & WebAuthn Relying Party
+    # Password for the site
     SITE_PASSWORD=YOUR_CHOSEN_PASSWORD
-
-    # -------------------------------------------------------------
-    # Passkey / WebAuthn Configuration
-    # These MUST match your website's domain for Passkeys to work.
-    # -------------------------------------------------------------
-    #
-    # RP_ID is the "relying party ID". This should be your site's domain name, without 'www'.
-    # e.g., if your site is www.risoca.store, this should be risoca.store
-    #
-    # RP_ORIGIN is the full URL, including the protocol (http:// or https://) where the app is hosted.
-    # e.g., https://www.risoca.store
-    #
-    # --- For local development (testing on your machine) ---
-    RP_ID=localhost
-    RP_ORIGIN=http://localhost:9002
     ```
 
 6.  **Run the development server:**
@@ -146,14 +124,6 @@ This application is ready to be deployed to any static hosting provider like Ver
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
 3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file.
-4.  **CRITICAL: Configure Passkey/WebAuthn Variables for Production:**
-    The `RP_ID` and `RP_ORIGIN` variables are **mandatory** for Passkey authentication to work on a live website. You must update them in your Vercel project settings to match your **primary production domain**.
-    
-    For example, if your site's primary domain is `https://www.risoca.store`:
-    *   Set `RP_ID` to `risoca.store` (The registrable domain, without `www` or subdomains)
-    *   Set `RP_ORIGIN` to `https://www.risoca.store` (The full URL, including the protocol)
-    
-    If you have multiple domains (e.g., `www.risoca.store` and the default `risoca-ten.vercel.app`), you should configure your hosting provider to redirect all traffic to your primary domain. Passkeys registered on `www.risoca.store` will not work on `risoca-ten.vercel.app`, and vice-versa, because the browser sees them as different websites.
-5.  **Deploy:** Click the **Deploy** button.
+4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.

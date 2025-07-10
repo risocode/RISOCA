@@ -8,11 +8,7 @@ import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
 import {
   verifyPassword,
-  getAuthenticationOptions,
-  verifyExistingAuthentication,
-  getAuthenticators,
 } from '@/app/actions';
-import {startAuthentication} from '@simplewebauthn/browser';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {
@@ -35,7 +31,6 @@ import {useToast} from '@/hooks/use-toast';
 import {
   KeyRound,
   Loader2,
-  Fingerprint,
 } from 'lucide-react';
 
 const PasswordSchema = z.object({
@@ -53,8 +48,6 @@ enum AuthStep {
 export function SiteProtection({children}: {children: React.ReactNode}) {
   const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Checking);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasPasskeys, setHasPasskeys] = useState(false);
-  const [loadingPasskeys, setLoadingPasskeys] = useState(true);
   const {toast} = useToast();
 
   const form = useForm<PasswordFormData>({
@@ -74,26 +67,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   useEffect(() => {
     checkSession();
   }, [checkSession]);
-  
-  // Check for available passkeys when the login form is shown
-  useEffect(() => {
-    if (authStep === AuthStep.Login) {
-        setLoadingPasskeys(true);
-        const checkPasskeys = async () => {
-            try {
-                const existing = await getAuthenticators();
-                setHasPasskeys(existing.length > 0);
-            } catch (error) {
-                console.error("Could not check for passkeys:", error);
-                setHasPasskeys(false);
-            } finally {
-                setLoadingPasskeys(false);
-            }
-        };
-        checkPasskeys();
-    }
-  }, [authStep]);
-
 
   const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsSubmitting(true);
@@ -112,44 +85,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     setIsSubmitting(false);
   };
   
-  const handleAuthenticate = async () => {
-    setIsSubmitting(true);
-    try {
-      const options = await getAuthenticationOptions();
-      if (options.allowCredentials?.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'No Passkeys Registered',
-          description:
-            'Please log in with your password to register a Passkey.',
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      const response = await startAuthentication(options);
-      const {verified} = await verifyExistingAuthentication(response);
-
-      if (verified) {
-        sessionStorage.setItem('risoca-auth', 'true');
-        setAuthStep(AuthStep.Authenticated);
-        toast({variant: 'success', title: 'Login Successful'});
-      } else {
-        throw new Error('Authentication failed.');
-      }
-    } catch (error) {
-      console.error(error);
-      const errorMessage = (error as Error).message;
-      if (!errorMessage.includes('cancelled')) {
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: errorMessage,
-        });
-      }
-    }
-    setIsSubmitting(false);
-  };
-
   const renderLoginScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm animate-enter">
@@ -203,33 +138,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               </Button>
             </form>
           </Form>
-            {!loadingPasskeys && hasPasskeys && (
-                <>
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground">
-                            Or
-                        </span>
-                        </div>
-                    </div>
-                    <Button
-                        onClick={handleAuthenticate}
-                        disabled={isSubmitting}
-                        variant="secondary"
-                        className="w-full"
-                    >
-                        {isSubmitting && !form.formState.isSubmitting ? (
-                        <Loader2 className="mr-2 animate-spin" />
-                        ) : (
-                        <Fingerprint className="mr-2" />
-                        )}
-                        Login with Passkey
-                    </Button>
-                </>
-            )}
         </CardContent>
       </Card>
     </div>

@@ -1,9 +1,5 @@
 import {z} from 'zod';
 import type {Timestamp} from 'firebase/firestore';
-import type {
-  AuthenticatorTransportFuture,
-  CredentialDeviceType,
-} from '@simplewebauthn/typescript-types';
 
 export const InventoryItemSchema = z.object({
   name: z.string().min(1, 'Item name is required.'),
@@ -83,17 +79,4 @@ export const WalletEntrySchema = z.object({
 
 export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
     id: string;
-};
-
-// WebAuthn Authenticator Schema
-export type Authenticator = {
-  id?: string;
-  credentialID: string; // Stored as Base64 string
-  credentialPublicKey: string; // Stored as Base64 string
-  counter: number;
-  credentialDeviceType?: CredentialDeviceType;
-  credentialBackedUp?: boolean;
-  transports?: AuthenticatorTransportFuture[];
-  userId: string;
-  createdAt: Date; // Use plain Date for client components
 };

@@ -12,7 +12,6 @@ import {
   ReceiptText,
   Landmark,
   Wallet,
-  Settings,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {
@@ -131,18 +130,6 @@ export function BottomNav() {
               <Link href="/wallet">
                 <Wallet className="w-8 h-8" />
                 <span>Wallet</span>
-              </Link>
-            </Button>
-          </SheetClose>
-           <SheetClose asChild>
-            <Button
-              asChild
-              variant="outline"
-              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
-            >
-              <Link href="/settings">
-                <Settings className="w-8 h-8" />
-                <span>Settings</span>
               </Link>
             </Button>
           </SheetClose>
