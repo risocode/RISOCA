@@ -823,6 +823,7 @@ export default function StorePage() {
                         step="1"
                         placeholder="e.g. 100"
                         {...field}
+                        className="no-spinners"
                       />
                     </FormControl>
                     <FormMessage />
@@ -873,6 +874,7 @@ export default function StorePage() {
                         step="1"
                         placeholder="e.g. 1000"
                         {...field}
+                        className="no-spinners"
                       />
                     </FormControl>
                     <FormMessage />
