@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef} from 'react';
 import Link from 'next/link';
 import {useForm, useWatch, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -61,6 +61,8 @@ import {
   Printer,
   Plus,
   Minus,
+  Zap,
+  Phone,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
 import {
@@ -119,11 +121,12 @@ export default function StorePage() {
   const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(
     null
   );
+  const commandInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<SaleFormData>({
     resolver: zodResolver(SaleFormSchema),
     defaultValues: {
-      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+      items: [],
     },
   });
 
@@ -192,9 +195,7 @@ export default function StorePage() {
     }
 
     setReceiptItems((prev) => [...prev, ...validItems]);
-    form.reset({
-      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
-    });
+    form.reset({items: []});
   };
 
   const handleOpenDeleteAlert = (index: number) => {
@@ -270,6 +271,15 @@ export default function StorePage() {
     setIsVoiding(false);
   };
 
+  const handleAddNewItemRow = () => {
+    const newIndex = fields.length;
+    append({itemName: '', quantity: 1, unitPrice: 0, total: 0});
+    // Use a short timeout to ensure the new field is rendered before we try to open it
+    setTimeout(() => {
+      setPopoverStates((prev) => ({...prev, [newIndex]: true}));
+    }, 50);
+  };
+
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
 
   const change = useMemo(() => {
@@ -310,11 +320,13 @@ export default function StorePage() {
                 />
 
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
-                    <Label>Item</Label>
-                    <Label className="text-center">Qty</Label>
-                    <Label className="text-center">Price</Label>
-                  </div>
+                  {fields.length > 0 && (
+                    <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
+                      <Label>Item</Label>
+                      <Label className="text-center">Qty</Label>
+                      <Label className="text-center">Price</Label>
+                    </div>
+                  )}
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
@@ -327,12 +339,17 @@ export default function StorePage() {
                           <FormItem>
                             <Popover
                               open={popoverStates[index] ?? false}
-                              onOpenChange={(open) =>
+                              onOpenChange={(open) => {
                                 setPopoverStates((prev) => ({
                                   ...prev,
                                   [index]: open,
-                                }))
-                              }
+                                }));
+                                if (open) {
+                                  setTimeout(() => {
+                                    commandInputRef.current?.focus();
+                                  }, 100);
+                                }
+                              }}
                             >
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -341,7 +358,8 @@ export default function StorePage() {
                                     role="combobox"
                                     className={cn(
                                       'w-full justify-between h-10',
-                                      !formField.value && 'text-muted-foreground'
+                                      !formField.value &&
+                                        'text-muted-foreground'
                                     )}
                                   >
                                     {formField.value || 'Select item'}
@@ -352,10 +370,17 @@ export default function StorePage() {
                               <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                 <Command
                                   filter={(value, search) =>
-                                    value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                                    value
+                                      .toLowerCase()
+                                      .includes(search.toLowerCase())
+                                      ? 1
+                                      : 0
                                   }
                                 >
-                                  <CommandInput placeholder="Search inventory..." />
+                                  <CommandInput
+                                    ref={commandInputRef}
+                                    placeholder="Search inventory..."
+                                  />
                                   <CommandList>
                                     <CommandEmpty>No item found.</CommandEmpty>
                                     <CommandGroup>
@@ -365,18 +390,25 @@ export default function StorePage() {
                                           key={item.id}
                                           onSelect={() => {
                                             update(index, {
-                                              ...form.getValues(`items.${index}`),
+                                              ...form.getValues(
+                                                `items.${index}`
+                                              ),
                                               itemName: item.name,
                                               unitPrice: item.price,
                                               itemId: item.id,
                                             });
-                                            setPopoverStates((prev) => ({...prev, [index]: false}));
+                                            setPopoverStates((prev) => ({
+                                              ...prev,
+                                              [index]: false,
+                                            }));
                                           }}
                                         >
                                           <Check
                                             className={cn(
                                               'mr-2 h-4 w-4',
-                                              formField.value === item.name ? 'opacity-100' : 'opacity-0'
+                                              formField.value === item.name
+                                                ? 'opacity-100'
+                                                : 'opacity-0'
                                             )}
                                           />
                                           {item.name}
@@ -396,14 +428,49 @@ export default function StorePage() {
                         render={({field: formField}) => (
                           <FormItem>
                             <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="Qty"
-                                {...formField}
-                                className="text-center no-spinners"
-                                onChange={(e) => formField.onChange(parseInt(e.target.value, 10) || 1)}
-                                min="1"
-                              />
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  placeholder="Qty"
+                                  {...formField}
+                                  className="pr-12 text-center no-spinners"
+                                  onChange={(e) =>
+                                    formField.onChange(
+                                      parseInt(e.target.value, 10) || 1
+                                    )
+                                  }
+                                  min="1"
+                                />
+                                <div className="absolute inset-y-0 right-0 flex items-center">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-full w-6"
+                                    onClick={() =>
+                                      formField.onChange(
+                                        Math.max(1, (formField.value || 1) - 1)
+                                      )
+                                    }
+                                    disabled={formField.value <= 1}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-full w-6"
+                                    onClick={() =>
+                                      formField.onChange(
+                                        (formField.value || 0) + 1
+                                      )
+                                    }
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
                             </FormControl>
                           </FormItem>
                         )}
@@ -430,7 +497,6 @@ export default function StorePage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => remove(index)}
-                        disabled={fields.length <= 1}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -439,17 +505,27 @@ export default function StorePage() {
                 </div>
 
                 <div className="flex justify-between items-center mt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => append({itemName: '', quantity: 1, unitPrice: 0, total: 0})}
-                  >
-                    <Plus className="mr-2" /> Add Item
-                  </Button>
-                  <Button type="submit" size="sm">
-                    <PlusCircle className="mr-2" /> Add to Sale
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddNewItemRow}
+                    >
+                      <Plus className="mr-2" /> Add Item
+                    </Button>
+                     <Button type="button" variant="outline" size="sm" disabled>
+                        <Phone className="mr-2"/> E-Load
+                     </Button>
+                     <Button type="button" variant="outline" size="sm" disabled>
+                        <Zap className="mr-2"/> Gcash
+                     </Button>
+                  </div>
+                  {fields.length > 0 && (
+                    <Button type="submit" size="sm">
+                      <PlusCircle className="mr-2" /> Add to Sale
+                    </Button>
+                  )}
                 </div>
               </form>
             </Form>
@@ -543,15 +619,15 @@ export default function StorePage() {
         )}
 
         {receiptItems.length > 0 && (
-            <Button
+          <Button
             size="lg"
             className="w-full"
             onClick={handleFinalSubmit}
             disabled={isSubmitting || receiptItems.length === 0}
-            >
+          >
             {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
             Submit Sale
-            </Button>
+          </Button>
         )}
 
         <Card className="shadow-sm">
@@ -651,8 +727,8 @@ export default function StorePage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently void transaction #
-              {voidingTransaction?.receiptNumber}. The stock for all items
-              will be restored. This action cannot be undone.
+              {voidingTransaction?.receiptNumber}. The stock for all items will
+              be restored. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
