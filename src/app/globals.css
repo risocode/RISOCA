@@ -85,6 +85,30 @@
   scrollbar-color: hsl(var(--border) / 0.5) transparent;
 }
 
+/* Custom scrollbar for the main content */
+.main-scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-scroll-area::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+.main-scroll-area:hover::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border) / 0.5);
+}
+
+.main-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.5) transparent;
+}
+
+
 @layer utilities {
   .logo-glow {
     filter: drop-shadow(0 0 10px hsl(var(--primary) / 0.8)) drop-shadow(0 0 20px hsl(var(--accent) / 0.5));

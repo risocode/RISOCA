@@ -53,7 +53,7 @@ export default async function RootLayout({
   const mainContent = (
     <div className="relative flex flex-col h-full">
       <SiteHeader />
-      <main className="flex-1 pb-24 overflow-y-auto">{children}</main>
+      <main className="flex-1 pb-24 overflow-y-auto main-scroll-area">{children}</main>
       <BottomNav />
       <InstallPwa />
     </div>
