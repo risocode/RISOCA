@@ -829,7 +829,7 @@ export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreat
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
-    userID: webAuthnUserIdString,
+    userID: Buffer.from(webAuthnUserIdString, 'utf-8'),
     userName: rpName,
     // Don't recommend existing authenticators - we want to register new ones
     excludeCredentials: authenticators.map((auth) => ({
