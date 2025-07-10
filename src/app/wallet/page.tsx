@@ -235,8 +235,8 @@ export default function WalletPage() {
       const dailyExpenses = receipts
         .filter((r) => isSameDay(r.createdAt.toDate(), entryDate))
         .reduce((sum, r) => sum + r.total, 0);
-
-      const profit = dailySales - dailyExpenses;
+      
+      const profit = (entry.endingCash != null && entry.startingCash != null) ? entry.endingCash - entry.startingCash : 0;
 
       return {...entry, dailySales, dailyExpenses, profit};
     });
