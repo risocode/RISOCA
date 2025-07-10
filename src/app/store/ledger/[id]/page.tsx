@@ -327,11 +327,16 @@ export default function CustomerLedgerPage() {
       return;
     }
 
+    let autoDescription = data.description;
+    if (data.type === 'credit' && data.items && data.items.length > 0) {
+      autoDescription = data.items.map(item => item.itemName).join(', ');
+    }
+
     const payload: LedgerTransactionInput = {
       customerId,
       type: data.type,
       amount: data.amount,
-      description: data.description,
+      description: autoDescription,
       items: data.items,
       paidCreditIds: data.type === 'payment' && selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
     };
@@ -617,11 +622,6 @@ export default function CustomerLedgerPage() {
 
                          {formType === 'credit' ? (
                             <div className="space-y-4">
-                                <FormField control={form.control} name="description" render={({field}) => (
-                                    <FormItem><FormLabel>Description (Optional)</FormLabel><FormControl>
-                                        <Input placeholder="e.g., Groceries for the week" {...field}/>
-                                    </FormControl><FormMessage/></FormItem>
-                                )}/>
                                 <div>
                                     <Label>Items</Label>
                                     <div className="space-y-2 mt-2">
