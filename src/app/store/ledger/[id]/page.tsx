@@ -260,9 +260,21 @@ export default function CustomerLedgerPage() {
       );
     });
 
-    Promise.all([unsubCustomer, unsubTransactions, unsubInventory]).then(() => {
-      setIsLoading(false);
-    });
+    const allUnsubs = [unsubCustomer, unsubTransactions, unsubInventory];
+
+    // Set loading to false once all initial data has been fetched at least once.
+    // This is a simple way, more robust would be Promise.all on getDoc once
+    let pendingFetches = allUnsubs.length;
+    const unsubWrapper = (unsub: () => void) => () => {
+      pendingFetches--;
+      if (pendingFetches === 0) {
+        setIsLoading(false);
+      }
+      unsub();
+    };
+
+    allUnsubs.forEach(unsubWrapper);
+
 
     return () => {
       unsubCustomer();
@@ -507,6 +519,12 @@ export default function CustomerLedgerPage() {
   const cannotDeleteCustomer =
     balance !== 0 || customer?.status === 'deleted';
 
+  const sortedFields = useMemo(() => {
+    const itemFields = fields.filter(f => f.itemName !== 'Cash');
+    const cashFields = fields.filter(f => f.itemName === 'Cash');
+    return [...itemFields, ...cashFields];
+  }, [fields]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -523,13 +541,6 @@ export default function CustomerLedgerPage() {
       </div>
     );
   }
-
-  const sortedFields = useMemo(() => {
-    const itemFields = fields.filter(f => f.itemName !== 'Cash');
-    const cashFields = fields.filter(f => f.itemName === 'Cash');
-    return [...itemFields, ...cashFields];
-  }, [fields]);
-
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
@@ -792,48 +803,46 @@ export default function CustomerLedgerPage() {
                     </TabsList>
                     <TabsContent value="credit" className="pt-4 space-y-6">
                       <div className="space-y-4 p-4 border rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <Label className="text-base font-semibold">
-                            Add to Credit
-                          </Label>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                append({
-                                  itemName: '',
-                                  quantity: 1,
-                                  unitPrice: 0,
-                                  total: 0,
-                                });
-                              }}
-                              className="gap-2"
-                            >
-                              <Package /> Add Item
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                append({
-                                  itemName: 'Cash',
-                                  quantity: 1,
-                                  unitPrice: 0,
-                                  total: 0,
-                                });
-                              }}
-                              className="gap-2"
-                            >
-                              <DollarSign /> Add Cash
-                            </Button>
-                          </div>
+                        <Label className="text-base font-semibold">
+                          Add to Credit
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              append({
+                                itemName: '',
+                                quantity: 1,
+                                unitPrice: 0,
+                                total: 0,
+                              });
+                            }}
+                            className="gap-2"
+                          >
+                            <Package /> Add Item
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              append({
+                                itemName: 'Cash',
+                                quantity: 1,
+                                unitPrice: 0,
+                                total: 0,
+                              });
+                            }}
+                            className="gap-2"
+                          >
+                            <DollarSign /> Add Cash
+                          </Button>
                         </div>
 
                         {fields.length > 0 && (
-                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
+                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
                               <Label>Item</Label>
                               <Label className="text-center">Qty</Label>
                               <Label className="text-center">Price</Label>
@@ -850,18 +859,9 @@ export default function CustomerLedgerPage() {
                             if (field.itemName === 'Cash') {
                                 return(
                                 <div key={field.id} className="grid grid-cols-[1fr_110px_auto] items-start gap-2">
-                                     <FormField
-                                        name={`items.${originalIndex}.itemName`}
-                                        control={form.control}
-                                        render={({field: formField}) => (
-                                            <FormItem className="col-span-1">
-                                                 <Input type="hidden" {...formField} />
-                                                 <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                                    {formField.value}
-                                                </div>
-                                            </FormItem>
-                                        )}
-                                    />
+                                     <div className="col-span-1 flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        Cash
+                                    </div>
                                     <FormField
                                         name={`items.${originalIndex}.total`}
                                         control={form.control}
