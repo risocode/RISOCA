@@ -499,6 +499,12 @@ export default function CustomerLedgerPage() {
 
   const handleRemoveItem = (index: number) => {
     remove(index);
+    if (fields.length === 1) { // If it was the last item
+      form.reset({
+        ...form.getValues(),
+        items: [],
+      });
+    }
   };
 
   const formatCurrency = (value: number) =>
@@ -751,14 +757,23 @@ export default function CustomerLedgerPage() {
             <div className="p-6 pt-0">
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(handleFormSubmit)}
+                  onSubmit={form.handleSubmit(handleFormSubmit, (errors) => {
+                    console.log('Form errors:', errors);
+                    if (errors.amount) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Validation Error',
+                            description: errors.amount.message,
+                        });
+                    }
+                  })}
                   className="space-y-6"
                 >
                   <Tabs
                     value={formType}
                     onValueChange={(value) => {
                       if (value === 'credit' || value === 'payment') {
-                        form.setValue('type', value, {shouldValidate: true});
+                        form.setValue('type', value);
                       }
                     }}
                     className="w-full"
@@ -781,39 +796,90 @@ export default function CustomerLedgerPage() {
                     </TabsList>
                     <TabsContent value="credit" className="pt-4 space-y-6">
                       <div className="space-y-4 p-4 border rounded-lg">
-                        <Label className="text-base font-semibold">
-                          Add to Credit
-                        </Label>
-                        <div className="space-y-2">
-                           {fields.length > 0 && (
-                            <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-base font-semibold">
+                            Add to Credit
+                          </Label>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                append({
+                                  itemName: '',
+                                  quantity: 1,
+                                  unitPrice: 0,
+                                  total: 0,
+                                });
+                              }}
+                              className="gap-2"
+                            >
+                              <Package /> Add Item
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                append({
+                                  itemName: 'Cash',
+                                  quantity: 1,
+                                  unitPrice: 0,
+                                  total: 0,
+                                });
+                              }}
+                              className="gap-2"
+                            >
+                              <DollarSign /> Add Cash
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {fields.length > 0 && (
+                           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
                                 <Label>Item</Label>
                                 {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-center">Qty</Label>}
                                 {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-right">Price</Label>}
-                                <span className="sr-only">Delete</span>
                             </div>
-                           )}
+                        )}
+                        <div className="space-y-2">
                           {fields.map((field, index) => {
                             const currentItem = form.watch(`items.${index}`);
                             const currentItemName = currentItem.itemName;
                             const isCashItem = currentItemName === 'Cash';
                             const hasItemSelected = !!currentItemName;
-
+                            
                             return (
                               <div
                                 key={field.id}
-                                className="grid grid-cols-[1fr_80px_100px_auto] items-start gap-2"
+                                className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
                               >
-                                <div className={cn(!hasItemSelected && "col-span-full")}>
+                               <div className={cn(!hasItemSelected && "col-span-full", hasItemSelected && isCashItem && "col-span-3")}>
                                 <FormField
                                   name={`items.${index}.itemName`}
                                   control={form.control}
                                   render={({field: formField}) => (
                                     <FormItem>
                                       {isCashItem ? (
-                                        <FormControl>
-                                          <Input value="Cash" disabled className="font-semibold" />
-                                        </FormControl>
+                                         <FormField
+                                            name={`items.${index}.total`}
+                                            control={form.control}
+                                            render={({field: amountField}) => (
+                                              <FormItem>
+                                                <FormControl>
+                                                   <Input
+                                                      type="number"
+                                                      step="0.01"
+                                                      placeholder="Amount for Cash"
+                                                      {...amountField}
+                                                      onChange={(e) => amountField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                                      className="no-spinners text-right"
+                                                    />
+                                                </FormControl>
+                                              </FormItem>
+                                            )}
+                                          />
                                       ) : (
                                         <Popover>
                                           <PopoverTrigger asChild>
@@ -916,27 +982,7 @@ export default function CustomerLedgerPage() {
                                 />
                                 </div>
                                 
-                                {hasItemSelected && (isCashItem ? (
-                                  <FormField
-                                    name={`items.${index}.total`}
-                                    control={form.control}
-                                    render={({field: formField}) => (
-                                      <FormItem className="col-span-2">
-                                        <FormControl>
-                                           <Input
-                                              type="number"
-                                              step="0.01"
-                                              placeholder="Amount"
-                                              {...formField}
-                                              value={formField.value === 0 ? '' : formField.value}
-                                              onChange={(e) => formField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                                              className="no-spinners text-right"
-                                            />
-                                        </FormControl>
-                                      </FormItem>
-                                    )}
-                                  />
-                                ) : (
+                                {hasItemSelected && !isCashItem && (
                                   <>
                                     <FormField
                                       name={`items.${index}.quantity`}
@@ -1055,7 +1101,7 @@ export default function CustomerLedgerPage() {
                                       )}
                                     />
                                   </>
-                                ))}
+                                )}
                                 {hasItemSelected && (
                                     <Button
                                       type="button"
@@ -1069,40 +1115,6 @@ export default function CustomerLedgerPage() {
                               </div>
                             );
                           })}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              append({
-                                itemName: '',
-                                quantity: 1,
-                                unitPrice: 0,
-                                total: 0,
-                              });
-                            }}
-                            className="gap-2"
-                          >
-                            <Package /> Add Item
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              append({
-                                itemName: 'Cash',
-                                quantity: 1,
-                                unitPrice: 0,
-                                total: 0,
-                              });
-                            }}
-                            className="gap-2"
-                          >
-                            <DollarSign /> Add Cash
-                          </Button>
                         </div>
                       </div>
 
