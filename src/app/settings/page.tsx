@@ -177,7 +177,7 @@ export default function SettingsPage() {
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Added on{' '}
-                            {format(auth.createdAt.toDate(), 'MMM d, yyyy')}
+                            {format(new Date(auth.createdAt), 'MMM d, yyyy')}
                           </p>
                         </div>
                       </div>

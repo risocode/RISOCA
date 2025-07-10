@@ -95,5 +95,5 @@ export type Authenticator = {
   credentialBackedUp?: boolean;
   transports?: AuthenticatorTransportFuture[];
   userId: string;
-  createdAt: Timestamp;
+  createdAt: Date; // Use plain Date for client components
 };

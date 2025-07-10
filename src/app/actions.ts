@@ -981,10 +981,12 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   const authenticators: Authenticator[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    
+    const createdAtTimestamp = data.createdAt as Timestamp;
+
     authenticators.push({
-      id: doc.id, 
+      id: doc.id,
       ...data,
+      createdAt: createdAtTimestamp.toDate(),
     } as Authenticator);
   });
   return authenticators;
