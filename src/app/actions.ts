@@ -872,7 +872,7 @@ export async function verifyNewRegistration(
       expectedChallenge: challenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      requireUserVerification: true,
+      requireUserVerification: false,
     });
   } catch (error) {
     console.error(error);
@@ -949,7 +949,7 @@ export async function verifyExistingAuthentication(
       expectedOrigin: origin,
       expectedRPID: rpID,
       authenticator,
-      requireUserVerification: true,
+      requireUserVerification: false,
     });
   } catch (error) {
     console.error(error);
