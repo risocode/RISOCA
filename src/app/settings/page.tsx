@@ -107,7 +107,7 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isSupported ? (
+            {isSupported && (
               <>
                 <Button
                   onClick={handleRegister}
@@ -164,10 +164,6 @@ export default function SettingsPage() {
                   )}
                 </div>
               </>
-            ) : (
-              <p className="text-destructive font-medium p-4 border border-destructive/50 bg-destructive/10 rounded-md text-center">
-                Fingerprint/Face login is only available on mobile devices.
-              </p>
             )}
           </CardContent>
         </Card>
