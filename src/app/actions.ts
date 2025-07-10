@@ -886,6 +886,7 @@ export async function verifyNewRegistration(
       credentialID,
       credentialPublicKey,
       counter,
+      credentialDeviceType: registrationInfo.credentialDeviceType,
       transports: response.response.transports || [],
       userId: webAuthnUser.id,
       createdAt: serverTimestamp(),
@@ -927,13 +928,14 @@ export async function verifyExistingAuthentication(
   }
   const {challenge} = challengeSnap.data();
 
-  const authenticatorDoc = await getDoc(
-    doc(collection(db, 'authenticators'), response.id)
-  );
-
-  if (!authenticatorDoc.exists()) {
-    throw new Error(`Could not find authenticator with id ${response.id}`);
+  const q = query(collection(db, 'authenticators'), where('credentialID', '==', response.id));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+      throw new Error(`Could not find authenticator with id ${response.id}`);
   }
+  
+  const authenticatorDoc = querySnapshot.docs[0];
 
   const authenticator = authenticatorDoc.data() as Authenticator;
 

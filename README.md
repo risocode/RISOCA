@@ -109,6 +109,11 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=FROM_FIREBASE_CONFIG
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=FROM_FIREBASE_CONFIG
     NEXT_PUBLIC_FIREBASE_APP_ID=FROM_FIREBASE_CONFIG
+    
+    # Password & WebAuthn Relying Party
+    SITE_PASSWORD=YOUR_CHOSEN_PASSWORD
+    RP_ID=localhost
+    RP_ORIGIN=http://localhost:9002
     ```
 
 6.  **Run the development server:**
@@ -126,8 +131,7 @@ This application is ready to be deployed to any static hosting provider like Ver
 
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
-3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file.
+3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Make sure to update `RP_ID` and `RP_ORIGIN` to match your Vercel deployment URL.**
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
-
