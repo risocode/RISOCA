@@ -107,19 +107,17 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
     # Password for the site
     SITE_PASSWORD=YOUR_CHOSEN_PASSWORD
 
-    # Passkey Authentication (MANDATORY for Passkey/Fingerprint login)
-    # This must match your website's domain name, without "www"
-    # For local development:
-    # RP_ID=localhost
-    # For a live site like "www.risoca.store":
-    # RP_ID=risoca.store
+    # --- Passkey Authentication (MANDATORY for Passkey/Fingerprint login) ---
+    # These variables are REQUIRED for Passkey login to work on a live server.
+    
+    # Relying Party ID (RP_ID): This MUST match your website's domain name, without "www" or "https://".
+    # For local development, this is always 'localhost'.
+    # For a live site like "www.risoca.store", this MUST be "risoca.store".
     RP_ID=localhost
 
-    # This must be the full URL where your app is hosted.
-    # For local development:
-    # RP_ORIGIN=http://localhost:9002
-    # For a live site with HTTPS:
-    # RP_ORIGIN=https://www.risoca.store
+    # Relying Party Origin (RP_ORIGIN): This MUST be the full URL where your app is hosted, including the protocol (http/https).
+    # For local development, this is your local server URL.
+    # For a live site like "www.risoca.store", this MUST be "https://www.risoca.store".
     RP_ORIGIN=http://localhost:9002
     ```
 
@@ -138,7 +136,7 @@ This application is ready to be deployed to any static hosting provider like Ver
 
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
-3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Make sure to update `RP_ID` and `RP_ORIGIN` to match your production domain.**
+3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Crucially, you must update `RP_ID` and `RP_ORIGIN` to match your production domain.** For example, if your site is `www.risoca.store`, set `RP_ID` to `risoca.store` and `RP_ORIGIN` to `https://www.risoca.store`.
 4.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.

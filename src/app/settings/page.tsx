@@ -82,9 +82,11 @@ export default function SettingsPage() {
   };
 
   const getDeviceIcon = (deviceType: string) => {
+    // This is a heuristic. 'internal' usually means a biometric scanner built into the device.
     if (deviceType === 'internal') {
       return <Fingerprint className="h-6 w-6 text-primary" />;
     }
+    // 'singleDevice' can be a USB key or other external authenticator.
     return <Monitor className="h-6 w-6 text-primary" />;
   };
 
@@ -99,9 +101,9 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Passkey Management</CardTitle>
             <CardDescription>
-              Register this device to log in quickly and securely with a
-              Passkey (e.g., fingerprint or face). Keys are stored only on this
-              device.
+              Register this device to log in quickly and securely with its
+              built-in security (e.g., fingerprint, face, or PIN). Keys are
+              stored only on this device.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
