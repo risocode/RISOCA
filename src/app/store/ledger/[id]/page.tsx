@@ -15,6 +15,7 @@ import {
   doc,
   where,
   orderBy,
+  getDocs,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {
@@ -312,7 +313,10 @@ export default function CustomerLedgerPage() {
           tx.status !== 'deleted' &&
           tx.amount > (tx.paidAmount || 0)
       )
-      .map(tx => ({...tx, remainingAmount: tx.amount - (tx.paidAmount || 0)}))
+      .map((tx) => ({
+        ...tx,
+        remainingAmount: tx.amount - (tx.paidAmount || 0),
+      }))
       .sort(
         (a, b) =>
           a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()
@@ -324,8 +328,13 @@ export default function CustomerLedgerPage() {
       ...field,
       originalIndex: index,
     }));
-    const itemFields = fieldsWithOriginalIndex.filter(f => !f.itemId && f.itemName !== 'Cash' || (f.itemId && f.itemName !== 'Cash'));
-    const cashFields = fieldsWithOriginalIndex.filter(f => f.itemName === 'Cash');
+    const itemFields = fieldsWithOriginalIndex.filter(
+      (f) =>
+        (!f.itemId && f.itemName !== 'Cash') || (f.itemId && f.itemName !== 'Cash')
+    );
+    const cashFields = fieldsWithOriginalIndex.filter(
+      (f) => f.itemName === 'Cash'
+    );
     return [...itemFields, ...cashFields];
   }, [fields]);
 
@@ -360,12 +369,14 @@ export default function CustomerLedgerPage() {
     const selectedTxs = outstandingCreditTransactions.filter((tx) =>
       selectedCredits.has(tx.id)
     );
-    const total = selectedTxs.reduce((sum, tx) => sum + (tx.remainingAmount || 0), 0);
+    const total = selectedTxs.reduce(
+      (sum, tx) => sum + (tx.remainingAmount || 0),
+      0
+    );
 
     if (selectedTxs.length > 0) {
       form.setValue('amount', total, {shouldValidate: false});
-      const description = `Payment for ${selectedTxs.length} outstanding credit${selectedTxs.length > 1 ? 's' : ''}.`;
-      form.setValue('description', description);
+      form.setValue('description', 'Payment');
     }
   }, [selectedCredits, outstandingCreditTransactions, form, formType]);
 
@@ -459,7 +470,10 @@ export default function CustomerLedgerPage() {
         customerId,
         type: 'payment',
         amount: data.amount,
-        description: selectedCredits.size > 0 ? 'Payment' : data.description || 'Payment',
+        description:
+          selectedCredits.size > 0
+            ? 'Payment'
+            : data.description || 'Payment',
         paidCreditIds:
           selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
       };
@@ -590,7 +604,6 @@ export default function CustomerLedgerPage() {
     setOpenTransaction((prev) => (prev === txId ? null : txId));
   };
 
-
   if (isLoading) {
     return (
       <div className="p-6 space-y-4 flex flex-col h-full items-center justify-center">
@@ -657,7 +670,9 @@ export default function CustomerLedgerPage() {
                     <p>
                       {customer?.status === 'deleted'
                         ? 'Customer is already deleted.'
-                        : `Cannot delete customer with an outstanding balance of ${formatCurrency(balance)}.`}
+                        : `Cannot delete customer with an outstanding balance of ${formatCurrency(
+                            balance
+                          )}.`}
                     </p>
                   </TooltipContent>
                 )}
@@ -741,98 +756,133 @@ export default function CustomerLedgerPage() {
                 {transactions.length > 0 ? (
                   transactions.map((tx) => {
                     const isOpen = openTransaction === tx.id;
-                    const hasItems = tx.type === 'credit' && tx.items && tx.items.length > 0;
+                    const isCredit = tx.type === 'credit';
+                    const isPayment = tx.type === 'payment';
+                    const hasCreditItems = isCredit && tx.items && tx.items.length > 0;
+                    const hasPaidCredits = isPayment && tx.paidCreditIds && tx.paidCreditIds.length > 0;
+                    const isExpandable = hasCreditItems || hasPaidCredits;
+
+                    const paidCreditDetails = hasPaidCredits
+                      ? transactions.filter(t => tx.paidCreditIds!.includes(t.id))
+                      : [];
+
                     return (
-                    <React.Fragment key={tx.id}>
-                      <TableRow
-                        className={cn(
-                          tx.status === 'deleted' && 'opacity-50',
-                          hasItems && 'cursor-pointer'
-                        )}
-                        onClick={() => hasItems && toggleTransactionRow(tx.id)}
-                      >
-                        <TableCell className="p-2 align-middle">
-                          {hasItems ? (
-                            <ChevronDown
-                              className={cn(
-                                'h-5 w-5 transition-transform',
-                                isOpen && 'rotate-180'
-                              )}
-                            />
-                          ) : (
-                            <div className="w-5 h-5" />
-                          )}
-                        </TableCell>
-                        <TableCell
+                      <React.Fragment key={tx.id}>
+                        <TableRow
                           className={cn(
-                            tx.status === 'deleted' && 'line-through'
+                            tx.status === 'deleted' && 'opacity-50',
+                            isExpandable && 'cursor-pointer'
                           )}
+                          onClick={() =>
+                            isExpandable && toggleTransactionRow(tx.id)
+                          }
                         >
-                          {format(tx.createdAt.toDate(), 'PP')}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {tx.status === 'deleted' ? (
-                            <Badge variant="destructive">Deleted</Badge>
-                          ) : (
-                            <Badge
-                              variant={
-                                tx.type === 'credit' ? 'destructive' : 'success'
-                              }
-                            >
-                              {tx.type}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'max-w-[200px] truncate',
-                            tx.status === 'deleted' && 'line-through'
-                          )}
-                        >
-                          {tx.description || (tx.items ? 'Credit Transaction' : 'Payment')}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right font-mono',
-                            tx.status === 'deleted' && 'line-through'
-                          )}
-                        >
-                          {formatCurrency(tx.amount)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteAlert('deleteTransaction', tx.id);
-                            }}
-                            disabled={tx.status === 'deleted'}
+                          <TableCell className="p-2 align-middle">
+                            {isExpandable ? (
+                              <ChevronDown
+                                className={cn(
+                                  'h-5 w-5 transition-transform',
+                                  isOpen && 'rotate-180'
+                                )}
+                              />
+                            ) : (
+                              <div className="w-5 h-5" />
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              tx.status === 'deleted' && 'line-through'
+                            )}
                           >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      {isOpen && hasItems && (
+                            {format(tx.createdAt.toDate(), 'PP')}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {tx.status === 'deleted' ? (
+                              <Badge variant="destructive">Deleted</Badge>
+                            ) : (
+                              <Badge
+                                variant={
+                                  tx.type === 'credit'
+                                    ? 'destructive'
+                                    : 'success'
+                                }
+                              >
+                                {tx.type}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'max-w-[200px] truncate',
+                              tx.status === 'deleted' && 'line-through'
+                            )}
+                          >
+                            {tx.description ||
+                              (tx.items
+                                ? 'Credit Transaction'
+                                : 'Payment')}
+                          </TableCell>
+                          <TableCell
+                            className={cn(
+                              'text-right font-mono',
+                              tx.status === 'deleted' && 'line-through'
+                            )}
+                          >
+                            {formatCurrency(tx.amount)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteAlert('deleteTransaction', tx.id);
+                              }}
+                              disabled={tx.status === 'deleted'}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {isOpen && hasCreditItems && (
                           <TableRow>
                             <TableCell colSpan={6} className="p-2 bg-muted/50">
                               <div className="p-2 bg-background rounded-md">
                                 <Table>
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead className="h-8">Item Name</TableHead>
-                                      <TableHead className="h-8 text-center w-24">Qty</TableHead>
-                                      <TableHead className="h-8 text-right w-32">Unit Price</TableHead>
-                                      <TableHead className="h-8 text-right w-32">Amount</TableHead>
+                                      <TableHead className="h-8">
+                                        Item Name
+                                      </TableHead>
+                                      <TableHead className="h-8 text-center w-24">
+                                        Qty
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right w-32">
+                                        Unit Price
+                                      </TableHead>
+                                      <TableHead className="h-8 text-right w-32">
+                                        Amount
+                                      </TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {tx.items!.map((item, index) => (
-                                      <TableRow key={index} className="border-none">
-                                        <TableCell className="py-1 font-medium">{item.itemName}</TableCell>
-                                        <TableCell className="py-1 text-center">{item.quantity}</TableCell>
-                                        <TableCell className="py-1 text-right font-mono">{formatCurrency(item.unitPrice)}</TableCell>
-                                        <TableCell className="py-1 text-right font-mono">{formatCurrency(item.total)}</TableCell>
+                                      <TableRow
+                                        key={index}
+                                        className="border-none"
+                                      >
+                                        <TableCell className="py-1 font-medium">
+                                          {item.itemName}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-center">
+                                          {item.quantity}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {formatCurrency(item.unitPrice)}
+                                        </TableCell>
+                                        <TableCell className="py-1 text-right font-mono">
+                                          {formatCurrency(item.total)}
+                                        </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
@@ -840,9 +890,37 @@ export default function CustomerLedgerPage() {
                               </div>
                             </TableCell>
                           </TableRow>
-                      )}
-                    </React.Fragment>
-                  )})
+                        )}
+                         {isOpen && hasPaidCredits && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="p-2 bg-muted/50">
+                              <div className="p-2 bg-background rounded-md">
+                                <p className="text-sm font-medium mb-2 px-1">Credits Settled</p>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="h-8">Date</TableHead>
+                                      <TableHead className="h-8">Description</TableHead>
+                                      <TableHead className="h-8 text-right">Amount</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {paidCreditDetails.map((credit) => (
+                                      <TableRow key={credit.id} className="border-none">
+                                        <TableCell className="py-1 font-medium text-xs">{format(credit.createdAt.toDate(), 'PP')}</TableCell>
+                                        <TableCell className="py-1">{credit.description}</TableCell>
+                                        <TableCell className="py-1 text-right font-mono">{formatCurrency(credit.amount)}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
@@ -934,7 +1012,7 @@ export default function CustomerLedgerPage() {
                             <DollarSign /> Add Cash
                           </Button>
                         </div>
-                        
+
                         {hasProductItems && (
                           <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-x-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
                             <Label>Item</Label>
@@ -977,7 +1055,11 @@ export default function CustomerLedgerPage() {
                                                   ? ''
                                                   : parseFloat(value) || 0
                                               );
-                                              update(originalIndex, {...currentItem, unitPrice: parseFloat(value) || 0})
+                                              update(originalIndex, {
+                                                ...currentItem,
+                                                unitPrice:
+                                                  parseFloat(value) || 0,
+                                              });
                                             }}
                                             className="no-spinners text-right"
                                           />
@@ -1312,7 +1394,10 @@ export default function CustomerLedgerPage() {
                                 onClick={handleSelectAllCredits}
                                 className="h-auto p-0"
                               >
-                                {selectedCredits.size === outstandingCreditTransactions.length ? 'Deselect All' : 'Select All'}
+                                {selectedCredits.size ===
+                                outstandingCreditTransactions.length
+                                  ? 'Deselect All'
+                                  : 'Select All'}
                               </Button>
                             )}
                           </div>
