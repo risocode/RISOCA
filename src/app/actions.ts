@@ -62,10 +62,12 @@ const rpName = 'RiSoCa Store';
 const origin = process.env.RP_ORIGIN || `http://${rpID}:9002`;
 
 // Fixed user for this single-user application
+// The `id` must be a Buffer, not a string.
 const webAuthnUser = {
-  id: 'risoca-admin-user',
+  id: Buffer.from('risoca-admin-user', 'utf8'),
   name: 'RiSoCa Admin',
 };
+const webAuthnUserIdString = 'risoca-admin-user';
 
 type NotificationStatus = {
   success: boolean;
@@ -847,7 +849,7 @@ export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreat
   });
 
   // Temporarily store the challenge
-  const challengeRef = doc(db, 'challenges', webAuthnUser.id);
+  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
   await setDoc(challengeRef, {challenge: options.challenge});
 
   return options;
@@ -856,7 +858,7 @@ export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreat
 export async function verifyNewRegistration(
   response: RegistrationResponseJSON
 ): Promise<{verified: boolean; message?: string}> {
-  const challengeRef = doc(db, 'challenges', webAuthnUser.id);
+  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
   const challengeSnap = await getDoc(challengeRef);
   if (!challengeSnap.exists()) {
     throw new Error('No challenge found for user.');
@@ -888,7 +890,7 @@ export async function verifyNewRegistration(
       counter,
       credentialDeviceType: registrationInfo.credentialDeviceType,
       transports: response.response.transports || [],
-      userId: webAuthnUser.id,
+      userId: webAuthnUserIdString,
       createdAt: serverTimestamp(),
     };
     await addDoc(collection(db, 'authenticators'), newAuthenticator);
@@ -912,7 +914,7 @@ export async function getAuthenticationOptions(): Promise<PublicKeyCredentialReq
   });
 
   // Temporarily store the challenge
-  const challengeRef = doc(db, 'challenges', webAuthnUser.id);
+  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
   await setDoc(challengeRef, {challenge: options.challenge});
 
   return options;
@@ -921,7 +923,7 @@ export async function getAuthenticationOptions(): Promise<PublicKeyCredentialReq
 export async function verifyExistingAuthentication(
   response: AuthenticationResponseJSON
 ): Promise<{verified: boolean}> {
-  const challengeRef = doc(db, 'challenges', webAuthnUser.id);
+  const challengeRef = doc(db, 'challenges', webAuthnUserIdString);
   const challengeSnap = await getDoc(challengeRef);
   if (!challengeSnap.exists()) {
     throw new Error('No challenge found.');
@@ -970,7 +972,7 @@ export async function verifyExistingAuthentication(
 export async function getAuthenticators(): Promise<Authenticator[]> {
   const q = query(
     collection(db, 'authenticators'),
-    where('userId', '==', webAuthnUser.id)
+    where('userId', '==', webAuthnUserIdString)
   );
   const querySnapshot = await getDocs(q);
   const authenticators: Authenticator[] = [];
