@@ -171,7 +171,7 @@ export default function CustomerLedgerPage() {
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
     mode: 'onSubmit',
-    reValidateMode: 'onChange',
+    reValidateMode: 'onSubmit', // Change validation mode
     defaultValues: {
       type: 'credit',
       amount: 0,
@@ -205,6 +205,8 @@ export default function CustomerLedgerPage() {
       items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
     });
     setSelectedCredits(new Set());
+    // Clear any previous errors when tab switches
+    form.clearErrors();
   }, [formType, form]);
 
   useEffect(() => {
@@ -335,7 +337,7 @@ export default function CustomerLedgerPage() {
     const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
     if (selectedTxs.length > 0) {
-      form.setValue('amount', total);
+      form.setValue('amount', total, {shouldValidate: false}); // No validation on auto-fill
       const description = `Payment for: ${selectedTxs
         .map(
           (tx) =>
@@ -361,24 +363,24 @@ export default function CustomerLedgerPage() {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Please add at least one item or a cash advance.',
+          description: 'Please add at least one item or cash advance.',
         });
         setIsSubmitting(false);
         return;
       }
-
+      
       const allDescriptions = validItems.map((item) => {
-        if (item.itemName === 'Cash') {
-          return `Cash: ${formatCurrency(item.total)}`;
-        }
-        return item.itemName;
-      });
+          return item.itemName === 'Cash'
+            ? `Cash: ${formatCurrency(item.total)}`
+            : `${item.itemName} (x${item.quantity})`;
+        })
+        .join(', ');
 
       payload = {
         customerId,
         type: 'credit',
         amount: data.amount,
-        description: allDescriptions.join(', ') || 'Credit Transaction',
+        description: allDescriptions || 'Credit Transaction',
         items: validItems,
       };
     } else {
@@ -789,8 +791,8 @@ export default function CustomerLedgerPage() {
                         <div className="space-y-2">
                           <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
                             <Label>Item</Label>
-                            <Label>Qty</Label>
-                            <Label>Price</Label>
+                             {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label>Qty</Label>}
+                             {fields.some(item => !!item.itemName) && <Label>Price</Label>}
                             <span className="sr-only">Delete</span>
                           </div>
                           {fields.map((field, index) => {
@@ -1065,14 +1067,16 @@ export default function CustomerLedgerPage() {
                                 ) : (
                                   <div className="col-span-2" />
                                 )}
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveItem(index)}
-                                >
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
+                                {hasItemSelected && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemoveItem(index)}
+                                    >
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                )}
                               </div>
                             );
                           })}
