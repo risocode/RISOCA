@@ -14,7 +14,14 @@ export function SiteHeader() {
           data-ai-hint="abstract logo"
           className="w-auto h-9"
         />
-        <span className="text-xl font-bold">Whole Store</span>
+        <Image
+          src="/risoca.png?v=8"
+          alt="RiSoCa Logo Text"
+          width={120}
+          height={36}
+          priority
+          className="w-auto h-8"
+        />
       </Link>
     </header>
   );
