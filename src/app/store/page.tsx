@@ -110,6 +110,7 @@ export default function StorePage() {
   const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(
     null
   );
+  const [searchValue, setSearchValue] = useState('');
 
   const form = useForm<SaleItemFormData>({
     resolver: zodResolver(SaleItemFormSchema),
@@ -168,6 +169,7 @@ export default function StorePage() {
       unitPrice: 0,
       itemId: undefined,
     });
+    setSearchValue('');
     const input = document.querySelector(
       'input[name="itemName"]'
     ) as HTMLInputElement | null;
@@ -303,7 +305,9 @@ export default function StorePage() {
                           >
                             <CommandInput
                               placeholder="Search inventory..."
+                              value={searchValue}
                               onValueChange={(search) => {
+                                setSearchValue(search);
                                 form.setValue('itemName', search);
                                 form.setValue('itemId', undefined);
                                 form.setValue('unitPrice', 0);
@@ -311,7 +315,14 @@ export default function StorePage() {
                             />
                             <CommandList>
                               <CommandEmpty>
-                                No inventory item found.
+                                <CommandItem
+                                  onSelect={() => {
+                                    form.setValue('itemName', searchValue);
+                                    setPopoverOpen(false);
+                                  }}
+                                >
+                                  Add "{searchValue}" as a new item
+                                </CommandItem>
                               </CommandEmpty>
                               <CommandGroup>
                                 {inventory.map((item) => (
@@ -322,6 +333,7 @@ export default function StorePage() {
                                       form.setValue('itemName', item.name);
                                       form.setValue('unitPrice', item.price);
                                       form.setValue('itemId', item.id);
+                                      setSearchValue(item.name);
                                       setPopoverOpen(false);
                                     }}
                                   >
@@ -589,9 +601,9 @@ export default function StorePage() {
           </CardContent>
           <CardFooter>
             <Button asChild variant="outline" className="w-full">
-              <Link href="/transactions">
+              <Link href="/store/history">
                 <History className="mr-2" />
-                View Full History
+                View Sales Transaction History
               </Link>
             </Button>
           </CardFooter>
