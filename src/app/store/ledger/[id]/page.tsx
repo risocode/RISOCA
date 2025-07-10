@@ -90,7 +90,6 @@ import {
   Minus,
   Pencil,
   Info,
-  PlusCircle,
   ChevronsUpDown,
   Check,
   Package,
@@ -193,17 +192,17 @@ export default function CustomerLedgerPage() {
     if (formType === 'credit') {
       const totalAmount =
         formItems?.reduce((sum, item) => sum + (item.total || 0), 0) || 0;
-      form.setValue('amount', totalAmount, {shouldValidate: true});
+      form.setValue('amount', totalAmount, {shouldValidate: false});
     }
   }, [formItems, formType, form]);
 
   useEffect(() => {
     // Reset fields when switching main transaction type
     form.reset({
-        type: form.getValues('type'),
-        amount: 0,
-        description: '',
-        items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+      type: form.getValues('type'),
+      amount: 0,
+      description: '',
+      items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
     });
     setSelectedCredits(new Set());
   }, [formType, form]);
@@ -329,12 +328,12 @@ export default function CustomerLedgerPage() {
     if (formType === 'credit') {
       return;
     }
-  
+
     const selectedTxs = outstandingCreditTransactions.filter((tx) =>
       selectedCredits.has(tx.id)
     );
     const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
-  
+
     if (selectedTxs.length > 0) {
       form.setValue('amount', total);
       const description = `Payment for: ${selectedTxs
@@ -344,12 +343,8 @@ export default function CustomerLedgerPage() {
         )
         .join(', ')}`;
       form.setValue('description', description);
-    } else {
-        // If no credits are selected, don't reset amount/description unless it was based on a previous selection
-        // This avoids clearing manual input when toggling checkboxes.
     }
   }, [selectedCredits, outstandingCreditTransactions, form, formType]);
-  
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
@@ -762,10 +757,12 @@ export default function CustomerLedgerPage() {
                   className="space-y-6"
                 >
                   <Tabs
-                    defaultValue="credit"
-                    onValueChange={(value) =>
-                      form.setValue('type', value as 'credit' | 'payment')
-                    }
+                    value={formType}
+                    onValueChange={(value) => {
+                      if (value === 'credit' || value === 'payment') {
+                        form.setValue('type', value, {shouldValidate: false});
+                      }
+                    }}
                     className="w-full"
                   >
                     <TabsList className="grid w-full grid-cols-2">
@@ -797,11 +794,10 @@ export default function CustomerLedgerPage() {
                             <span className="sr-only">Delete</span>
                           </div>
                           {fields.map((field, index) => {
-                            const currentItemName = form.watch(
-                              `items.${index}.itemName`
-                            );
-                            const isCashItem =
-                              currentItemName === 'Cash';
+                            const currentItem = form.watch(`items.${index}`);
+                            const currentItemName = currentItem.itemName;
+                            const isCashItem = currentItemName === 'Cash';
+                            const hasItemSelected = !!currentItemName;
 
                             return (
                               <div
@@ -947,7 +943,7 @@ export default function CustomerLedgerPage() {
                                       </FormItem>
                                     )}
                                   />
-                                ) : (
+                                ) : hasItemSelected ? (
                                   <>
                                     <FormField
                                       name={`items.${index}.quantity`}
@@ -1066,6 +1062,8 @@ export default function CustomerLedgerPage() {
                                       )}
                                     />
                                   </>
+                                ) : (
+                                  <div className="col-span-2" />
                                 )}
                                 <Button
                                   type="button"
