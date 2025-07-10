@@ -171,6 +171,8 @@ export default function CustomerLedgerPage() {
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
     defaultValues: {
       type: 'credit',
       amount: 0,
@@ -197,11 +199,14 @@ export default function CustomerLedgerPage() {
 
   useEffect(() => {
     // Reset fields when switching main transaction type
-    replace([{itemName: '', quantity: 1, unitPrice: 0, total: 0}]);
-    form.setValue('amount', 0);
-    form.setValue('description', '');
+    form.reset({
+        type: form.getValues('type'),
+        amount: 0,
+        description: '',
+        items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
+    });
     setSelectedCredits(new Set());
-  }, [formType, replace, form]);
+  }, [formType, form]);
 
   useEffect(() => {
     if (!customerId) return;
@@ -308,31 +313,6 @@ export default function CustomerLedgerPage() {
       );
   }, [transactions, paidCreditIds]);
 
-  useEffect(() => {
-    if (formType === 'credit') {
-      if (selectedCredits.size > 0) {
-        setSelectedCredits(new Set());
-      }
-      return;
-    }
-
-    const selectedTxs = outstandingCreditTransactions.filter((tx) =>
-      selectedCredits.has(tx.id)
-    );
-    const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
-
-    if (selectedTxs.length > 0) {
-      form.setValue('amount', total, {shouldValidate: true});
-      const description = `Payment for: ${selectedTxs
-        .map(
-          (tx) =>
-            tx.description || `Credit on ${format(tx.createdAt.toDate(), 'PP')}`
-        )
-        .join(', ')}`;
-      form.setValue('description', description);
-    }
-  }, [selectedCredits, outstandingCreditTransactions, form, formType]);
-
   const handleCreditSelection = (txId: string) => {
     setSelectedCredits((prev) => {
       const newSelection = new Set(prev);
@@ -344,6 +324,32 @@ export default function CustomerLedgerPage() {
       return newSelection;
     });
   };
+
+  useEffect(() => {
+    if (formType === 'credit') {
+      return;
+    }
+  
+    const selectedTxs = outstandingCreditTransactions.filter((tx) =>
+      selectedCredits.has(tx.id)
+    );
+    const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
+  
+    if (selectedTxs.length > 0) {
+      form.setValue('amount', total);
+      const description = `Payment for: ${selectedTxs
+        .map(
+          (tx) =>
+            tx.description || `Credit on ${format(tx.createdAt.toDate(), 'PP')}`
+        )
+        .join(', ')}`;
+      form.setValue('description', description);
+    } else {
+        // If no credits are selected, don't reset amount/description unless it was based on a previous selection
+        // This avoids clearing manual input when toggling checkboxes.
+    }
+  }, [selectedCredits, outstandingCreditTransactions, form, formType]);
+  
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
@@ -784,7 +790,7 @@ export default function CustomerLedgerPage() {
                           Add to Credit
                         </Label>
                         <div className="space-y-2">
-                          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                          <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
                             <Label>Item</Label>
                             <Label>Qty</Label>
                             <Label>Price</Label>
@@ -800,7 +806,7 @@ export default function CustomerLedgerPage() {
                             return (
                               <div
                                 key={field.id}
-                                className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
+                                className="grid grid-cols-[1fr_80px_100px_auto] items-start gap-2"
                               >
                                 {isCashItem ? (
                                   <FormItem>
