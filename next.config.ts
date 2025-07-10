@@ -49,6 +49,20 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [],
   },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value:
+              'publickey-credentials-get=*, publickey-credentials-create=*',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);
