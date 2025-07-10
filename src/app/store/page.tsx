@@ -315,19 +315,19 @@ export default function StorePage() {
                             />
                             <CommandList>
                               <CommandEmpty>
-                                <div className="p-2 text-center text-sm text-muted-foreground">
-                                  No results found.
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                  No inventory item found.{' '}
                                   {searchValue && (
-                                    <CommandItem
-                                      onSelect={() => {
+                                    <button
+                                      type="button"
+                                      className="text-primary hover:underline"
+                                      onClick={() => {
                                         form.setValue('itemName', searchValue);
                                         setPopoverOpen(false);
                                       }}
-                                      className="mt-2 aria-selected:bg-primary aria-selected:text-primary-foreground"
                                     >
-                                      <PlusCircle className="mr-2"/>
-                                      Add "{searchValue}"
-                                    </CommandItem>
+                                      (Record Item)
+                                    </button>
                                   )}
                                 </div>
                               </CommandEmpty>
