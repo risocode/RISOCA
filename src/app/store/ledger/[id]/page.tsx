@@ -557,9 +557,11 @@ export default function CustomerLedgerPage() {
     balance !== 0 || customer?.status === 'deleted';
 
   const sortedFields = useMemo(() => {
-    const itemFields = fields.filter(f => f.itemName !== 'Cash');
-    const cashFields = fields.filter(f => f.itemName === 'Cash');
-    return [...itemFields, ...cashFields];
+    return fields.sort((a, b) => {
+        if (a.itemName === 'Cash' && b.itemName !== 'Cash') return 1;
+        if (a.itemName !== 'Cash' && b.itemName === 'Cash') return -1;
+        return 0;
+    });
   }, [fields]);
 
   if (isLoading) {
@@ -836,7 +838,7 @@ export default function CustomerLedgerPage() {
                         <Label className="text-base font-semibold">
                           Add to Credit
                         </Label>
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -872,7 +874,7 @@ export default function CustomerLedgerPage() {
                             if (currentItem.itemName === 'Cash') {
                                 return(
                                   <div key={field.id} className="grid grid-cols-[1fr_110px_auto] items-start gap-2">
-                                    <div className="col-span-1 flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                    <div className="flex col-span-2 h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
                                         Cash
                                     </div>
                                     <FormField
@@ -886,7 +888,10 @@ export default function CustomerLedgerPage() {
                                                   step="0.01"
                                                   placeholder="0.00"
                                                   {...amountField}
-                                                  onChange={(e) => amountField.onChange(e.target.valueAsNumber || 0)}
+                                                  onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    amountField.onChange(value === '' ? '' : parseFloat(value));
+                                                  }}
                                                   className="no-spinners text-right"
                                                 />
                                             </FormControl>
