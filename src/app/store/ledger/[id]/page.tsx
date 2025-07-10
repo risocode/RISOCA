@@ -356,7 +356,7 @@ export default function CustomerLedgerPage() {
     if (data.type === 'credit') {
       const validItems =
         data.items?.filter(
-          (item) => item.itemName && item.itemName.trim() !== '' && item.total > 0
+          (item) => (item.itemName && item.itemName.trim() !== '' && item.total > 0)
         ) || [];
 
       if (data.amount === 0) {
@@ -758,7 +758,7 @@ export default function CustomerLedgerPage() {
                     value={formType}
                     onValueChange={(value) => {
                       if (value === 'credit' || value === 'payment') {
-                        form.setValue('type', value, {shouldValidate: false});
+                        form.setValue('type', value, {shouldValidate: true});
                       }
                     }}
                     className="w-full"
@@ -804,22 +804,17 @@ export default function CustomerLedgerPage() {
                                 key={field.id}
                                 className="grid grid-cols-[1fr_80px_100px_auto] items-start gap-2"
                               >
-                                {isCashItem ? (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        value="Cash"
-                                        disabled
-                                        className="font-semibold"
-                                      />
-                                    </FormControl>
-                                  </FormItem>
-                                ) : hasItemSelected ? (
-                                  <FormField
-                                    name={`items.${index}.itemName`}
-                                    control={form.control}
-                                    render={({field: formField}) => (
-                                      <FormItem>
+                                <div className={cn(!hasItemSelected && "col-span-full")}>
+                                <FormField
+                                  name={`items.${index}.itemName`}
+                                  control={form.control}
+                                  render={({field: formField}) => (
+                                    <FormItem>
+                                      {isCashItem ? (
+                                        <FormControl>
+                                          <Input value="Cash" disabled className="font-semibold" />
+                                        </FormControl>
+                                      ) : (
                                         <Popover>
                                           <PopoverTrigger asChild>
                                             <FormControl>
@@ -915,14 +910,13 @@ export default function CustomerLedgerPage() {
                                             </Command>
                                           </PopoverContent>
                                         </Popover>
-                                      </FormItem>
-                                    )}
-                                  />
-                                ) : (
-                                  <div className='col-span-full' />
-                                )}
-
-                                {isCashItem ? (
+                                      )}
+                                    </FormItem>
+                                  )}
+                                />
+                                </div>
+                                
+                                {hasItemSelected && (isCashItem ? (
                                   <FormField
                                     name={`items.${index}.total`}
                                     control={form.control}
@@ -932,7 +926,7 @@ export default function CustomerLedgerPage() {
                                            <Input
                                               type="number"
                                               step="0.01"
-                                              placeholder="0.00"
+                                              placeholder="Amount"
                                               {...formField}
                                               value={formField.value === 0 ? '' : formField.value}
                                               onChange={(e) => formField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
@@ -942,7 +936,7 @@ export default function CustomerLedgerPage() {
                                       </FormItem>
                                     )}
                                   />
-                                ) : hasItemSelected ? (
+                                ) : (
                                   <>
                                     <FormField
                                       name={`items.${index}.quantity`}
@@ -1061,9 +1055,7 @@ export default function CustomerLedgerPage() {
                                       )}
                                     />
                                   </>
-                                ) : (
-                                  <div className="col-span-2" />
-                                )}
+                                ))}
                                 {hasItemSelected && (
                                     <Button
                                       type="button"
