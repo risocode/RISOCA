@@ -373,13 +373,7 @@ export default function CustomerLedgerPage() {
 
     if (selectedTxs.length > 0) {
       form.setValue('amount', total, {shouldValidate: false});
-      const description = `Payment for: ${selectedTxs
-        .map(
-          (tx) =>
-            tx.description ||
-            `Credit on ${format(tx.createdAt.toDate(), 'PP')}`
-        )
-        .join(', ')}`;
+      const description = `Payment for ${selectedTxs.length} outstanding credit${selectedTxs.length > 1 ? 's' : ''}.`;
       form.setValue('description', description);
     }
   }, [selectedCredits, outstandingCreditTransactions, form, formType]);
@@ -460,19 +454,28 @@ export default function CustomerLedgerPage() {
         return;
       }
 
-      const allDescriptions = validItems
-        .map((item) => {
-          return item.itemName === 'Cash'
-            ? `Cash: ${formatCurrency(item.total)}`
-            : `${item.itemName} (x${item.quantity})`;
-        })
-        .join(', ');
+      const itemDescriptions = validItems.map((item) => {
+        return item.itemName === 'Cash'
+          ? `Cash: ${formatCurrency(item.total)}`
+          : `${item.itemName} (x${item.quantity})`;
+      });
+
+      let finalDescription = 'Credit Transaction';
+      if (itemDescriptions.length > 0) {
+        if (itemDescriptions.length <= 2) {
+          finalDescription = itemDescriptions.join(', ');
+        } else {
+          finalDescription = `${itemDescriptions[0]} and ${
+            itemDescriptions.length - 1
+          } more items`;
+        }
+      }
 
       payload = {
         customerId,
         type: 'credit',
         amount: data.amount,
-        description: allDescriptions || 'Credit Transaction',
+        description: finalDescription,
         items: validItems,
       };
     } else {
@@ -976,9 +979,9 @@ export default function CustomerLedgerPage() {
                               return (
                                 <div
                                   key={id}
-                                  className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
+                                  className="grid grid-cols-[1fr_110px_auto] items-start gap-2"
                                 >
-                                  <div className="col-span-2 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                  <div className="col-span-1 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
                                     Cash Advance
                                   </div>
                                   <FormField
