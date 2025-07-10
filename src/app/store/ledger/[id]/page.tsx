@@ -93,6 +93,8 @@ import {
   PlusCircle,
   ChevronsUpDown,
   Check,
+  Package,
+  DollarSign,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -372,7 +374,7 @@ export default function CustomerLedgerPage() {
            return;
         }
          if (data.amount <= 0) {
-           toast({ variant: 'destructive', title: 'Error', description: 'Amount must be positive for cash credit.' });
+           toast({ variant: 'destructive', title: 'Error', description: 'Amount must not be 0.' });
            setIsSubmitting(false);
            return;
         }
@@ -781,323 +783,332 @@ export default function CustomerLedgerPage() {
                       </TabsTrigger>
                     </TabsList>
                     <TabsContent value="credit" className="pt-4">
-                      <Tabs
-                        defaultValue="item"
-                        value={creditMode}
-                        onValueChange={(v) =>
-                          setCreditMode(v as 'item' | 'cash')
-                        }
-                      >
-                        <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="item">Add by Item</TabsTrigger>
-                          <TabsTrigger value="cash">Add by Cash</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="item" className="pt-4">
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
-                                <Label>Item</Label>
-                                <Label>Qty</Label>
-                                <Label>Price</Label>
-                                <span className="sr-only">Delete</span>
-                              </div>
-                              {fields.map((field, index) => {
-                                const currentItemName = form.watch(
-                                  `items.${index}.itemName`
-                                );
-                                return (
-                                  <div
-                                    key={field.id}
-                                    className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
-                                  >
-                                    <FormField
-                                      name={`items.${index}.itemName`}
-                                      control={form.control}
-                                      render={({field: formField}) => (
-                                        <FormItem>
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <FormControl>
-                                                <Button
-                                                  variant="outline"
-                                                  role="combobox"
-                                                  className={cn(
-                                                    'w-full justify-between',
-                                                    !formField.value &&
-                                                      'text-muted-foreground'
-                                                  )}
-                                                >
-                                                  {formField.value ||
-                                                    'Select or type an item'}
-                                                  <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                                                </Button>
-                                              </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                              <Command
-                                                filter={(value, search) =>
-                                                  value
-                                                    .toLowerCase()
-                                                    .includes(
-                                                      search.toLowerCase()
-                                                    )
-                                                    ? 1
-                                                    : 0
-                                                }
+                      {creditMode === 'item' ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                              <Label>Item</Label>
+                              <Label>Qty</Label>
+                              <Label>Price</Label>
+                              <span className="sr-only">Delete</span>
+                            </div>
+                            {fields.map((field, index) => {
+                              const currentItemName = form.watch(
+                                `items.${index}.itemName`
+                              );
+                              return (
+                                <div
+                                  key={field.id}
+                                  className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
+                                >
+                                  <FormField
+                                    name={`items.${index}.itemName`}
+                                    control={form.control}
+                                    render={({field: formField}) => (
+                                      <FormItem>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <FormControl>
+                                              <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                className={cn(
+                                                  'w-full justify-between',
+                                                  !formField.value &&
+                                                    'text-muted-foreground'
+                                                )}
                                               >
-                                                <CommandInput
-                                                  placeholder="Search inventory..."
-                                                  onValueChange={(search) =>
-                                                    form.setValue(
-                                                      `items.${index}.itemName`,
-                                                      search
-                                                    )
-                                                  }
-                                                />
-                                                <CommandList>
-                                                  <CommandEmpty>
-                                                    No item found.
-                                                  </CommandEmpty>
-                                                  <CommandGroup>
-                                                    {inventory.map((item) => (
-                                                      <CommandItem
-                                                        value={item.name}
-                                                        key={item.id}
-                                                        onSelect={() => {
-                                                          form.setValue(
-                                                            `items.${index}.itemId`,
-                                                            item.id
-                                                          );
-                                                          form.setValue(
-                                                            `items.${index}.itemName`,
+                                                {formField.value ||
+                                                  'Select or type an item'}
+                                                <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                              </Button>
+                                            </FormControl>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command
+                                              filter={(value, search) =>
+                                                value
+                                                  .toLowerCase()
+                                                  .includes(
+                                                    search.toLowerCase()
+                                                  )
+                                                  ? 1
+                                                  : 0
+                                              }
+                                            >
+                                              <CommandInput
+                                                placeholder="Search inventory..."
+                                                onValueChange={(search) =>
+                                                  form.setValue(
+                                                    `items.${index}.itemName`,
+                                                    search
+                                                  )
+                                                }
+                                              />
+                                              <CommandList>
+                                                <CommandEmpty>
+                                                  No item found.
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                  {inventory.map((item) => (
+                                                    <CommandItem
+                                                      value={item.name}
+                                                      key={item.id}
+                                                      onSelect={() => {
+                                                        form.setValue(
+                                                          `items.${index}.itemId`,
+                                                          item.id
+                                                        );
+                                                        form.setValue(
+                                                          `items.${index}.itemName`,
+                                                          item.name
+                                                        );
+                                                        form.setValue(
+                                                          `items.${index}.unitPrice`,
+                                                          item.price
+                                                        );
+                                                        const qty =
+                                                          form.getValues(
+                                                            `items.${index}.quantity`
+                                                          ) || 1;
+                                                        form.setValue(
+                                                          `items.${index}.quantity`,
+                                                          qty
+                                                        );
+                                                        form.setValue(
+                                                          `items.${index}.total`,
+                                                          item.price * qty
+                                                        );
+                                                      }}
+                                                    >
+                                                      <Check
+                                                        className={cn(
+                                                          'mr-2 h-4 w-4',
+                                                          formField.value ===
                                                             item.name
-                                                          );
-                                                          form.setValue(
-                                                            `items.${index}.unitPrice`,
-                                                            item.price
-                                                          );
-                                                          const qty =
-                                                            form.getValues(
-                                                              `items.${index}.quantity`
-                                                            ) || 1;
-                                                          form.setValue(
-                                                            `items.${index}.quantity`,
-                                                            qty
-                                                          );
-                                                          form.setValue(
-                                                            `items.${index}.total`,
-                                                            item.price * qty
-                                                          );
-                                                        }}
-                                                      >
-                                                        <Check
-                                                          className={cn(
-                                                            'mr-2 h-4 w-4',
-                                                            formField.value ===
-                                                              item.name
-                                                              ? 'opacity-100'
-                                                              : 'opacity-0'
-                                                          )}
-                                                        />
-                                                        <span>{item.name}</span>
-                                                        <span className="ml-auto text-xs text-muted-foreground">
-                                                          Stock: {item.stock}
-                                                        </span>
-                                                      </CommandItem>
-                                                    ))}
-                                                  </CommandGroup>
-                                                </CommandList>
-                                              </Command>
-                                            </PopoverContent>
-                                          </Popover>
-                                        </FormItem>
-                                      )}
-                                    />
+                                                            ? 'opacity-100'
+                                                            : 'opacity-0'
+                                                        )}
+                                                      />
+                                                      <span>{item.name}</span>
+                                                      <span className="ml-auto text-xs text-muted-foreground">
+                                                        Stock: {item.stock}
+                                                      </span>
+                                                    </CommandItem>
+                                                  ))}
+                                                </CommandGroup>
+                                              </CommandList>
+                                            </Command>
+                                          </PopoverContent>
+                                        </Popover>
+                                      </FormItem>
+                                    )}
+                                  />
 
-                                    {currentItemName && (
-                                      <>
-                                        <FormField
-                                          name={`items.${index}.quantity`}
-                                          control={form.control}
-                                          render={({field: formField}) => (
-                                            <FormItem>
-                                              <FormControl>
-                                                <div className="relative">
-                                                  <Input
-                                                    type="number"
-                                                    placeholder="Qty"
-                                                    {...formField}
-                                                    className="pr-12 text-center no-spinners"
-                                                    onChange={(e) => {
-                                                      const qty =
-                                                        parseInt(
-                                                          e.target.value,
-                                                          10
-                                                        ) || 0;
+                                  {currentItemName && (
+                                    <>
+                                      <FormField
+                                        name={`items.${index}.quantity`}
+                                        control={form.control}
+                                        render={({field: formField}) => (
+                                          <FormItem>
+                                            <FormControl>
+                                              <div className="relative">
+                                                <Input
+                                                  type="number"
+                                                  placeholder="Qty"
+                                                  {...formField}
+                                                  className="pr-12 text-center no-spinners"
+                                                  onChange={(e) => {
+                                                    const qty =
+                                                      parseInt(
+                                                        e.target.value,
+                                                        10
+                                                      ) || 0;
+                                                    const price =
+                                                      form.getValues(
+                                                        `items.${index}.unitPrice`
+                                                      );
+                                                    formField.onChange(qty);
+                                                    form.setValue(
+                                                      `items.${index}.total`,
+                                                      (price || 0) * qty
+                                                    );
+                                                  }}
+                                                />
+                                                <div className="absolute inset-y-0 right-0 flex items-center">
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-full w-6"
+                                                    onClick={() => {
+                                                      const val = Math.max(
+                                                        1,
+                                                        (formField.value ||
+                                                          1) - 1
+                                                      );
+                                                      formField.onChange(val);
                                                       const price =
                                                         form.getValues(
                                                           `items.${index}.unitPrice`
                                                         );
-                                                      formField.onChange(qty);
                                                       form.setValue(
                                                         `items.${index}.total`,
-                                                        (price || 0) * qty
+                                                        (price || 0) * val
                                                       );
                                                     }}
-                                                  />
-                                                  <div className="absolute inset-y-0 right-0 flex items-center">
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-full w-6"
-                                                      onClick={() => {
-                                                        const val = Math.max(
-                                                          1,
-                                                          (formField.value ||
-                                                            1) - 1
+                                                    disabled={
+                                                      formField.value <= 1
+                                                    }
+                                                  >
+                                                    <Minus className="h-4 w-4" />
+                                                  </Button>
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-full w-6"
+                                                    onClick={() => {
+                                                      const val =
+                                                        (formField.value ||
+                                                          0) + 1;
+                                                      formField.onChange(val);
+                                                      const price =
+                                                        form.getValues(
+                                                          `items.${index}.unitPrice`
                                                         );
-                                                        formField.onChange(val);
-                                                        const price =
-                                                          form.getValues(
-                                                            `items.${index}.unitPrice`
-                                                          );
-                                                        form.setValue(
-                                                          `items.${index}.total`,
-                                                          (price || 0) * val
-                                                        );
-                                                      }}
-                                                      disabled={
-                                                        formField.value <= 1
-                                                      }
-                                                    >
-                                                      <Minus className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                      type="button"
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-full w-6"
-                                                      onClick={() => {
-                                                        const val =
-                                                          (formField.value ||
-                                                            0) + 1;
-                                                        formField.onChange(val);
-                                                        const price =
-                                                          form.getValues(
-                                                            `items.${index}.unitPrice`
-                                                          );
-                                                        form.setValue(
-                                                          `items.${index}.total`,
-                                                          (price || 0) * val
-                                                        );
-                                                      }}
-                                                    >
-                                                      <Plus className="h-4 w-4" />
-                                                    </Button>
-                                                  </div>
+                                                      form.setValue(
+                                                        `items.${index}.total`,
+                                                        (price || 0) * val
+                                                      );
+                                                    }}
+                                                  >
+                                                    <Plus className="h-4 w-4" />
+                                                  </Button>
                                                 </div>
-                                              </FormControl>
-                                            </FormItem>
-                                          )}
-                                        />
-                                        <FormField
-                                          name={`items.${index}.unitPrice`}
-                                          control={form.control}
-                                          render={({field: formField}) => (
-                                            <FormItem>
-                                              <FormControl>
-                                                <Input
-                                                  type="number"
-                                                  step="0.01"
-                                                  placeholder="Price"
-                                                  {...formField}
-                                                  className="no-spinners"
-                                                  onChange={(e) => {
-                                                    const price =
-                                                      parseFloat(
-                                                        e.target.value
-                                                      ) || 0;
-                                                    const qty = form.getValues(
-                                                      `items.${index}.quantity`
-                                                    );
-                                                    formField.onChange(price);
-                                                    form.setValue(
-                                                      `items.${index}.total`,
-                                                      price * (qty || 0)
-                                                    );
-                                                  }}
-                                                />
-                                              </FormControl>
-                                            </FormItem>
-                                          )}
-                                        />
-                                      </>
-                                    )}
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleRemoveItem(index)}
-                                    >
-                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                              </div>
+                                            </FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        name={`items.${index}.unitPrice`}
+                                        control={form.control}
+                                        render={({field: formField}) => (
+                                          <FormItem>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="Price"
+                                                {...formField}
+                                                className="no-spinners"
+                                                onChange={(e) => {
+                                                  const price =
+                                                    parseFloat(
+                                                      e.target.value
+                                                    ) || 0;
+                                                  const qty = form.getValues(
+                                                    `items.${index}.quantity`
+                                                  );
+                                                  formField.onChange(price);
+                                                  form.setValue(
+                                                    `items.${index}.total`,
+                                                    price * (qty || 0)
+                                                  );
+                                                }}
+                                              />
+                                            </FormControl>
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </>
+                                  )}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveItem(index)}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="flex items-center gap-2">
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() =>
+                              onClick={() => {
+                                setCreditMode('item');
                                 append({
                                   itemName: '',
                                   quantity: 1,
                                   unitPrice: 0,
                                   total: 0,
-                                })
-                              }
+                                });
+                              }}
+                              className="gap-2"
                             >
-                              <PlusCircle className="mr-2" /> Add Item
+                              <Package /> Add Item
                             </Button>
-                            <Separator />
-                            <FormField
-                              control={form.control}
-                              name="amount"
-                              render={({field}) => (
-                                <FormItem>
-                                  <FormLabel>Total Amount (₱)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      {...field}
-                                      disabled
-                                      className="font-bold text-lg"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                             <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCreditMode('cash')}
+                              className="gap-2"
+                            >
+                              <DollarSign /> Add Cash Credit
+                            </Button>
                           </div>
-                        </TabsContent>
-                        <TabsContent value="cash" className="pt-4">
-                           <div className="space-y-4">
-                             <FormField control={form.control} name="description" render={({field}) => (
-                                  <FormItem><FormLabel>Description</FormLabel><FormControl>
-                                      <Input placeholder="e.g., Cash advance" {...field}/>
-                                  </FormControl><FormMessage/></FormItem>
-                              )}/>
-                             <FormField control={form.control} name="amount" render={({field}) => (
-                                  <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                      <Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
-                                  </FormControl><FormMessage/></FormItem>
-                              )}/>
-                           </div>
-                        </TabsContent>
-                      </Tabs>
+                          <Separator />
+                          <FormField
+                            control={form.control}
+                            name="amount"
+                            render={({field}) => (
+                              <FormItem>
+                                <FormLabel>Total Amount (₱)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    {...field}
+                                    disabled
+                                    className="font-bold text-lg"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      ) : (
+                         <div className="space-y-4">
+                           <FormField control={form.control} name="description" render={({field}) => (
+                                <FormItem><FormLabel>Description</FormLabel><FormControl>
+                                    <Input placeholder="e.g., Cash advance" {...field}/>
+                                </FormControl><FormMessage/></FormItem>
+                            )}/>
+                           <FormField control={form.control} name="amount" render={({field}) => (
+                                <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
+                                    <Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber)} />
+                                </FormControl><FormMessage/></FormItem>
+                            )}/>
+                             <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCreditMode('item')}
+                              className="gap-2"
+                            >
+                              <Package /> Back to Item Credit
+                            </Button>
+                         </div>
+                      )}
                     </TabsContent>
                     <TabsContent value="payment" className="pt-4">
                       <>
