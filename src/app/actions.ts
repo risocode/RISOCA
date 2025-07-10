@@ -990,4 +990,18 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   return authenticators;
 }
 
+export async function deleteAuthenticator(
+  id: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    const docRef = doc(db, 'authenticators', id);
+    await deleteDoc(docRef);
+    return {success: true};
+  } catch (error) {
+    console.error('Error deleting authenticator from Firestore: ', error);
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message: `Could not delete key: ${message}`};
+  }
+}
     

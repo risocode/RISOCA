@@ -1,3 +1,4 @@
+
 import type {Metadata, Viewport} from 'next';
 import {Inter} from 'next/font/google';
 import './globals.css';
@@ -8,6 +9,7 @@ import {SiteHeader} from '@/app/components/site-header';
 import {InstallPwa} from './components/install-pwa';
 import {headers} from 'next/headers';
 import {SiteProtection} from './components/site-protection';
+import {cn} from '@/lib/utils';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -47,13 +49,13 @@ export default async function RootLayout({
   const headersList = headers();
   const pathname = headersList.get('x-next-pathname') || '';
   const isPrintRoute = pathname.startsWith('/print');
-  const isPublicStoreRoute = pathname.startsWith('/store');
-
+  
   const mainContent = (
     <div className="relative flex flex-col h-full">
       <SiteHeader />
       <main className="flex-1 pb-24 overflow-y-auto">{children}</main>
       <BottomNav />
+      <InstallPwa />
     </div>
   );
 
@@ -90,14 +92,9 @@ export default async function RootLayout({
       </head>
       <body className="font-body antialiased h-full bg-background">
         <ReceiptsProvider>
-          {isPublicStoreRoute ? (
-            mainContent
-          ) : (
             <SiteProtection>{mainContent}</SiteProtection>
-          )}
         </ReceiptsProvider>
         <Toaster />
-        <InstallPwa />
       </body>
     </html>
   );

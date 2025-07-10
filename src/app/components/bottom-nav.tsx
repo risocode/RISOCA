@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -11,6 +12,7 @@ import {
   ReceiptText,
   Landmark,
   Wallet,
+  Settings,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {
@@ -95,7 +97,7 @@ export function BottomNav() {
         <SheetHeader className="mb-6">
           <SheetTitle className="text-center text-lg">Create New</SheetTitle>
         </SheetHeader>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <SheetClose asChild>
             <Button
               asChild
@@ -129,6 +131,18 @@ export function BottomNav() {
               <Link href="/wallet">
                 <Wallet className="w-8 h-8" />
                 <span>Wallet</span>
+              </Link>
+            </Button>
+          </SheetClose>
+           <SheetClose asChild>
+            <Button
+              asChild
+              variant="outline"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+            >
+              <Link href="/settings">
+                <Settings className="w-8 h-8" />
+                <span>Settings</span>
               </Link>
             </Button>
           </SheetClose>
