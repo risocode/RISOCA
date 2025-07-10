@@ -568,13 +568,15 @@ export async function addLedgerTransaction(
         
         // If specific credits are paid off, update their `paidAmount`
         if (transactionData.paidCreditIds && transactionData.paidCreditIds.length > 0) {
-            for (const creditId of transactionData.paidCreditIds) {
-                const creditRef = doc(db, 'ledger', creditId);
-                const creditDoc = await transaction.get(creditRef);
+            // READ PHASE: Get all credit documents first.
+            const creditRefs = transactionData.paidCreditIds.map(id => doc(db, 'ledger', id));
+            const creditDocs = await Promise.all(creditRefs.map(ref => transaction.get(ref)));
+            
+            // WRITE PHASE: Now, perform all the updates.
+            for (const creditDoc of creditDocs) {
                 if (creditDoc.exists()) {
                     const creditData = creditDoc.data() as LedgerTransaction;
-                    const remainingBalance = creditData.amount - (creditData.paidAmount || 0);
-                    transaction.update(creditRef, { paidAmount: creditData.amount }); // Mark as fully paid
+                    transaction.update(creditDoc.ref, { paidAmount: creditData.amount }); // Mark as fully paid
                 }
             }
         } else {
