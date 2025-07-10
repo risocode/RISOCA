@@ -216,12 +216,13 @@ export default function WalletPage() {
     return () => unsubs.forEach((unsub) => unsub());
   }, [toast]);
 
-  const {enrichedHistory, openDay, latestClosedDay, todayClosed} = useMemo(() => {
-    const openDay = walletHistory.find((entry) => entry.status === 'open');
-    const todayClosed = walletHistory.find((entry) =>
-        isSameDay(parseISO(entry.date), startOfToday()) && entry.status === 'closed'
+  const {enrichedHistory, openDay, todayClosed, latestClosedDay} = useMemo(() => {
+    const today = startOfToday();
+    const openDayEntry = walletHistory.find((entry) => entry.status === 'open');
+    const todayClosedEntry = walletHistory.find((entry) =>
+        isSameDay(parseISO(entry.date), today) && entry.status === 'closed'
     );
-    const latestClosedDay = walletHistory.find(
+    const latestClosedDayEntry = walletHistory.find(
       (entry) => entry.status === 'closed'
     );
 
@@ -248,8 +249,13 @@ export default function WalletPage() {
       return {...entry, dailySales, dailyExpenses, profit};
     });
 
-    return {enrichedHistory: enriched, openDay, latestClosedDay, todayClosed};
-  }, [walletHistory, sales, receipts]);
+    return {
+        enrichedHistory: enriched, 
+        openDay: openDayEntry, 
+        todayClosed: todayClosedEntry, 
+        latestClosedDay: latestClosedDayEntry,
+    };
+}, [walletHistory, sales, receipts]);
 
   const totalProfit = useMemo(() => {
     return enrichedHistory
