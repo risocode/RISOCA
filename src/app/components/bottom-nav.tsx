@@ -97,12 +97,12 @@ export function BottomNav() {
         <SheetHeader className="mb-6">
           <SheetTitle className="text-center text-lg">Create New</SheetTitle>
         </SheetHeader>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex justify-around gap-4">
           <SheetClose asChild>
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/store">
                 <Store className="w-8 h-8" />
@@ -114,7 +114,7 @@ export function BottomNav() {
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/store/receipts">
                 <ReceiptText className="w-8 h-8" />
@@ -126,7 +126,7 @@ export function BottomNav() {
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/wallet">
                 <Wallet className="w-8 h-8" />
