@@ -53,8 +53,10 @@ import {
   Info,
   Search,
   Users,
+  CheckCircle,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
+import {cn} from '@/lib/utils';
 
 const AddCustomerFormSchema = z.object({
   name: z.string().min(1, 'Customer name is required.'),
@@ -318,26 +320,38 @@ export default function LedgerPage() {
                 </div>
               ))
             ) : processedCustomers.length > 0 ? (
-              processedCustomers.map((customer) => (
-                <Link
-                  key={customer.id}
-                  href={`/store/ledger/${customer.id}`}
-                  className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
-                >
-                  <span className="font-medium truncate">{customer.name}</span>
-                  <span
-                    className={`font-mono text-center ${
-                      customer.balance > 0 ? 'text-destructive' : 'text-success'
-                    }`}
+              processedCustomers.map((customer) => {
+                const isPaid = customer.balance <= 0;
+                return (
+                  <Link
+                    key={customer.id}
+                    href={`/store/ledger/${customer.id}`}
+                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
                   >
-                    {formatCurrency(customer.balance)}
-                  </span>
-                  <span className="font-mono text-center text-muted-foreground">
-                    {formatCurrency(customer.paid)}
-                  </span>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
-                </Link>
-              ))
+                    <span
+                      className={cn(
+                        'font-medium truncate flex items-center gap-2',
+                        isPaid && 'text-success'
+                      )}
+                    >
+                      {isPaid && <CheckCircle className="h-4 w-4" />}
+                      {customer.name}
+                    </span>
+                    <span
+                      className={cn(
+                        'font-mono text-center',
+                        isPaid ? 'text-success' : 'text-destructive'
+                      )}
+                    >
+                      {formatCurrency(customer.balance)}
+                    </span>
+                    <span className="font-mono text-center text-muted-foreground">
+                      {formatCurrency(customer.paid)}
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
+                  </Link>
+                );
+              })
             ) : (
               <div className="text-center p-10 text-muted-foreground flex flex-col items-center">
                 <Info className="w-8 h-8 mb-2" />
