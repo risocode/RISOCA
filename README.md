@@ -133,9 +133,15 @@ This application is ready to be deployed to any static hosting provider like Ver
 
 1.  **Push to GitHub:** Create a repository on GitHub and push your code to it.
 2.  **Import to Vercel:** Import your repository into Vercel.
-3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file. **Make sure to update `RP_ID` and `RP_ORIGIN` to match your Vercel deployment URL.** For example, if your site is `https://my-risoca-app.vercel.app`, you would set:
-    * `RP_ID=my-risoca-app.vercel.app`
-    * `RP_ORIGIN=https://my-risoca-app.vercel.app`
-4.  **Deploy:** Click the **Deploy** button.
+3.  **Configure Environment Variables:** In the Vercel project settings, add all the environment variables from your `.env` file.
+4.  **Important: Configure Passkey/WebAuthn Variables:**
+    The `RP_ID` and `RP_ORIGIN` variables are critical for Passkey authentication to work. You must update them to match your **primary production domain**.
+    
+    For example, if your site's primary domain is `https://www.risoca.store`:
+    * `RP_ID=risoca.store` (The registrable domain, without `www`)
+    * `RP_ORIGIN=https://www.risoca.store` (The full URL, including the protocol)
+    
+    If you have multiple domains (e.g., `www.risoca.store` and the default `risoca-ten.vercel.app`), you should configure your hosting provider to redirect all traffic to your primary domain. Passkeys registered on `www.risoca.store` will not work on `risoca-ten.vercel.app`, and vice-versa.
+5.  **Deploy:** Click the **Deploy** button.
 
 Once deployed, you can access the web app from your browser and use the "Install" feature in Chrome to add it to your device.
