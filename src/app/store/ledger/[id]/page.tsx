@@ -159,7 +159,7 @@ export default function CustomerLedgerPage() {
       type: 'credit',
       amount: 0,
       description: '',
-      items: [],
+      items: [{ itemName: '', quantity: 1, unitPrice: 0, total: 0 }],
     },
   });
 
@@ -317,7 +317,9 @@ export default function CustomerLedgerPage() {
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
     
-    if (data.type === 'credit' && (!data.items || data.items.length === 0 || !data.items[0].itemName)) {
+    const validItems = data.items?.filter(item => item.itemName && item.itemName.trim() !== '') || [];
+
+    if (data.type === 'credit' && validItems.length === 0) {
        toast({
         variant: 'destructive',
         title: 'Error',
@@ -328,8 +330,8 @@ export default function CustomerLedgerPage() {
     }
 
     let autoDescription = data.description;
-    if (data.type === 'credit' && data.items && data.items.length > 0) {
-      autoDescription = data.items.map(item => item.itemName).join(', ');
+    if (data.type === 'credit' && validItems.length > 0) {
+      autoDescription = validItems.map(item => item.itemName).join(', ');
     }
 
     const payload: LedgerTransactionInput = {
@@ -337,7 +339,7 @@ export default function CustomerLedgerPage() {
       type: data.type,
       amount: data.amount,
       description: autoDescription,
-      items: data.items,
+      items: validItems,
       paidCreditIds: data.type === 'payment' && selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
     };
 
@@ -436,6 +438,14 @@ export default function CustomerLedgerPage() {
     setIsUpdatingName(false);
   };
   
+  const handleRemoveItem = (index: number) => {
+    if (fields.length > 1) {
+        remove(index);
+    } else {
+        replace([{ itemName: '', quantity: 1, unitPrice: 0, total: 0 }]);
+    }
+  };
+
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
       minimumFractionDigits: 2,
@@ -623,104 +633,107 @@ export default function CustomerLedgerPage() {
 
                          {formType === 'credit' ? (
                             <div className="space-y-4">
-                                <Label>Items</Label>
                                 <div className="space-y-2">
-                                {fields.map((field, index) => {
-                                  const currentItemName = form.watch(`items.${index}.itemName`);
-                                  return (
-                                    <div key={field.id} className="flex items-start gap-2">
-                                      <div className="flex-grow">
-                                        <FormField
-                                            name={`items.${index}.itemName`}
-                                            control={form.control}
-                                            render={({ field: formField }) => (
-                                            <FormItem>
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <FormControl>
-                                                    <Button variant="outline" role="combobox" className={cn("w-full justify-between", !formField.value && "text-muted-foreground")}>
-                                                      {formField.value || "Select or type an item"}
-                                                      <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
-                                                    </Button>
-                                                  </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                  <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                                    <CommandInput placeholder="Search inventory..." onValueChange={(search) => form.setValue(`items.${index}.itemName`, search)} />
-                                                    <CommandList>
-                                                      <CommandEmpty>No item found.</CommandEmpty>
-                                                      <CommandGroup>
-                                                        {inventory.map((item) => (
-                                                          <CommandItem value={item.name} key={item.id} onSelect={() => {
-                                                            form.setValue(`items.${index}.itemId`, item.id);
-                                                            form.setValue(`items.${index}.itemName`, item.name);
-                                                            form.setValue(`items.${index}.unitPrice`, item.price);
-                                                            form.setValue(`items.${index}.quantity`, 1);
-                                                            const qty = form.getValues(`items.${index}.quantity`);
-                                                            form.setValue(`items.${index}.total`, item.price * (qty || 1));
-                                                          }}>
-                                                            <Check className={cn("mr-2 h-4 w-4", formField.value === item.name ? "opacity-100" : "opacity-0")} />
-                                                            <span>{item.name}</span><span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
-                                                          </CommandItem>
-                                                        ))}
-                                                      </CommandGroup>
-                                                    </CommandList>
-                                                  </Command>
-                                                </PopoverContent>
-                                              </Popover>
-                                            </FormItem>
-                                            )}
-                                        />
-                                      </div>
-                                      
-                                      {currentItemName && (
-                                        <>
-                                            <FormField
-                                                name={`items.${index}.quantity`}
-                                                control={form.control}
-                                                render={({ field: formField }) => (
-                                                <FormItem className="w-24">
-                                                    <FormControl>
-                                                        <div className="relative">
-                                                          <Input type="number" placeholder="Qty" {...formField} className="pr-16 text-center no-spinners" onChange={(e) => {
-                                                            const qty = parseInt(e.target.value, 10) || 0;
-                                                            const price = form.getValues(`items.${index}.unitPrice`);
-                                                            formField.onChange(qty);
-                                                            form.setValue(`items.${index}.total`, (price || 0) * qty);
-                                                          }} />
-                                                          <div className="absolute inset-y-0 right-0.5 flex items-center">
-                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => formField.onChange(Math.max(1, (formField.value || 1) - 1))} disabled={formField.value <= 1}><Minus className="h-4 w-4" /></Button>
-                                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => formField.onChange((formField.value || 0) + 1)}><Plus className="h-4 w-4" /></Button>
-                                                          </div>
-                                                        </div>
-                                                    </FormControl>
-                                                </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                name={`items.${index}.unitPrice`}
-                                                control={form.control}
-                                                render={({ field: formField }) => (
-                                                <FormItem className="flex-grow">
-                                                    <FormControl>
-                                                      <Input type="number" step="0.01" placeholder="Price" {...formField} className="no-spinners" onChange={(e) => {
-                                                          const price = parseFloat(e.target.value) || 0;
-                                                          const qty = form.getValues(`items.${index}.quantity`);
-                                                          formField.onChange(price);
-                                                          form.setValue(`items.${index}.total`, price * (qty || 0));
-                                                      }}/>
-                                                    </FormControl>
-                                                </FormItem>
-                                                )}
-                                            />
-                                        </>
-                                      )}
-                                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                                        <Label>Item</Label>
+                                        <Label>Qty</Label>
+                                        <Label>Price</Label>
+                                        <span className="sr-only">Delete</span>
                                     </div>
-                                  )
-                                })}
-                                <Button type="button" variant="outline" size="sm" onClick={() => append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 })}><PlusCircle className="mr-2" /> Add Item</Button>
+                                    {fields.map((field, index) => {
+                                      const currentItemName = form.watch(`items.${index}.itemName`);
+                                      return (
+                                        <div key={field.id} className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2">
+                                            <FormField
+                                                name={`items.${index}.itemName`}
+                                                control={form.control}
+                                                render={({ field: formField }) => (
+                                                <FormItem>
+                                                  <Popover>
+                                                    <PopoverTrigger asChild>
+                                                      <FormControl>
+                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !formField.value && "text-muted-foreground")}>
+                                                          {formField.value || "Select or type an item"}
+                                                          <ChevronsUpDown className="w-4 h-4 ml-2 opacity-50 shrink-0" />
+                                                        </Button>
+                                                      </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                      <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                                        <CommandInput placeholder="Search inventory..." onValueChange={(search) => form.setValue(`items.${index}.itemName`, search)} />
+                                                        <CommandList>
+                                                          <CommandEmpty>No item found.</CommandEmpty>
+                                                          <CommandGroup>
+                                                            {inventory.map((item) => (
+                                                              <CommandItem value={item.name} key={item.id} onSelect={() => {
+                                                                form.setValue(`items.${index}.itemId`, item.id);
+                                                                form.setValue(`items.${index}.itemName`, item.name);
+                                                                form.setValue(`items.${index}.unitPrice`, item.price);
+                                                                const qty = form.getValues(`items.${index}.quantity`) || 1;
+                                                                form.setValue(`items.${index}.quantity`, qty);
+                                                                form.setValue(`items.${index}.total`, item.price * qty);
+                                                              }}>
+                                                                <Check className={cn("mr-2 h-4 w-4", formField.value === item.name ? "opacity-100" : "opacity-0")} />
+                                                                <span>{item.name}</span><span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
+                                                              </CommandItem>
+                                                            ))}
+                                                          </CommandGroup>
+                                                        </CommandList>
+                                                      </Command>
+                                                    </PopoverContent>
+                                                  </Popover>
+                                                </FormItem>
+                                                )}
+                                            />
+                                          
+                                          {currentItemName && (
+                                            <>
+                                                <FormField
+                                                    name={`items.${index}.quantity`}
+                                                    control={form.control}
+                                                    render={({ field: formField }) => (
+                                                    <FormItem>
+                                                        <FormControl>
+                                                            <div className="relative">
+                                                              <Input type="number" placeholder="Qty" {...formField} className="pr-12 text-center no-spinners" onChange={(e) => {
+                                                                const qty = parseInt(e.target.value, 10) || 0;
+                                                                const price = form.getValues(`items.${index}.unitPrice`);
+                                                                formField.onChange(qty);
+                                                                form.setValue(`items.${index}.total`, (price || 0) * qty);
+                                                              }} />
+                                                              <div className="absolute inset-y-0 right-0 flex items-center">
+                                                                <Button type="button" variant="ghost" size="icon" className="h-full w-6" onClick={() => { const val = Math.max(1, (formField.value || 1) - 1); formField.onChange(val); const price = form.getValues(`items.${index}.unitPrice`); form.setValue(`items.${index}.total`, (price || 0) * val); }} disabled={formField.value <= 1}><Minus className="h-4 w-4" /></Button>
+                                                                <Button type="button" variant="ghost" size="icon" className="h-full w-6" onClick={() => { const val = (formField.value || 0) + 1; formField.onChange(val); const price = form.getValues(`items.${index}.unitPrice`); form.setValue(`items.${index}.total`, (price || 0) * val); }}><Plus className="h-4 w-4" /></Button>
+                                                              </div>
+                                                            </div>
+                                                        </FormControl>
+                                                    </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    name={`items.${index}.unitPrice`}
+                                                    control={form.control}
+                                                    render={({ field: formField }) => (
+                                                    <FormItem>
+                                                        <FormControl>
+                                                          <Input type="number" step="0.01" placeholder="Price" {...formField} className="no-spinners" onChange={(e) => {
+                                                              const price = parseFloat(e.target.value) || 0;
+                                                              const qty = form.getValues(`items.${index}.quantity`);
+                                                              formField.onChange(price);
+                                                              form.setValue(`items.${index}.total`, price * (qty || 0));
+                                                          }}/>
+                                                        </FormControl>
+                                                    </FormItem>
+                                                    )}
+                                                />
+                                            </>
+                                          )}
+                                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                        </div>
+                                      )
+                                    })}
                                 </div>
+                                <Button type="button" variant="outline" size="sm" onClick={() => append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 })}><PlusCircle className="mr-2" /> Add Item</Button>
                                 <Separator />
                                 <FormField control={form.control} name="amount" render={({field}) => (
                                     <FormItem><FormLabel>Total Amount (₱)</FormLabel><FormControl>
