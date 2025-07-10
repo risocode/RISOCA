@@ -315,14 +315,21 @@ export default function StorePage() {
                             />
                             <CommandList>
                               <CommandEmpty>
-                                <CommandItem
-                                  onSelect={() => {
-                                    form.setValue('itemName', searchValue);
-                                    setPopoverOpen(false);
-                                  }}
-                                >
-                                  Add "{searchValue}" as a new item
-                                </CommandItem>
+                                <div className="p-2 text-center text-sm text-muted-foreground">
+                                  No results found.
+                                  {searchValue && (
+                                    <CommandItem
+                                      onSelect={() => {
+                                        form.setValue('itemName', searchValue);
+                                        setPopoverOpen(false);
+                                      }}
+                                      className="mt-2 aria-selected:bg-primary aria-selected:text-primary-foreground"
+                                    >
+                                      <PlusCircle className="mr-2"/>
+                                      Add "{searchValue}"
+                                    </CommandItem>
+                                  )}
+                                </div>
                               </CommandEmpty>
                               <CommandGroup>
                                 {inventory.map((item) => (
