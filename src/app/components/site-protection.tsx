@@ -25,6 +25,16 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {useToast} from '@/hooks/use-toast';
 import {KeyRound, Loader2, Fingerprint} from 'lucide-react';
 import {usePasskey} from '@/hooks/use-passkey';
@@ -46,12 +56,14 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const {toast} = useToast();
   const {
-    authenticators,
     hasPasskeys,
     isSupported,
     loginWithPasskey,
-    isLoading,
+    registerNewPasskey,
+    isLoading: isPasskeyLoading,
   } = usePasskey();
+  
+  const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
 
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(PasswordSchema),
@@ -66,6 +78,13 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       setAuthStep(AuthStep.Login);
     }
   }, []);
+  
+  const finishAuthentication = useCallback(() => {
+      sessionStorage.setItem('risoca-auth', 'true');
+      setAuthStep(AuthStep.Authenticated);
+      setShowRegistrationPrompt(false);
+      toast({variant: 'success', title: 'Login Successful'});
+  }, [toast]);
 
   useEffect(() => {
     checkSession();
@@ -75,9 +94,11 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     setIsSubmitting(true);
     const response = await verifyPassword(data.password);
     if (response.success) {
-      sessionStorage.setItem('risoca-auth', 'true');
-      setAuthStep(AuthStep.Authenticated);
-      toast({variant: 'success', title: 'Login Successful'});
+      if (isSupported && !hasPasskeys) {
+        setShowRegistrationPrompt(true);
+      } else {
+        finishAuthentication();
+      }
     } else {
       form.setError('password', {
         type: 'manual',
@@ -91,12 +112,28 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const handlePasskeyLogin = async () => {
     const {success, error} = await loginWithPasskey();
     if (success) {
-      sessionStorage.setItem('risoca-auth', 'true');
-      setAuthStep(AuthStep.Authenticated);
-      toast({variant: 'success', title: 'Login Successful'});
+      finishAuthentication();
     } else {
       toast({variant: 'destructive', title: 'Login Failed', description: error});
     }
+  };
+
+  const handleRegisterFromPrompt = async () => {
+    const {success, error} = await registerNewPasskey();
+    if (success) {
+      toast({
+        variant: 'success',
+        title: 'Device Registered',
+        description: 'You can now use this device to log in.',
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Registration Failed',
+        description: error,
+      });
+    }
+    finishAuthentication();
   };
 
   const renderLoginScreen = () => (
@@ -153,10 +190,10 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               <div className="flex flex-col gap-2">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isPasskeyLoading}
                   className="w-full"
                 >
-                  {isSubmitting && form.formState.isSubmitting && (
+                  {(isSubmitting || isPasskeyLoading) && (
                     <Loader2 className="mr-2 animate-spin" />
                   )}
                   Unlock
@@ -166,9 +203,9 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                     type="button"
                     variant="secondary"
                     onClick={handlePasskeyLogin}
-                    disabled={isLoading}
+                    disabled={isPasskeyLoading || isSubmitting}
                   >
-                    {isLoading ? (
+                    {isPasskeyLoading ? (
                       <Loader2 className="mr-2 animate-spin" />
                     ) : (
                       <Fingerprint className="mr-2" />
@@ -183,6 +220,25 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       </Card>
     </div>
   );
+  
+  const renderPasskeyPrompt = () => (
+    <AlertDialog open={showRegistrationPrompt}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Enable Quick Login?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Would you like to register this device to log in quickly and securely with its built-in security (e.g., fingerprint, face, or PIN)?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={finishAuthentication}>Not Now</AlertDialogCancel>
+          <AlertDialogAction onClick={handleRegisterFromPrompt}>
+            <Fingerprint className="mr-2 h-4 w-4" /> Register Device
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   if (authStep === AuthStep.Checking) {
     return (
@@ -193,7 +249,12 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   }
 
   if (authStep === AuthStep.Login) {
-    return renderLoginScreen();
+    return (
+      <>
+        {renderLoginScreen()}
+        {renderPasskeyPrompt()}
+      </>
+    );
   }
 
   if (authStep === AuthStep.Authenticated) {
