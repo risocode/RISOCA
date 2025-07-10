@@ -524,6 +524,12 @@ export default function CustomerLedgerPage() {
     );
   }
 
+  const sortedFields = useMemo(() => {
+    const itemFields = fields.filter(f => f.itemName !== 'Cash');
+    const cashFields = fields.filter(f => f.itemName === 'Cash');
+    return [...itemFields, ...cashFields];
+  }, [fields]);
+
   return (
     <>
       <div className="flex flex-1 flex-col p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
@@ -835,12 +841,58 @@ export default function CustomerLedgerPage() {
                         )}
 
                         <div className="space-y-2">
-                         {fields.filter(f => f.itemName !== 'Cash').map((field, index) => {
+                         {sortedFields.map((field) => {
                             const originalIndex = fields.findIndex(f => f.id === field.id);
                             const currentItem = form.watch(`items.${originalIndex}`);
-                            const currentItemName = currentItem.itemName;
+                            const currentItemName = currentItem?.itemName;
                             const hasItemSelected = !!currentItemName;
-
+                            
+                            if (field.itemName === 'Cash') {
+                                return(
+                                <div key={field.id} className="grid grid-cols-[1fr_110px_auto] items-start gap-2">
+                                     <FormField
+                                        name={`items.${originalIndex}.itemName`}
+                                        control={form.control}
+                                        render={({field: formField}) => (
+                                            <FormItem className="col-span-1">
+                                                 <Input type="hidden" {...formField} />
+                                                 <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                                    {formField.value}
+                                                </div>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        name={`items.${originalIndex}.total`}
+                                        control={form.control}
+                                        render={({field: amountField}) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <Input
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                {...amountField}
+                                                value={amountField.value || ''}
+                                                onChange={(e) => amountField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                                className="no-spinners text-right"
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemoveItem(originalIndex)}
+                                    >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                </div>
+                                )
+                            }
+                            
                             return (
                               <div
                                 key={field.id}
@@ -1096,54 +1148,6 @@ export default function CustomerLedgerPage() {
                               </div>
                             );
                           })}
-
-                          {fields.filter(f => f.itemName === 'Cash').map((field, index) => {
-                                const originalIndex = fields.findIndex(f => f.id === field.id);
-                                return(
-                                <div key={field.id} className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2">
-                                     <FormField
-                                        name={`items.${originalIndex}.itemName`}
-                                        control={form.control}
-                                        render={({field: formField}) => (
-                                            <FormItem>
-                                                 <Input type="hidden" {...formField} />
-                                                 <div className="flex h-10 w-full items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                                    {formField.value}
-                                                </div>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <div/>
-                                    <FormField
-                                        name={`items.${originalIndex}.total`}
-                                        control={form.control}
-                                        render={({field: amountField}) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <Input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                {...amountField}
-                                                value={amountField.value || ''}
-                                                onChange={(e) => amountField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                                                className="no-spinners text-right"
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveItem(originalIndex)}
-                                    >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                    </Button>
-                                </div>
-                                )
-                            })}
                         </div>
                       </div>
 
