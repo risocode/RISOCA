@@ -134,18 +134,6 @@ export function BottomNav() {
               </Link>
             </Button>
           </SheetClose>
-           <SheetClose asChild>
-            <Button
-              asChild
-              variant="outline"
-              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
-            >
-              <Link href="/settings">
-                <Settings className="w-8 h-8" />
-                <span>Settings</span>
-              </Link>
-            </Button>
-          </SheetClose>
         </div>
       </SheetContent>
     </Sheet>
