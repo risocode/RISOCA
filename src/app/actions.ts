@@ -833,7 +833,7 @@ export async function getRegistrationOptions(): Promise<PublicKeyCredentialCreat
     userName: rpName,
     // Don't recommend existing authenticators - we want to register new ones
     excludeCredentials: authenticators.map((auth) => ({
-      id: auth.credentialID,
+      id: Buffer.from(auth.credentialID, 'base64'),
       type: 'public-key',
       transports: auth.transports,
     })),
@@ -880,8 +880,8 @@ export async function verifyNewRegistration(
     const {credentialPublicKey, credentialID, counter} = registrationInfo;
 
     const newAuthenticator: Authenticator = {
-      credentialID: Buffer.from(credentialID),
-      credentialPublicKey: Buffer.from(credentialPublicKey),
+      credentialID: Buffer.from(credentialID).toString('base64'),
+      credentialPublicKey: Buffer.from(credentialPublicKey).toString('base64'),
       counter,
       credentialDeviceType: registrationInfo.credentialDeviceType,
       transports: response.response.transports || [],
@@ -901,7 +901,7 @@ export async function getAuthenticationOptions(): Promise<PublicKeyCredentialReq
   const authenticators = await getAuthenticators();
   const options = await generateAuthenticationOptions({
     allowCredentials: authenticators.map((auth) => ({
-      id: auth.credentialID,
+      id: Buffer.from(auth.credentialID, 'base64'),
       type: 'public-key',
       transports: auth.transports,
     })),
@@ -925,7 +925,10 @@ export async function verifyExistingAuthentication(
   }
   const {challenge} = challengeSnap.data();
 
-  const q = query(collection(db, 'authenticators'), where('credentialID', '==', response.id));
+  const q = query(
+    collection(db, 'authenticators'),
+    where('credentialID', '==', response.id)
+  );
   const querySnapshot = await getDocs(q);
   
   if (querySnapshot.empty) {
@@ -934,7 +937,7 @@ export async function verifyExistingAuthentication(
   
   const authenticatorDoc = querySnapshot.docs[0];
 
-  const authenticator = authenticatorDoc.data() as Authenticator;
+  const authenticatorData = authenticatorDoc.data() as Authenticator;
 
   let verification: VerifiedAuthenticationResponse;
   try {
@@ -944,9 +947,10 @@ export async function verifyExistingAuthentication(
       expectedOrigin: origin,
       expectedRPID: rpID,
       authenticator: {
-        ...authenticator,
-        credentialID: Buffer.from(authenticator.credentialID),
-        credentialPublicKey: Buffer.from(authenticator.credentialPublicKey),
+        credentialID: Buffer.from(authenticatorData.credentialID, 'base64'),
+        credentialPublicKey: Buffer.from(authenticatorData.credentialPublicKey, 'base64'),
+        counter: authenticatorData.counter,
+        transports: authenticatorData.transports,
       },
       requireUserVerification: false,
     });
@@ -977,16 +981,10 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   const authenticators: Authenticator[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    // When retrieving from Firestore, the binary data is in a specific object format.
-    // It needs to be converted back to a Buffer for the simplewebauthn library.
-    const credentialID = Buffer.from(data.credentialID.data);
-    const credentialPublicKey = Buffer.from(data.credentialPublicKey.data);
-
+    
     authenticators.push({
       id: doc.id, 
       ...data,
-      credentialID,
-      credentialPublicKey,
     } as Authenticator);
   });
   return authenticators;

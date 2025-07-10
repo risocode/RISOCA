@@ -88,8 +88,8 @@ export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
 // WebAuthn Authenticator Schema
 export type Authenticator = {
   id?: string;
-  credentialID: Buffer; // Changed from Uint8Array to Buffer
-  credentialPublicKey: Buffer; // Changed from Uint8Array to Buffer
+  credentialID: string; // Stored as Base64 string
+  credentialPublicKey: string; // Stored as Base64 string
   counter: number;
   credentialDeviceType?: CredentialDeviceType;
   credentialBackedUp?: boolean;
