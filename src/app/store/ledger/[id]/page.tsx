@@ -13,6 +13,7 @@ import {
   onSnapshot,
   doc,
   where,
+  orderBy
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {
@@ -26,7 +27,8 @@ import {
   type Customer,
   type LedgerTransaction,
   type LedgerTransactionInput,
-  SaleItemSchema
+  SaleItemSchema,
+  type InventoryItem
 } from '@/lib/schemas';
 
 import {
@@ -89,6 +91,8 @@ import {
   Pencil,
   Info,
   PlusCircle,
+  ChevronsUpDown,
+  Check
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -114,9 +118,12 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import {Separator} from '@/components/ui/separator';
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
+import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList} from '@/components/ui/command';
 
-const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true, paidCreditIds: true}).extend({
-    items: z.array(SaleItemSchema.omit({itemId: true})).optional()
+
+const TransactionFormSchema = LedgerTransactionSchema.omit({customerId: true}).extend({
+  items: z.array(SaleItemSchema).optional()
 });
 type TransactionFormData = z.infer<typeof TransactionFormSchema>;
 
@@ -127,6 +134,7 @@ export default function CustomerLedgerPage() {
   const {toast} = useToast();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -141,6 +149,9 @@ export default function CustomerLedgerPage() {
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
@@ -156,7 +167,7 @@ export default function CustomerLedgerPage() {
     control: form.control,
     name: "items",
   });
-
+  
   const formType = useWatch({ control: form.control, name: 'type' });
   const formItems = useWatch({ control: form.control, name: 'items' });
 
@@ -174,7 +185,6 @@ export default function CustomerLedgerPage() {
     form.setValue('description', '');
     setSelectedCredits(new Set());
   }, [formType, replace, form]);
-
 
   useEffect(() => {
     if (!customerId) return;
@@ -201,7 +211,6 @@ export default function CustomerLedgerPage() {
           });
           router.push('/store/ledger');
         }
-        setIsLoading(false);
       }
     );
 
@@ -220,9 +229,24 @@ export default function CustomerLedgerPage() {
       setTransactions(transData);
     });
 
+    const inventoryQuery = query(
+      collection(db, 'inventory'),
+      orderBy('name', 'asc')
+    );
+    const unsubInventory = onSnapshot(inventoryQuery, (snapshot) => {
+        setInventory(
+          snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()} as InventoryItem))
+        );
+    });
+
+    Promise.all([unsubCustomer, unsubTransactions, unsubInventory]).then(() => {
+        setIsLoading(false);
+    });
+
     return () => {
       unsubCustomer();
       unsubTransactions();
+      unsubInventory();
     };
   }, [customerId, router, toast]);
 
@@ -309,11 +333,8 @@ export default function CustomerLedgerPage() {
       amount: data.amount,
       description: data.description,
       items: data.items,
+      paidCreditIds: data.type === 'payment' && selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
     };
-
-    if (data.type === 'payment' && selectedCredits.size > 0) {
-        payload.paidCreditIds = Array.from(selectedCredits);
-    }
 
     const response = await addLedgerTransaction(payload);
 
@@ -539,7 +560,7 @@ export default function CustomerLedgerPage() {
                                   <TableCell className="text-center">
                                       {tx.status === 'deleted' ? <Badge variant="destructive">Deleted</Badge> : <Badge variant={tx.type === 'credit' ? 'destructive' : 'success'}>{tx.type}</Badge>}
                                   </TableCell>
-                                  <TableCell className={cn("max-w-[200px] truncate", tx.status === 'deleted' && 'line-through')}>{tx.description}</TableCell>
+                                  <TableCell className={cn("max-w-[200px] truncate", tx.status === 'deleted' && 'line-through')}>{tx.description || (tx.items ? `${tx.items.length} items` : "Payment")}</TableCell>
                                   <TableCell className={cn("text-right font-mono", tx.status === 'deleted' && 'line-through')}>{formatCurrency(tx.amount)}</TableCell>
                                   <TableCell className="text-center">
                                       <Button variant="ghost" size="icon" onClick={() => openDeleteAlert('deleteTransaction', tx.id)} disabled={tx.status === 'deleted'}>
@@ -568,7 +589,7 @@ export default function CustomerLedgerPage() {
                 <span className="sr-only">New Transaction</span>
             </Button>
         </SheetTrigger>
-        <SheetContent side="bottom" className="rounded-t-2xl sm:max-w-xl mx-auto border-none bg-card p-0">
+        <SheetContent side="bottom" className="rounded-t-2xl sm:max-w-2xl mx-auto border-none bg-card p-0">
             <SheetHeader className="p-6">
                 <SheetTitle>New Transaction</SheetTitle>
                 <SheetDescription>Add a credit or payment to this customer's account.</SheetDescription>
@@ -596,6 +617,11 @@ export default function CustomerLedgerPage() {
 
                          {formType === 'credit' ? (
                             <div className="space-y-4">
+                                <FormField control={form.control} name="description" render={({field}) => (
+                                    <FormItem><FormLabel>Description (Optional)</FormLabel><FormControl>
+                                        <Input placeholder="e.g., Groceries for the week" {...field}/>
+                                    </FormControl><FormMessage/></FormItem>
+                                )}/>
                                 <div>
                                     <Label>Items</Label>
                                     <div className="space-y-2 mt-2">
@@ -606,14 +632,52 @@ export default function CustomerLedgerPage() {
                                                 control={form.control}
                                                 render={({ field: formField }) => (
                                                 <FormItem className="flex-grow">
-                                                    <FormControl>
-                                                    <Input placeholder="Item name" {...formField} onChange={(e) => {
-                                                        formField.onChange(e);
-                                                        const price = form.getValues(`items.${index}.unitPrice`);
-                                                        form.setValue(`items.${index}.total`, price || 0);
-                                                    }}/>
-                                                    </FormControl>
-                                                    <FormMessage />
+                                                  <Popover open={popoverOpen && form.getValues(`items.${index}.itemName`) === ''} onOpenChange={setPopoverOpen}>
+                                                    <PopoverTrigger asChild>
+                                                      <FormControl>
+                                                        <Input placeholder="Item name" {...formField} />
+                                                      </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                      <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                                        <CommandInput placeholder="Search inventory..." value={searchValue} onValueChange={(search) => {
+                                                          setSearchValue(search);
+                                                          form.setValue(`items.${index}.itemName`, search);
+                                                        }} />
+                                                        <CommandList>
+                                                          <CommandEmpty>No item found.</CommandEmpty>
+                                                          <CommandGroup>
+                                                            {inventory.map((item) => (
+                                                              <CommandItem value={item.name} key={item.id} onSelect={() => {
+                                                                form.setValue(`items.${index}.itemId`, item.id);
+                                                                form.setValue(`items.${index}.itemName`, item.name);
+                                                                form.setValue(`items.${index}.unitPrice`, item.price);
+                                                                setSearchValue(item.name);
+                                                                setPopoverOpen(false);
+                                                              }}>
+                                                                <Check className={cn("mr-2 h-4 w-4", formField.value === item.name ? "opacity-100" : "opacity-0")} />
+                                                                <span>{item.name}</span><span className="ml-auto text-xs text-muted-foreground">Stock: {item.stock}</span>
+                                                              </CommandItem>
+                                                            ))}
+                                                          </CommandGroup>
+                                                        </CommandList>
+                                                      </Command>
+                                                    </PopoverContent>
+                                                  </Popover>
+                                                </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                name={`items.${index}.quantity`}
+                                                control={form.control}
+                                                render={({ field: formField }) => (
+                                                <FormItem className="w-24">
+                                                    <FormControl><Input type="number" placeholder="Qty" {...formField} onChange={(e) => {
+                                                      const qty = parseInt(e.target.value, 10) || 0;
+                                                      const price = form.getValues(`items.${index}.unitPrice`);
+                                                      formField.onChange(qty);
+                                                      form.setValue(`items.${index}.total`, (price || 0) * qty);
+                                                    }} /></FormControl>
                                                 </FormItem>
                                                 )}
                                             />
@@ -622,41 +686,19 @@ export default function CustomerLedgerPage() {
                                                 control={form.control}
                                                 render={({ field: formField }) => (
                                                 <FormItem className="w-32">
-                                                    <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        placeholder="Price"
-                                                        {...formField}
-                                                        onChange={(e) => {
-                                                            const value = parseFloat(e.target.value) || 0;
-                                                            formField.onChange(value);
-                                                            form.setValue(`items.${index}.total`, value);
-                                                        }}
-                                                    />
-                                                    </FormControl>
-                                                    <FormMessage />
+                                                    <FormControl><Input type="number" step="0.01" placeholder="Price" {...formField} onChange={(e) => {
+                                                        const price = parseFloat(e.target.value) || 0;
+                                                        const qty = form.getValues(`items.${index}.quantity`);
+                                                        formField.onChange(price);
+                                                        form.setValue(`items.${index}.total`, price * (qty || 0));
+                                                    }}/></FormControl>
                                                 </FormItem>
                                                 )}
                                             />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => remove(index)}
-                                            >
-                                                <Trash2 className="w-4 h-4 text-destructive" />
-                                            </Button>
+                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                         </div>
                                     ))}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 })}
-                                    >
-                                        <PlusCircle className="mr-2" /> Add Item
-                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ itemName: '', quantity: 1, unitPrice: 0, total: 0 })}><PlusCircle className="mr-2" /> Add Item</Button>
                                     </div>
                                 </div>
                                 <Separator />
@@ -749,7 +791,7 @@ export default function CustomerLedgerPage() {
             <AlertDialogDescription>
               {alertAction === 'deleteCustomer' 
                 ? "This will permanently delete this customer and all of their associated transactions. This action cannot be undone."
-                : "This will permanently delete this transaction. This action cannot be undone."
+                : "This will permanently delete this transaction and restore any associated product stock. This action cannot be undone."
               }
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -55,7 +55,7 @@ export const LedgerTransactionSchema = z.object({
   type: z.enum(['credit', 'payment']),
   amount: z.coerce.number().positive('Amount must be a positive number.'),
   description: z.string().optional(),
-  items: z.array(SaleItemSchema.omit({ itemId: true, quantity: true })).optional(),
+  items: z.array(SaleItemSchema).optional(),
   paidCreditIds: z.array(z.string()).optional(),
 });
 
