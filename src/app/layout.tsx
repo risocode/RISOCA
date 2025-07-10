@@ -3,7 +3,6 @@ import {Inter} from 'next/font/google';
 import './globals.css';
 import {ReceiptsProvider} from '@/contexts/ReceiptContext';
 import {Toaster} from '@/components/ui/toaster';
-import {SiteProtection} from './components/site-protection';
 import {BottomNav} from './components/bottom-nav';
 import {SiteHeader} from '@/app/components/site-header';
 import {InstallPwa} from './components/install-pwa';
@@ -82,19 +81,17 @@ export default async function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico?v=8" />
       </head>
       <body className="font-body antialiased h-full bg-background">
-        <SiteProtection>
-          <ReceiptsProvider>
-            <div className="relative flex flex-col h-full">
-              <SiteHeader />
-              <main className="flex-1 pb-24 overflow-y-auto">
-                {children}
-              </main>
-              <BottomNav />
-            </div>
-          </ReceiptsProvider>
-          <Toaster />
-          <InstallPwa />
-        </SiteProtection>
+        <ReceiptsProvider>
+          <div className="relative flex flex-col h-full">
+            <SiteHeader />
+            <main className="flex-1 pb-24 overflow-y-auto">
+              {children}
+            </main>
+            <BottomNav />
+          </div>
+        </ReceiptsProvider>
+        <Toaster />
+        <InstallPwa />
       </body>
     </html>
   );
