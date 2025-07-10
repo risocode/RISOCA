@@ -51,6 +51,15 @@ import {
 } from '@/components/ui/form';
 import {useToast} from '@/hooks/use-toast';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
   PlusCircle,
   Trash2,
   Loader2,
@@ -101,6 +110,22 @@ const SaleFormSchema = z.object({
 
 type SaleFormData = z.infer<typeof SaleFormSchema>;
 
+const ELoadSchema = z.object({
+  phoneNumber: z.string().min(1, 'Phone number is required'),
+  amount: z.coerce
+    .number()
+    .min(1, 'Amount must be greater than zero.'),
+});
+type ELoadFormData = z.infer<typeof ELoadSchema>;
+
+const GcashSchema = z.object({
+  phoneNumber: z.string().min(1, 'Phone number is required'),
+  amount: z.coerce
+    .number()
+    .min(1, 'Cash-in amount must be greater than zero.'),
+});
+type GcashFormData = z.infer<typeof GcashSchema>;
+
 export default function StorePage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [receiptItems, setReceiptItems] = useState<SaleItem[]>([]);
@@ -121,6 +146,8 @@ export default function StorePage() {
   const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(
     null
   );
+  const [isELoadDialogOpen, setIsELoadDialogOpen] = useState(false);
+  const [isGcashDialogOpen, setIsGcashDialogOpen] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<SaleFormData>({
@@ -128,6 +155,16 @@ export default function StorePage() {
     defaultValues: {
       items: [],
     },
+  });
+
+  const eLoadForm = useForm<ELoadFormData>({
+    resolver: zodResolver(ELoadSchema),
+    defaultValues: {phoneNumber: '', amount: 0},
+  });
+
+  const gcashForm = useForm<GcashFormData>({
+    resolver: zodResolver(GcashSchema),
+    defaultValues: {phoneNumber: '', amount: 0},
   });
 
   const {fields, append, remove, update} = useFieldArray({
@@ -278,6 +315,43 @@ export default function StorePage() {
     setTimeout(() => {
       setPopoverStates((prev) => ({...prev, [newIndex]: true}));
     }, 50);
+  };
+
+  const handleELoadSubmit = (data: ELoadFormData) => {
+    setReceiptItems((prev) => [
+      ...prev,
+      {
+        itemName: `E-Load to ${data.phoneNumber}`,
+        quantity: 1,
+        unitPrice: data.amount,
+        total: data.amount,
+      },
+    ]);
+    eLoadForm.reset();
+    setIsELoadDialogOpen(false);
+    toast({variant: 'success', title: 'E-Load added to sale.'});
+  };
+
+  const handleGcashSubmit = (data: GcashFormData) => {
+    const fee = data.amount * 0.02; // 2% service fee
+    setReceiptItems((prev) => [
+      ...prev,
+      {
+        itemName: `Gcash Cash-In`,
+        quantity: 1,
+        unitPrice: data.amount,
+        total: data.amount,
+      },
+      {
+        itemName: 'Service Fee',
+        quantity: 1,
+        unitPrice: fee,
+        total: fee,
+      },
+    ]);
+    gcashForm.reset();
+    setIsGcashDialogOpen(false);
+    toast({variant: 'success', title: 'Gcash transaction added to sale.'});
   };
 
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
@@ -506,20 +580,43 @@ export default function StorePage() {
 
                 <div className="flex justify-between items-center mt-2">
                   <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddNewItemRow}
-                    >
-                      <Plus className="mr-2" /> Add Item
-                    </Button>
-                     <Button type="button" variant="outline" size="sm" disabled>
-                        <Phone className="mr-2"/> E-Load
-                     </Button>
-                     <Button type="button" variant="outline" size="sm" disabled>
-                        <Zap className="mr-2"/> Gcash
-                     </Button>
+                    {fields.length === 0 ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddNewItemRow}
+                        >
+                          <Plus className="mr-2" /> Add Item
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsELoadDialogOpen(true)}
+                        >
+                          <Phone className="mr-2" /> E-Load
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsGcashDialogOpen(true)}
+                        >
+                          <Zap className="mr-2" /> Gcash
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddNewItemRow}
+                      >
+                        <Plus className="mr-2" /> Add Another Item
+                      </Button>
+                    )}
                   </div>
                   {fields.length > 0 && (
                     <Button type="submit" size="sm">
@@ -717,6 +814,110 @@ export default function StorePage() {
           </CardFooter>
         </Card>
       </div>
+
+      <Dialog open={isELoadDialogOpen} onOpenChange={setIsELoadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>E-Load Transaction</DialogTitle>
+            <DialogDescription>
+              Enter the phone number and load amount.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...eLoadForm}>
+            <form
+              onSubmit={eLoadForm.handleSubmit(handleELoadSubmit)}
+              className="space-y-4 py-4"
+            >
+              <FormField
+                name="phoneNumber"
+                control={eLoadForm.control}
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="09xxxxxxxxx" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="amount"
+                control={eLoadForm.control}
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Load Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button type="submit">Add to Sale</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isGcashDialogOpen} onOpenChange={setIsGcashDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Gcash Cash-In</DialogTitle>
+            <DialogDescription>
+              Enter the phone number and cash-in amount. A 2% service fee will be added.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...gcashForm}>
+            <form
+              onSubmit={gcashForm.handleSubmit(handleGcashSubmit)}
+              className="space-y-4 py-4"
+            >
+              <FormField
+                name="phoneNumber"
+                control={gcashForm.control}
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="09xxxxxxxxx" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="amount"
+                control={gcashForm.control}
+                render={({field}) => (
+                  <FormItem>
+                    <FormLabel>Cash-In Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button type="submit">Add to Sale</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!voidingTransaction}
