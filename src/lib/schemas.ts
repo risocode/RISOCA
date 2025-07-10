@@ -53,7 +53,7 @@ export type Customer = CustomerInput & {
 export const LedgerTransactionSchema = z.object({
   customerId: z.string(),
   type: z.enum(['credit', 'payment']),
-  amount: z.coerce.number().positive('Amount must be a positive number.'),
+  amount: z.coerce.number().positive('Amount must not be 0.'),
   description: z.string().optional(),
   items: z.array(SaleItemSchema).optional(),
   paidCreditIds: z.array(z.string()).optional(),
