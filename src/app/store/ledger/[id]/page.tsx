@@ -94,6 +94,7 @@ import {
   ChevronsUpDown,
   Check,
   Package,
+  DollarSign,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {Input} from '@/components/ui/input';
@@ -137,8 +138,6 @@ const TransactionFormSchema = LedgerTransactionSchema.omit({
   customerId: true,
 }).extend({
   items: z.array(SaleItemSchema).optional(),
-  cashAdvanceAmount: z.coerce.number().min(0).optional(),
-  cashAdvanceDescription: z.string().optional(),
 });
 type TransactionFormData = z.infer<typeof TransactionFormSchema>;
 
@@ -177,8 +176,6 @@ export default function CustomerLedgerPage() {
       amount: 0,
       description: '',
       items: [{itemName: '', quantity: 1, unitPrice: 0, total: 0}],
-      cashAdvanceAmount: 0,
-      cashAdvanceDescription: '',
     },
   });
 
@@ -189,26 +186,20 @@ export default function CustomerLedgerPage() {
 
   const formType = useWatch({control: form.control, name: 'type'});
   const formItems = useWatch({control: form.control, name: 'items'});
-  const cashAdvanceAmount = useWatch({control: form.control, name: 'cashAdvanceAmount'});
 
   useEffect(() => {
     if (formType === 'credit') {
-      const itemsTotal = formItems?.reduce(
-        (sum, item) => sum + (item.total || 0),
-        0
-      ) || 0;
-      const totalAmount = itemsTotal + (cashAdvanceAmount || 0);
+      const totalAmount =
+        formItems?.reduce((sum, item) => sum + (item.total || 0), 0) || 0;
       form.setValue('amount', totalAmount, {shouldValidate: true});
     }
-  }, [formItems, cashAdvanceAmount, formType, form]);
+  }, [formItems, formType, form]);
 
   useEffect(() => {
     // Reset fields when switching main transaction type
     replace([{itemName: '', quantity: 1, unitPrice: 0, total: 0}]);
     form.setValue('amount', 0);
     form.setValue('description', '');
-    form.setValue('cashAdvanceAmount', 0);
-    form.setValue('cashAdvanceDescription', '');
     setSelectedCredits(new Set());
   }, [formType, replace, form]);
 
@@ -308,7 +299,9 @@ export default function CustomerLedgerPage() {
     return transactions
       .filter(
         (tx) =>
-          tx.type === 'credit' && !paidCreditIds.has(tx.id) && tx.status !== 'deleted'
+          tx.type === 'credit' &&
+          !paidCreditIds.has(tx.id) &&
+          tx.status !== 'deleted'
       )
       .sort(
         (a, b) => a.createdAt.toDate().getTime() - b.createdAt.toDate().getTime()
@@ -354,40 +347,42 @@ export default function CustomerLedgerPage() {
 
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
-    
+
     let payload: LedgerTransactionInput;
 
     if (data.type === 'credit') {
-        const validItems = data.items?.filter(item => item.itemName && item.itemName.trim() !== '') || [];
-        const hasCashAdvance = (data.cashAdvanceAmount || 0) > 0;
+      const validItems =
+        data.items?.filter((item) => item.itemName && item.itemName.trim() !== '') ||
+        [];
 
-        if (validItems.length === 0 && !hasCashAdvance) {
-          toast({ variant: 'destructive', title: 'Error', description: 'Please add at least one item or a cash advance.' });
-          setIsSubmitting(false);
-          return;
-        }
-        
-        const itemDescriptions = validItems.map(item => item.itemName);
-        const allDescriptions = [...itemDescriptions];
-        if (hasCashAdvance && data.cashAdvanceDescription) {
-            allDescriptions.push(data.cashAdvanceDescription);
-        }
+      if (validItems.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Please add at least one item or a cash advance.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-        payload = {
-          customerId,
-          type: 'credit',
-          amount: data.amount,
-          description: allDescriptions.join(', ') || 'Credit Transaction',
-          items: validItems,
-        };
-      
-    } else { // Payment
+      const allDescriptions = validItems.map((item) => item.itemName);
+
+      payload = {
+        customerId,
+        type: 'credit',
+        amount: data.amount,
+        description: allDescriptions.join(', ') || 'Credit Transaction',
+        items: validItems,
+      };
+    } else {
+      // Payment
       payload = {
         customerId,
         type: 'payment',
         amount: data.amount,
         description: data.description || 'Payment',
-        paidCreditIds: selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
+        paidCreditIds:
+          selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
       };
     }
 
@@ -779,23 +774,39 @@ export default function CustomerLedgerPage() {
                     </TabsList>
                     <TabsContent value="credit" className="pt-4 space-y-6">
                       <div className="space-y-4 p-4 border rounded-lg">
-                          <Label className="text-base font-semibold">Credit by Item</Label>
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
-                              <Label>Item</Label>
-                              <Label>Qty</Label>
-                              <Label>Price</Label>
-                              <span className="sr-only">Delete</span>
-                            </div>
-                            {fields.map((field, index) => {
-                              const currentItemName = form.watch(
-                                `items.${index}.itemName`
-                              );
-                              return (
-                                <div
-                                  key={field.id}
-                                  className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
-                                >
+                        <Label className="text-base font-semibold">
+                          Add to Credit
+                        </Label>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                            <Label>Item</Label>
+                            <Label>Qty</Label>
+                            <Label>Price</Label>
+                            <span className="sr-only">Delete</span>
+                          </div>
+                          {fields.map((field, index) => {
+                            const currentItemName = form.watch(
+                              `items.${index}.itemName`
+                            );
+                            const isCashAdvance =
+                              currentItemName === 'Cash Advance';
+
+                            return (
+                              <div
+                                key={field.id}
+                                className="grid grid-cols-[1fr_120px_120px_auto] items-start gap-2"
+                              >
+                                {isCashAdvance ? (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input
+                                        value="Cash Advance"
+                                        disabled
+                                        className="font-semibold"
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                ) : (
                                   <FormField
                                     name={`items.${index}.itemName`}
                                     control={form.control}
@@ -899,139 +910,164 @@ export default function CustomerLedgerPage() {
                                       </FormItem>
                                     )}
                                   />
+                                )}
 
-                                  {currentItemName && (
-                                    <>
-                                      <FormField
-                                        name={`items.${index}.quantity`}
-                                        control={form.control}
-                                        render={({field: formField}) => (
-                                          <FormItem>
-                                            <FormControl>
-                                              <div className="relative">
-                                                <Input
-                                                  type="number"
-                                                  placeholder="Qty"
-                                                  {...formField}
-                                                  className="pr-12 text-center no-spinners"
-                                                  onChange={(e) => {
-                                                    const qty =
-                                                      parseInt(
-                                                        e.target.value,
-                                                        10
-                                                      ) || 0;
+                                {isCashAdvance ? (
+                                  <FormField
+                                    name={`items.${index}.total`}
+                                    control={form.control}
+                                    render={({field: formField}) => (
+                                      <FormItem className="col-span-2">
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Amount"
+                                            {...formField}
+                                            className="no-spinners text-right"
+                                            onChange={(e) =>
+                                              formField.onChange(
+                                                e.target.valueAsNumber || 0
+                                              )
+                                            }
+                                          />
+                                        </FormControl>
+                                      </FormItem>
+                                    )}
+                                  />
+                                ) : (
+                                  <>
+                                    <FormField
+                                      name={`items.${index}.quantity`}
+                                      control={form.control}
+                                      render={({field: formField}) => (
+                                        <FormItem>
+                                          <FormControl>
+                                            <div className="relative">
+                                              <Input
+                                                type="number"
+                                                placeholder="Qty"
+                                                {...formField}
+                                                className="pr-12 text-center no-spinners"
+                                                onChange={(e) => {
+                                                  const qty =
+                                                    parseInt(
+                                                      e.target.value,
+                                                      10
+                                                    ) || 0;
+                                                  const price =
+                                                    form.getValues(
+                                                      `items.${index}.unitPrice`
+                                                    );
+                                                  formField.onChange(qty);
+                                                  form.setValue(
+                                                    `items.${index}.total`,
+                                                    (price || 0) * qty
+                                                  );
+                                                }}
+                                              />
+                                              <div className="absolute inset-y-0 right-0 flex items-center">
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-full w-6"
+                                                  onClick={() => {
+                                                    const val = Math.max(
+                                                      1,
+                                                      (formField.value ||
+                                                        1) - 1
+                                                    );
+                                                    formField.onChange(val);
                                                     const price =
                                                       form.getValues(
                                                         `items.${index}.unitPrice`
                                                       );
-                                                    formField.onChange(qty);
                                                     form.setValue(
                                                       `items.${index}.total`,
-                                                      (price || 0) * qty
+                                                      (price || 0) * val
                                                     );
                                                   }}
-                                                />
-                                                <div className="absolute inset-y-0 right-0 flex items-center">
-                                                  <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-full w-6"
-                                                    onClick={() => {
-                                                      const val = Math.max(
-                                                        1,
-                                                        (formField.value ||
-                                                          1) - 1
+                                                  disabled={
+                                                    formField.value <= 1
+                                                  }
+                                                >
+                                                  <Minus className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-full w-6"
+                                                  onClick={() => {
+                                                    const val =
+                                                      (formField.value ||
+                                                        0) + 1;
+                                                    formField.onChange(val);
+                                                    const price =
+                                                      form.getValues(
+                                                        `items.${index}.unitPrice`
                                                       );
-                                                      formField.onChange(val);
-                                                      const price =
-                                                        form.getValues(
-                                                          `items.${index}.unitPrice`
-                                                        );
-                                                      form.setValue(
-                                                        `items.${index}.total`,
-                                                        (price || 0) * val
-                                                      );
-                                                    }}
-                                                    disabled={
-                                                      formField.value <= 1
-                                                    }
-                                                  >
-                                                    <Minus className="h-4 w-4" />
-                                                  </Button>
-                                                  <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-full w-6"
-                                                    onClick={() => {
-                                                      const val =
-                                                        (formField.value ||
-                                                          0) + 1;
-                                                      formField.onChange(val);
-                                                      const price =
-                                                        form.getValues(
-                                                          `items.${index}.unitPrice`
-                                                        );
-                                                      form.setValue(
-                                                        `items.${index}.total`,
-                                                        (price || 0) * val
-                                                      );
-                                                    }}
-                                                  >
-                                                    <Plus className="h-4 w-4" />
-                                                  </Button>
-                                                </div>
+                                                    form.setValue(
+                                                      `items.${index}.total`,
+                                                      (price || 0) * val
+                                                    );
+                                                  }}
+                                                >
+                                                  <Plus className="h-4 w-4" />
+                                                </Button>
                                               </div>
-                                            </FormControl>
-                                          </FormItem>
-                                        )}
-                                      />
-                                      <FormField
-                                        name={`items.${index}.unitPrice`}
-                                        control={form.control}
-                                        render={({field: formField}) => (
-                                          <FormItem>
-                                            <FormControl>
-                                              <Input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="Price"
-                                                {...formField}
-                                                className="no-spinners"
-                                                onChange={(e) => {
-                                                  const price =
-                                                    parseFloat(
-                                                      e.target.value
-                                                    ) || 0;
-                                                  const qty = form.getValues(
-                                                    `items.${index}.quantity`
-                                                  );
-                                                  formField.onChange(price);
-                                                  form.setValue(
-                                                    `items.${index}.total`,
-                                                    price * (qty || 0)
-                                                  );
-                                                }}
-                                              />
-                                            </FormControl>
-                                          </FormItem>
-                                        )}
-                                      />
-                                    </>
-                                  )}
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleRemoveItem(index)}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                  </Button>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                            </div>
+                                          </FormControl>
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <FormField
+                                      name={`items.${index}.unitPrice`}
+                                      control={form.control}
+                                      render={({field: formField}) => (
+                                        <FormItem>
+                                          <FormControl>
+                                            <Input
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="Price"
+                                              {...formField}
+                                              className="no-spinners"
+                                              onChange={(e) => {
+                                                const price =
+                                                  parseFloat(
+                                                    e.target.value
+                                                  ) || 0;
+                                                const qty = form.getValues(
+                                                  `items.${index}.quantity`
+                                                );
+                                                formField.onChange(price);
+                                                form.setValue(
+                                                  `items.${index}.total`,
+                                                  price * (qty || 0)
+                                                );
+                                              }}
+                                            />
+                                          </FormControl>
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </>
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveItem(index)}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -1048,20 +1084,23 @@ export default function CustomerLedgerPage() {
                           >
                             <Package /> Add Item
                           </Button>
-                      </div>
-
-                      <div className="space-y-4 p-4 border rounded-lg">
-                         <Label className="text-base font-semibold">Credit by Cash (Optional)</Label>
-                         <FormField control={form.control} name="cashAdvanceDescription" render={({field}) => (
-                              <FormItem><FormLabel>Description</FormLabel><FormControl>
-                                  <Input placeholder="e.g., Cash advance" {...field}/>
-                              </FormControl><FormMessage/></FormItem>
-                          )}/>
-                         <FormField control={form.control} name="cashAdvanceAmount" render={({field}) => (
-                              <FormItem><FormLabel>Amount (₱)</FormLabel><FormControl>
-                                  <Input type="number" step="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber || 0)} />
-                              </FormControl><FormMessage/></FormItem>
-                          )}/>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              append({
+                                itemName: 'Cash Advance',
+                                quantity: 1,
+                                unitPrice: 0,
+                                total: 0,
+                              });
+                            }}
+                            className="gap-2"
+                          >
+                            <DollarSign /> Add Cash Advance
+                          </Button>
+                        </div>
                       </div>
 
                       <Separator />
