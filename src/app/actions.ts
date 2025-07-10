@@ -973,7 +973,10 @@ export async function getAuthenticators(): Promise<Authenticator[]> {
   const authenticators: Authenticator[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    // Convert Firestore binary data back to Buffer
+    // When retrieving from Firestore, the binary data might be in a specific format (e.g., Firestore's bytes type).
+    // It needs to be converted back to a Buffer for the simplewebauthn library.
+    // The exact conversion depends on how Firestore's Node.js SDK returns it.
+    // Assuming `data.credentialID` and `data.credentialPublicKey` are Firestore Bytes objects.
     const credentialID = Buffer.from(data.credentialID.toUint8Array());
     const credentialPublicKey = Buffer.from(data.credentialPublicKey.toUint8Array());
 
