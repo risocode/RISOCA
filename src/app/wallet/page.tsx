@@ -30,6 +30,7 @@ import {
   Legend,
   ResponsiveContainer,
   CartesianGrid,
+  Cell,
 } from 'recharts';
 
 import {
@@ -72,7 +73,11 @@ import {
 import {Skeleton} from '@/components/ui/skeleton';
 import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
-import {ChartTooltipContent, ChartContainer} from '@/components/ui/chart';
+import {
+  ChartTooltipContent,
+  ChartContainer,
+  ChartLegendContent,
+} from '@/components/ui/chart';
 
 type ReceiptDoc = DiagnoseReceiptOutput & {
   id: string;
@@ -303,6 +308,99 @@ export default function WalletPage() {
     .filter((e) => e.status === 'closed')
     .slice(0, 7)
     .reverse();
+
+  const CustomLegend = (props: any) => {
+    const {payload} = props;
+    const hasLoss = chartData.some((d) => (d.profit || 0) < 0);
+
+    const legendItems = [
+      {
+        value: 'Start',
+        color: 'hsl(var(--muted-foreground))',
+        dataKey: 'startingCash',
+      },
+      {
+        value: 'End',
+        color: 'hsl(var(--primary))',
+        dataKey: 'endingCash',
+      },
+      {
+        value: 'Profit',
+        color: 'hsl(var(--success))',
+        dataKey: 'profit',
+      },
+    ];
+
+    if (hasLoss) {
+      legendItems.push({
+        value: 'Loss',
+        color: 'hsl(var(--destructive))',
+        dataKey: 'profit',
+      });
+    }
+
+    const finalPayload = legendItems
+      .map((item) => {
+        const original = payload.find(
+          (p: any) => p.dataKey === item.dataKey
+        );
+        if (original || item.value === 'Loss') {
+          return {
+            ...original,
+            value: item.value,
+            color: item.color,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    // Filter out duplicate profit/loss entries if only one type exists
+    const profitExists = chartData.some((d) => (d.profit || 0) >= 0);
+    const lossExists = chartData.some((d) => (d.profit || 0) < 0);
+
+    let filteredPayload = finalPayload;
+    if (!profitExists) {
+      filteredPayload = filteredPayload.filter(
+        (p: any) => p.value !== 'Profit'
+      );
+    }
+    if (!lossExists) {
+      filteredPayload = filteredPayload.filter((p: any) => p.value !== 'Loss');
+    }
+
+    return <ChartLegendContent payload={filteredPayload} />;
+  };
+
+  const CustomTooltip = (props: any) => {
+    const {active, payload, label} = props;
+
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const newPayload = payload.map((p: any) => {
+        if (p.dataKey === 'profit') {
+          return {
+            ...p,
+            name: data.profit >= 0 ? 'Profit' : 'Loss',
+            color:
+              data.profit >= 0
+                ? 'hsl(var(--success))'
+                : 'hsl(var(--destructive))',
+          };
+        }
+        return p;
+      });
+      return (
+        <ChartTooltipContent
+          {...props}
+          payload={newPayload}
+          formatter={formatCurrency}
+        />
+      );
+    }
+
+    return null;
+  };
 
   const renderCurrentDayCard = () => {
     if (openDay) {
@@ -626,11 +724,8 @@ export default function WalletPage() {
                   axisLine={false}
                   tickFormatter={(value) => `₱${value / 1000}k`}
                 />
-                <Tooltip
-                  cursor={{fill: 'hsl(var(--muted))'}}
-                  content={<ChartTooltipContent formatter={formatCurrency} />}
-                />
-                <Legend />
+                <Tooltip cursor={{fill: 'hsl(var(--muted))'}} content={<CustomTooltip />} />
+                <Legend content={<CustomLegend />} />
                 <Bar
                   dataKey="startingCash"
                   name="Start"
@@ -643,12 +738,18 @@ export default function WalletPage() {
                   fill="hsl(var(--primary))"
                   radius={[4, 4, 0, 0]}
                 />
-                <Bar
-                  dataKey="profit"
-                  name="Profit"
-                  fill="hsl(var(--success))"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="profit" name="Profit" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        (entry.profit || 0) >= 0
+                          ? 'hsl(var(--success))'
+                          : 'hsl(var(--destructive))'
+                      }
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ChartContainer>
           </CardContent>
@@ -703,7 +804,9 @@ export default function WalletPage() {
                     <TableCell
                       className={cn(
                         'text-center font-mono',
-                        (entry.profit || 0) >= 0 ? 'text-success' : 'text-destructive'
+                        (entry.profit || 0) >= 0
+                          ? 'text-success'
+                          : 'text-destructive'
                       )}
                     >
                       <div className="flex items-center justify-center">

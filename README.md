@@ -1,5 +1,5 @@
 
-# RiSoCa Bot
+# RiSoCa Store
 
 This is a Next.js Progressive Web App (PWA) that lets you scan receipts using AI. Upload a photo of a receipt, and it will use Google's Gemini model to extract the merchant name, date, items, and total amount.
 
