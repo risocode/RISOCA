@@ -459,7 +459,7 @@ export default function CustomerLedgerPage() {
         customerId,
         type: 'payment',
         amount: data.amount,
-        description: data.description || 'Payment',
+        description: selectedCredits.size > 0 ? 'Payment' : data.description || 'Payment',
         paidCreditIds:
           selectedCredits.size > 0 ? Array.from(selectedCredits) : undefined,
       };
