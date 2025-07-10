@@ -132,11 +132,14 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       }
     } catch (error) {
       console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description: (error as Error).message,
-      });
+      const errorMessage = (error as Error).message;
+      if (!errorMessage.includes('cancelled')) {
+        toast({
+          variant: 'destructive',
+          title: 'Registration Failed',
+          description: errorMessage,
+        });
+      }
     }
     setIsSubmitting(false);
   };
@@ -145,6 +148,16 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     setIsSubmitting(true);
     try {
       const options = await getAuthenticationOptions();
+      if (options.allowCredentials?.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'No Devices Registered',
+          description:
+            'Please register a device first before trying to log in.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
       const response = await startAuthentication(options);
       const {verified} = await verifyExistingAuthentication(response);
 
@@ -157,11 +170,14 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       }
     } catch (error) {
       console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: (error as Error).message,
-      });
+      const errorMessage = (error as Error).message;
+      if (!errorMessage.includes('cancelled')) {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: errorMessage,
+        });
+      }
     }
     setIsSubmitting(false);
   };
@@ -244,7 +260,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-card px-2 text-muted-foreground">
                 Or
               </span>
             </div>
@@ -256,6 +272,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
             variant="secondary"
             className="w-full"
           >
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <PlusCircle className="mr-2" />
             Register a New Device
           </Button>

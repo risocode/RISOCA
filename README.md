@@ -79,6 +79,13 @@ This app is designed to be installed on your desktop (via Chrome) or mobile devi
         match /counters/{document=**} {
           allow read, write: if true;
         }
+        // Added for Passkey/WebAuthn functionality
+        match /challenges/{document=**} {
+          allow read, write: if true;
+        }
+        match /authenticators/{document=**} {
+          allow read, write: if true;
+        }
       }
     }
     ```
