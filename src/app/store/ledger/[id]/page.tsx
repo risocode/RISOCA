@@ -170,8 +170,7 @@ export default function CustomerLedgerPage() {
 
   const form = useForm<TransactionFormData>({
     resolver: zodResolver(TransactionFormSchema),
-    mode: 'onSubmit',
-    reValidateMode: 'onSubmit', // Change validation mode
+    reValidateMode: 'onSubmit',
     defaultValues: {
       type: 'credit',
       amount: 0,
@@ -197,6 +196,7 @@ export default function CustomerLedgerPage() {
   }, [formItems, formType, form]);
 
   useEffect(() => {
+    if (!isSheetOpen) return;
     // Reset fields when switching main transaction type
     form.reset({
       type: form.getValues('type'),
@@ -207,7 +207,7 @@ export default function CustomerLedgerPage() {
     setSelectedCredits(new Set());
     // Clear any previous errors when tab switches
     form.clearErrors();
-  }, [formType, form]);
+  }, [formType, isSheetOpen, form]);
 
   useEffect(() => {
     if (!customerId) return;
@@ -360,11 +360,7 @@ export default function CustomerLedgerPage() {
         ) || [];
 
       if (validItems.length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Please add at least one item or cash advance.',
-        });
+        form.setError('amount', {type: 'manual', message: 'Amount must not be 0.'});
         setIsSubmitting(false);
         return;
       }
@@ -385,6 +381,11 @@ export default function CustomerLedgerPage() {
       };
     } else {
       // Payment
+       if (data.amount === 0) {
+        form.setError('amount', { type: 'manual', message: 'Amount must not be 0.' });
+        setIsSubmitting(false);
+        return;
+      }
       payload = {
         customerId,
         type: 'payment',
@@ -789,12 +790,12 @@ export default function CustomerLedgerPage() {
                           Add to Credit
                         </Label>
                         <div className="space-y-2">
-                          <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
-                            <Label>Item</Label>
-                             {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label>Qty</Label>}
-                             {fields.some(item => !!item.itemName) && <Label>Price</Label>}
-                            <span className="sr-only">Delete</span>
-                          </div>
+                           <div className="grid grid-cols-[1fr_80px_100px_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
+                                <Label>Item</Label>
+                                {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-center">Qty</Label>}
+                                {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-right">Price</Label>}
+                                <span className="sr-only">Delete</span>
+                            </div>
                           {fields.map((field, index) => {
                             const currentItem = form.watch(`items.${index}`);
                             const currentItemName = currentItem.itemName;
@@ -929,18 +930,15 @@ export default function CustomerLedgerPage() {
                                     render={({field: formField}) => (
                                       <FormItem className="col-span-2">
                                         <FormControl>
-                                          <Input
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="Amount"
-                                            {...formField}
-                                            className="no-spinners text-right"
-                                            onChange={(e) =>
-                                              formField.onChange(
-                                                e.target.valueAsNumber || 0
-                                              )
-                                            }
-                                          />
+                                           <Input
+                                              type="number"
+                                              step="0.01"
+                                              placeholder="0.00"
+                                              {...formField}
+                                              value={formField.value === 0 ? '' : formField.value}
+                                              onChange={(e) => formField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                                              className="no-spinners text-right"
+                                            />
                                         </FormControl>
                                       </FormItem>
                                     )}
@@ -1043,7 +1041,7 @@ export default function CustomerLedgerPage() {
                                               step="0.01"
                                               placeholder="Price"
                                               {...formField}
-                                              className="no-spinners"
+                                              className="no-spinners text-right"
                                               onChange={(e) => {
                                                 const price =
                                                   parseFloat(
@@ -1118,25 +1116,25 @@ export default function CustomerLedgerPage() {
                       </div>
 
                       <Separator />
-                      <FormField
-                        control={form.control}
-                        name="amount"
-                        render={({field}) => (
-                          <FormItem>
-                            <FormLabel>Total Credit Amount (₱)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...field}
-                                disabled
-                                className="font-bold text-lg"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                       <FormField
+                          control={form.control}
+                          name="amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Total Credit Amount (₱)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  {...field}
+                                  disabled
+                                  className="font-bold text-lg"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                     </TabsContent>
                     <TabsContent value="payment" className="pt-4 space-y-6">
                       <>
@@ -1152,7 +1150,7 @@ export default function CustomerLedgerPage() {
                                   step="0.01"
                                   {...field}
                                   onChange={(e) => {
-                                    field.onChange(e.target.valueAsNumber);
+                                    field.onChange(e.target.valueAsNumber || 0);
                                     if (selectedCredits.size > 0) {
                                       setSelectedCredits(new Set());
                                       form.setValue('description', '');
