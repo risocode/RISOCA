@@ -153,6 +153,7 @@ export default function CustomerLedgerPage() {
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [isInventoryLoading, setIsInventoryLoading] = useState(true);
   const [isTransactionsLoading, setIsTransactionsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -192,6 +193,12 @@ export default function CustomerLedgerPage() {
 
   const formType = useWatch({control: form.control, name: 'type'});
   const formItems = useWatch({control: form.control, name: 'items'});
+
+  useEffect(() => {
+    if (!isCustomerLoading && !isInventoryLoading && !isTransactionsLoading) {
+      setIsLoading(false);
+    }
+  }, [isCustomerLoading, isInventoryLoading, isTransactionsLoading]);
 
   useEffect(() => {
     if (!customerId) return;
@@ -315,11 +322,11 @@ export default function CustomerLedgerPage() {
   }, [transactions, paidCreditIds]);
   
   const sortedFields = useMemo(() => {
-    const fieldsWithOriginalIndex = fields.map((field, index) => ({ field, index }));
-
+    const fieldsWithOriginalIndex = fields.map((field, index) => ({ field, originalIndex: index }));
+  
     const itemFields = fieldsWithOriginalIndex.filter(f => f.field.itemName !== 'Cash');
     const cashFields = fieldsWithOriginalIndex.filter(f => f.field.itemName === 'Cash');
-    
+      
     return [...itemFields, ...cashFields];
   }, [fields]);
 
@@ -552,7 +559,9 @@ export default function CustomerLedgerPage() {
     } else {
       append({ itemName: 'Cash', quantity: 1, unitPrice: 0, total: 0 });
     }
-    setShowItemHeaders(true);
+    if(!showItemHeaders) {
+      setShowItemHeaders(true);
+    }
   };
 
   const formatCurrency = (value: number | null | undefined) => {
@@ -565,8 +574,6 @@ export default function CustomerLedgerPage() {
 
   const cannotDeleteCustomer =
     balance !== 0 || customer?.status === 'deleted';
-
-  const isLoading = isCustomerLoading || isInventoryLoading || isTransactionsLoading;
 
   if (isLoading) {
     return (
@@ -865,13 +872,14 @@ export default function CustomerLedgerPage() {
                         )}
 
                         <div className="space-y-2">
-                          {sortedFields.map(({ field, index }) => {
+                           {sortedFields.map(({ field, originalIndex }) => {
+                            const index = originalIndex;
                             const currentItem = form.watch(`items.${index}`);
                             
                             if (currentItem.itemName === 'Cash') {
                                 return(
-                                  <div key={field.id} className="grid grid-cols-[1fr_110px_auto] items-start gap-2">
-                                    <div className="col-span-1 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm col-start-1 col-end-3">
+                                  <div key={field.id} className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2">
+                                    <div className="col-span-2 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
                                         Cash
                                     </div>
                                     <FormField
@@ -887,7 +895,8 @@ export default function CustomerLedgerPage() {
                                                   value={amountField.value || ''}
                                                   onChange={(e) => {
                                                     const value = e.target.value;
-                                                    amountField.onChange(value === '' ? '' : parseFloat(value));
+                                                    const parsedValue = parseFloat(value);
+                                                    amountField.onChange(isNaN(parsedValue) ? '' : parsedValue);
                                                   }}
                                                   className="no-spinners text-right"
                                                 />
@@ -1250,3 +1259,5 @@ export default function CustomerLedgerPage() {
     </>
   );
 }
+
+    
