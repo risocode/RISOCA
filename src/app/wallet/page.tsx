@@ -259,13 +259,14 @@ export default function WalletPage() {
 
   const totalProfit = useMemo(() => {
     return enrichedHistory
-      .filter((e) => e.status === 'closed')
-      .reduce((acc, e) => acc + (e.profit ?? 0), 0);
+      .filter((e) => e.status === 'closed' && e.profit !== null)
+      .reduce((acc, e) => acc + (e.profit || 0), 0);
   }, [enrichedHistory]);
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
-    const response = await startDay(data.startingCash);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const response = await startDay(data.startingCash, todayStr);
     if (response.success) {
       toast({
         variant: 'success',

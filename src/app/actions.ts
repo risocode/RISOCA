@@ -759,24 +759,22 @@ export async function deleteCustomer(
 
 // Actions for Wallet
 export async function startDay(
-  startingCash: number
+  startingCash: number,
+  dateString: string
 ): Promise<{success: boolean; message?: string}> {
   try {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const docRef = doc(db, 'walletHistory', todayStr);
+    const docRef = doc(db, 'walletHistory', dateString);
 
-    // This check is being bypassed temporarily to unblock the user.
-    // A more robust check is now implemented on the client-side.
-    // const docSnap = await getDoc(docRef);
-    // if (docSnap.exists()) {
-    //   return {
-    //     success: false,
-    //     message: 'A session for today has already been recorded.',
-    //   };
-    // }
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return {
+        success: false,
+        message: 'A session for this date has already been recorded.',
+      };
+    }
 
     await setDoc(docRef, {
-      date: todayStr,
+      date: dateString,
       startingCash,
       endingCash: null,
       status: 'open',
