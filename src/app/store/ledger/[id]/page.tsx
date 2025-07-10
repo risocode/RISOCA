@@ -188,16 +188,13 @@ export default function CustomerLedgerPage() {
   const formItems = useWatch({control: form.control, name: 'items'});
 
   useEffect(() => {
-    if (formType === 'credit') {
-      const totalAmount =
-        formItems?.reduce((sum, item) => sum + (item.total || 0), 0) || 0;
-      form.setValue('amount', totalAmount, {shouldValidate: false});
-    }
-  }, [formItems, formType, form]);
+    const totalAmount =
+      formItems?.reduce((sum, item) => sum + (item.total || 0), 0) || 0;
+    form.setValue('amount', totalAmount, {shouldValidate: false});
+  }, [formItems, form]);
 
   useEffect(() => {
     if (!isSheetOpen) return;
-    // Reset fields when switching main transaction type
     form.reset({
       type: form.getValues('type'),
       amount: 0,
@@ -205,7 +202,6 @@ export default function CustomerLedgerPage() {
       items: [],
     });
     setSelectedCredits(new Set());
-    // Clear any previous errors when tab switches
     form.clearErrors();
   }, [formType, isSheetOpen, form]);
 
@@ -337,7 +333,7 @@ export default function CustomerLedgerPage() {
     const total = selectedTxs.reduce((sum, tx) => sum + tx.amount, 0);
 
     if (selectedTxs.length > 0) {
-      form.setValue('amount', total, {shouldValidate: false}); // No validation on auto-fill
+      form.setValue('amount', total, {shouldValidate: false});
       const description = `Payment for: ${selectedTxs
         .map(
           (tx) =>
@@ -351,6 +347,12 @@ export default function CustomerLedgerPage() {
   const handleFormSubmit = async (data: TransactionFormData) => {
     setIsSubmitting(true);
 
+    if (data.amount === 0) {
+      form.setError('amount', {type: 'manual', message: 'Amount must not be 0.'});
+      setIsSubmitting(false);
+      return;
+    }
+
     let payload: LedgerTransactionInput;
 
     if (data.type === 'credit') {
@@ -359,12 +361,6 @@ export default function CustomerLedgerPage() {
           (item) => (item.itemName && item.itemName.trim() !== '' && item.total > 0)
         ) || [];
 
-      if (data.amount === 0) {
-        form.setError('amount', {type: 'manual', message: 'Amount must not be 0.'});
-        setIsSubmitting(false);
-        return;
-      }
-      
       const allDescriptions = validItems.map((item) => {
           return item.itemName === 'Cash'
             ? `Cash: ${formatCurrency(item.total)}`
@@ -381,11 +377,6 @@ export default function CustomerLedgerPage() {
       };
     } else {
       // Payment
-       if (data.amount === 0) {
-        form.setError('amount', { type: 'manual', message: 'Amount must not be 0.' });
-        setIsSubmitting(false);
-        return;
-      }
       payload = {
         customerId,
         type: 'payment',
@@ -758,7 +749,6 @@ export default function CustomerLedgerPage() {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(handleFormSubmit, (errors) => {
-                    console.log('Form errors:', errors);
                     if (errors.amount) {
                         toast({
                             variant: 'destructive',
@@ -835,21 +825,24 @@ export default function CustomerLedgerPage() {
                             </Button>
                           </div>
                         </div>
-                        
+
                         {fields.length > 0 && (
-                           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 items-center text-sm font-medium text-muted-foreground px-1 pb-1">
-                                <Label>Item</Label>
-                                {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-center">Qty</Label>}
-                                {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-right">Price</Label>}
-                            </div>
+                          <div className="grid grid-cols-[1fr_90px_110px_auto] items-center gap-2 px-1 pb-1 text-sm font-medium text-muted-foreground">
+                            {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label>Item</Label>}
+                            {fields.some(item => item.itemName === 'Cash') && <Label>Description</Label>}
+                            {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-center">Qty</Label>}
+                            {fields.some(item => item.itemName === 'Cash') && <Label className="text-right">Amount</Label>}
+                            {fields.some(item => !!item.itemName && item.itemName !== 'Cash') && <Label className="text-right">Price</Label>}
+                          </div>
                         )}
+
                         <div className="space-y-2">
                           {fields.map((field, index) => {
                             const currentItem = form.watch(`items.${index}`);
                             const currentItemName = currentItem.itemName;
                             const isCashItem = currentItemName === 'Cash';
                             const hasItemSelected = !!currentItemName;
-                            
+
                             return (
                               <div
                                 key={field.id}
@@ -871,8 +864,9 @@ export default function CustomerLedgerPage() {
                                                    <Input
                                                       type="number"
                                                       step="0.01"
-                                                      placeholder="Amount for Cash"
+                                                      placeholder="0.00"
                                                       {...amountField}
+                                                      value={amountField.value || ''}
                                                       onChange={(e) => amountField.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                                                       className="no-spinners text-right"
                                                     />
