@@ -13,7 +13,6 @@ import {
   getAuthenticators,
 } from '@/app/actions';
 import {startAuthentication} from '@simplewebauthn/browser';
-import type {Authenticator} from '@/lib/schemas';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {
@@ -55,6 +54,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Checking);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasPasskeys, setHasPasskeys] = useState(false);
+  const [loadingPasskeys, setLoadingPasskeys] = useState(true);
   const {toast} = useToast();
 
   const form = useForm<PasswordFormData>({
@@ -78,6 +78,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   // Check for available passkeys when the login form is shown
   useEffect(() => {
     if (authStep === AuthStep.Login) {
+        setLoadingPasskeys(true);
         const checkPasskeys = async () => {
             try {
                 const existing = await getAuthenticators();
@@ -85,6 +86,8 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
             } catch (error) {
                 console.error("Could not check for passkeys:", error);
                 setHasPasskeys(false);
+            } finally {
+                setLoadingPasskeys(false);
             }
         };
         checkPasskeys();
@@ -172,7 +175,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
           <KeyRound className="mx-auto h-12 w-12 text-primary" />
           <CardTitle className="!mt-4">Protected Area</CardTitle>
           <CardDescription>
-            Please enter the password or use a Passkey to continue.
+            Please enter the password to continue.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -200,7 +203,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               </Button>
             </form>
           </Form>
-            {hasPasskeys && (
+            {!loadingPasskeys && hasPasskeys && (
                 <>
                     <div className="relative my-6">
                         <div className="absolute inset-0 flex items-center">
