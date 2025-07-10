@@ -106,7 +106,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {Tabs, TabsList, TabsContent} from '@/components/ui/tabs';
+import {Tabs, TabsList, TabsContent, TabsTrigger} from '@/components/ui/tabs';
 import {Badge} from '@/components/ui/badge';
 import {Checkbox} from '@/components/ui/checkbox';
 import {format} from 'date-fns';
@@ -322,17 +322,12 @@ export default function CustomerLedgerPage() {
 
   const sortedFields = useMemo(() => {
     const fieldsWithOriginalIndex = fields.map((field, index) => ({
-      field,
+      ...field,
       originalIndex: index,
     }));
-    fieldsWithOriginalIndex.sort((a, b) => {
-      const isCashA = a.field.itemName === 'Cash';
-      const isCashB = b.field.itemName === 'Cash';
-      if (isCashA && !isCashB) return 1;
-      if (!isCashA && isCashB) return -1;
-      return a.originalIndex - b.originalIndex;
-    });
-    return fieldsWithOriginalIndex;
+    const itemFields = fieldsWithOriginalIndex.filter(f => f.itemName !== 'Cash');
+    const cashFields = fieldsWithOriginalIndex.filter(f => f.itemName === 'Cash');
+    return [...itemFields, ...cashFields];
   }, [fields]);
 
   const hasProductItems = useMemo(() => {
@@ -905,7 +900,7 @@ export default function CustomerLedgerPage() {
                         )}
 
                         <div className="space-y-2">
-                          {sortedFields.map(({field, originalIndex}) => {
+                          {sortedFields.map(({id, originalIndex}) => {
                             const currentItem = form.watch(
                               `items.${originalIndex}`
                             );
@@ -914,7 +909,7 @@ export default function CustomerLedgerPage() {
                             if (currentItem.itemName === 'Cash') {
                               return (
                                 <div
-                                  key={field.id}
+                                  key={id}
                                   className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
                                 >
                                   <div className="col-span-2 flex h-10 items-center rounded-md border border-input bg-background px-3 py-2 text-sm">
@@ -965,7 +960,7 @@ export default function CustomerLedgerPage() {
 
                             return (
                               <div
-                                key={field.id}
+                                key={id}
                                 className="grid grid-cols-[1fr_90px_110px_auto] items-start gap-2"
                               >
                                 <FormField
