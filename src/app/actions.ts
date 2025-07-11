@@ -353,7 +353,7 @@ export async function submitGcashTransaction(
       customerName = `G-Cash In (${formatCurrency(amount)})`;
       total = amount + serviceFee;
     } else if (type === 'cash-out') {
-      const serviceFee = Math.max(20, amount * 0.02);
+      const serviceFee = Math.max(20, amount * 0.01);
       items = [
         {
           itemName: 'Gcash Cash-Out',
