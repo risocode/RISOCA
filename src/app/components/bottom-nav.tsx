@@ -128,9 +128,9 @@ export function BottomNav() {
               variant="outline"
               className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
-              <Link href="/wallet">
+              <Link href="/store?dialog=gcash">
                 <Wallet className="w-8 h-8" />
-                <span>Wallet</span>
+                <span>Gcash</span>
               </Link>
             </Button>
           </SheetClose>
