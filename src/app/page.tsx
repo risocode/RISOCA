@@ -216,7 +216,7 @@ export default function HomePage() {
                 {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-3xl font-bold text-success">
                     {formatCurrency(totalSales)}
                   </p>
                 )}
@@ -240,7 +240,7 @@ export default function HomePage() {
                 {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-3xl font-bold text-foreground">
                     {formatCurrency(cashBalance)}
                   </p>
                 )}
