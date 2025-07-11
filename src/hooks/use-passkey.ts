@@ -13,11 +13,17 @@ import {
   getAuthenticationOptions,
   verifyAuthentication,
 } from '@/app/actions';
+import type {
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+} from '@simplewebauthn/types';
 
 const USER = {
   id: 'risoca-user-id',
   name: 'risoca-user',
 };
+
+const CHALLENGE_KEY = 'risoca-current-challenge';
 
 export function usePasskey() {
   const [authenticators, setAuthenticators] = useState<Authenticator[]>([]);
@@ -73,14 +79,23 @@ export function usePasskey() {
     try {
       // 1. Get registration options from the server
       const options = await getRegistrationOptions(USER.id, USER.name);
+      localStorage.setItem(CHALLENGE_KEY, options.challenge);
 
       // 2. Start the registration process on the client
       const registrationResponse = await startRegistration(options);
+      const challenge = localStorage.getItem(CHALLENGE_KEY);
+      
+      if (!challenge) {
+        throw new Error('Challenge not found');
+      }
 
       // 3. Verify the registration response with the server
       const {verified, newAuthenticator} = await verifyNewRegistration(
-        registrationResponse
+        registrationResponse,
+        challenge
       );
+
+      localStorage.removeItem(CHALLENGE_KEY);
 
       if (verified && newAuthenticator) {
         // 4. Save the new authenticator to localStorage
@@ -96,6 +111,7 @@ export function usePasskey() {
       return {success: false, error: 'Verification failed.'};
     } catch (error: any) {
       setIsLoading(false);
+      localStorage.removeItem(CHALLENGE_KEY);
       console.error(error);
       return {
         success: false,
@@ -112,9 +128,15 @@ export function usePasskey() {
     try {
       // 1. Get authentication options from server, passing the stored authenticators
       const options = await getAuthenticationOptions(authenticators);
+      localStorage.setItem(CHALLENGE_KEY, options.challenge);
 
       // 2. Start the authentication process on the client
       const authResponse = await startAuthentication(options);
+      const challenge = localStorage.getItem(CHALLENGE_KEY);
+      
+      if (!challenge) {
+        throw new Error('Challenge not found');
+      }
 
       // 3. Find the authenticator that was used
       const authenticator = authenticators.find(
@@ -129,8 +151,11 @@ export function usePasskey() {
       // 4. Verify the authentication response with the server
       const {verified, newCounter} = await verifyAuthentication(
         authResponse,
-        authenticator
+        authenticator,
+        challenge
       );
+      
+      localStorage.removeItem(CHALLENGE_KEY);
 
       if (verified && newCounter !== undefined) {
         // 5. Update the counter for the authenticator in localStorage
@@ -147,6 +172,7 @@ export function usePasskey() {
       return {success: false, error: 'Authentication failed.'};
     } catch (error: any) {
       setIsLoading(false);
+      localStorage.removeItem(CHALLENGE_KEY);
       console.error(error);
       if (error.name === 'NotAllowedError') {
         return { success: false, error: 'Authentication was cancelled.' };

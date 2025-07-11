@@ -933,14 +933,13 @@ export async function startDay(
     const dateString = data.date ? format(new Date(data.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
     const docRef = doc(db, 'walletHistory', dateString);
     
-    // Temporarily bypass this check
-    // const docSnap = await getDoc(docRef);
-    // if (docSnap.exists()) {
-    //   return {
-    //     success: false,
-    //     message: 'A session for this date has already been recorded.',
-    //   };
-    // }
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return {
+        success: false,
+        message: 'A session for this date has already been recorded.',
+      };
+    }
 
     await setDoc(docRef, {
       date: dateString,
@@ -998,12 +997,13 @@ export async function getRegistrationOptions(userId: string, userName: string) {
 }
 
 export async function verifyNewRegistration(
-  response: RegistrationResponseJSON
+  response: RegistrationResponseJSON,
+  expectedChallenge: string
 ): Promise<{verified: boolean; newAuthenticator?: Authenticator}> {
   try {
     const verification = await verifyRegistrationResponse({
       response,
-      expectedChallenge: response.clientDataJSON,
+      expectedChallenge,
       expectedOrigin: RP_ORIGIN,
       expectedRPID: RP_ID,
       requireUserVerification: true,
@@ -1031,7 +1031,7 @@ export async function verifyNewRegistration(
       return {verified: true, newAuthenticator};
     }
   } catch (error) {
-    console.error(error);
+    console.error('Verification failed:', error);
     return {verified: false};
   }
   return {verified: false};
@@ -1055,12 +1055,13 @@ export async function getAuthenticationOptions(
 
 export async function verifyAuthentication(
   response: AuthenticationResponseJSON,
-  authenticator: Authenticator
+  authenticator: Authenticator,
+  expectedChallenge: string
 ): Promise<{verified: boolean; newCounter?: number}> {
   try {
     const verification = await verifyAuthenticationResponse({
       response,
-      expectedChallenge: response.clientDataJSON,
+      expectedChallenge,
       expectedOrigin: RP_ORIGIN,
       expectedRPID: RP_ID,
       authenticator: {
