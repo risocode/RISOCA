@@ -2,13 +2,15 @@
 'use client';
 
 import Link from 'next/link';
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   collection,
   query,
   onSnapshot,
   orderBy,
   limit,
+  where,
+  Timestamp,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
 import {
@@ -17,6 +19,8 @@ import {
   ChevronDown,
   TrendingUp,
   TrendingDown,
+  Wallet,
+  Activity,
 } from 'lucide-react';
 import {
   Card,
@@ -38,26 +42,28 @@ import {
 } from '@/components/ui/table';
 import {Badge} from '@/components/ui/badge';
 import {cn} from '@/lib/utils';
-import type {SaleTransaction} from '@/lib/schemas';
+import type {SaleTransaction, WalletEntry} from '@/lib/schemas';
 import {useToast} from '@/hooks/use-toast';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {DailyPerformanceChart} from '@/app/components/daily-performance-chart';
 import {BestSellersReport} from '@/app/components/best-sellers-report';
+import {isToday} from 'date-fns';
+
+const INITIAL_GCASH_BALANCE = 9517.16;
 
 export default function HomePage() {
   const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [isSalesLoading, setIsSalesLoading] = useState(true); // New state for filter loading
+  const [isSalesLoading, setIsSalesLoading] = useState(true);
   const {toast} = useToast();
 
-  const [totalSales, setTotalSales] = useState(0);
+  const [allSales, setAllSales] = useState<SaleTransaction[]>([]);
+  const [walletHistory, setWalletHistory] = useState<WalletEntry[]>([]);
   const [isTotalsLoading, setIsTotalsLoading] = useState(true);
-  const {totalSpent: totalExpenses} = useReceipts();
 
-  const [openRecentSales, setOpenRecentSales] = useState<
-    Record<string, boolean>
-  >({});
+  const [openRecentSales, setOpenRecentSales] =
+    useState<Record<string, boolean>>({});
 
   const toggleRecentSaleRow = (id: string) => {
     setOpenRecentSales((prev) => {
@@ -79,9 +85,8 @@ export default function HomePage() {
     [toast]
   );
 
-  // Effect for fetching sales history (paginated)
   useEffect(() => {
-    setIsSalesLoading(true); // Always set loading to true when filter changes
+    setIsSalesLoading(true);
     const historyQuery = query(
       collection(db, 'saleTransactions'),
       orderBy('createdAt', 'desc'),
@@ -95,9 +100,9 @@ export default function HomePage() {
         );
         setRecentSales(salesData);
         if (isLoadingHistory) {
-          setIsLoadingHistory(false); // Only set this on the very first load
+          setIsLoadingHistory(false);
         }
-        setIsSalesLoading(false); // Done loading this filter
+        setIsSalesLoading(false);
       },
       (error) => {
         handleFirestoreError(error, 'saleTransactions (history)');
@@ -108,25 +113,81 @@ export default function HomePage() {
     return () => unsubHistory();
   }, [historyLimit, handleFirestoreError, isLoadingHistory]);
 
-  // Effect for fetching total sales (all time) - Runs only once
   useEffect(() => {
-    const salesQuery = query(collection(db, 'saleTransactions'));
-    const unsubSales = onSnapshot(
-      salesQuery,
-      (snapshot) => {
-        const total = snapshot.docs
-          .filter((doc) => doc.data().status !== 'voided')
-          .reduce((acc, doc) => acc + doc.data().total, 0);
-        setTotalSales(total);
-        setIsTotalsLoading(false);
+    const queries = [
+      {
+        name: 'saleTransactions (totals)',
+        query: query(collection(db, 'saleTransactions')),
+        setter: setAllSales,
       },
-      (error) => {
-        handleFirestoreError(error, 'saleTransactions (totals)');
-        setIsTotalsLoading(false);
-      }
+      {
+        name: 'walletHistory',
+        query: query(collection(db, 'walletHistory'), orderBy('date', 'desc')),
+        setter: setWalletHistory,
+      },
+    ];
+
+    let pendingLoads = queries.length;
+    const unsubscribes = queries.map(({name, query, setter}) =>
+      onSnapshot(
+        query,
+        (snapshot) => {
+          setter(snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()})) as any);
+          pendingLoads--;
+          if (pendingLoads === 0) setIsTotalsLoading(false);
+        },
+        (error) => {
+          handleFirestoreError(error, name);
+          pendingLoads--;
+          if (pendingLoads === 0) setIsTotalsLoading(false);
+        }
+      )
     );
-    return () => unsubSales();
+    return () => unsubscribes.forEach((unsub) => unsub());
   }, [handleFirestoreError]);
+
+  const {totalSales, gcashBalance, cashBalance} = useMemo(() => {
+    const total = allSales
+      .filter((doc) => doc.status !== 'voided')
+      .reduce((acc, doc) => acc + doc.total, 0);
+
+    const gcashTransactions = allSales.filter(
+      (tx) => tx.serviceType === 'gcash'
+    );
+
+    let cashIn = 0;
+    let cashOut = 0;
+    let eload = 0;
+
+    gcashTransactions.forEach((tx) => {
+      const isCashIn = tx.customerName?.includes('G-Cash In');
+      const isCashOut = tx.customerName?.includes('G-Cash Out');
+      const isEload = tx.customerName?.includes('E-Load');
+
+      if (isCashIn) {
+        const cashInItem = tx.items.find((i) => i.itemName === 'Gcash Cash-In');
+        if (cashInItem) cashIn += cashInItem.total;
+      } else if (isCashOut) {
+        const cashOutItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out');
+        if (cashOutItem) cashOut += Math.abs(cashOutItem.total);
+      } else if (isEload) {
+        const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
+        if(eloadItem) eload += eloadItem.total;
+      }
+    });
+
+    const netFlow = -cashIn + cashOut + eload;
+    const currentGcashBalance = INITIAL_GCASH_BALANCE + netFlow;
+
+    const openDay = walletHistory.find((e) => e.status === 'open');
+    const currentCashBalance = openDay ? openDay.startingCash : 0;
+
+    return {
+      totalSales: total,
+      gcashBalance: currentGcashBalance,
+      cashBalance: currentCashBalance,
+    };
+  }, [allSales, walletHistory]);
 
   const formatCurrency = (value: number) =>
     `₱${value.toLocaleString('en-US', {
@@ -141,12 +202,36 @@ export default function HomePage() {
           <CardHeader>
             <CardTitle>Financial Summary</CardTitle>
             <CardDescription>
-              Your lifetime sales and expenses at a glance.
+              Your key financial metrics at a glance.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 items-center divide-x">
-              <div className="flex flex-col items-center justify-center space-y-1 pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 items-center text-center gap-6">
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Wallet /> Cash on Hand
+                </p>
+                {isTotalsLoading ? (
+                  <Skeleton className="h-8 w-2/3 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(cashBalance)}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-1">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Activity /> G-Cash Balance
+                </p>
+                {isTotalsLoading ? (
+                  <Skeleton className="h-8 w-2/3 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(gcashBalance)}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-1">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <TrendingUp /> Total Sales
                 </p>
@@ -155,18 +240,6 @@ export default function HomePage() {
                 ) : (
                   <p className="text-3xl font-bold text-primary">
                     {formatCurrency(totalSales)}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col items-center justify-center space-y-1 pl-4">
-                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <TrendingDown /> Total Expenses
-                </p>
-                {isTotalsLoading ? (
-                  <Skeleton className="h-8 w-2/3 mt-1" />
-                ) : (
-                  <p className="text-3xl font-bold text-destructive">
-                    {formatCurrency(totalExpenses)}
                   </p>
                 )}
               </div>
