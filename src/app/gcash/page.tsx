@@ -80,6 +80,46 @@ export default function GcashPage() {
     defaultValues: {amount: 0},
   });
 
+  const parseTransactionDetails = (tx: SaleTransaction) => {
+    let type = 'Unknown';
+    let amount = 0;
+    let fee = 0;
+    let total = tx.total;
+
+    if (tx.customerName?.includes('G-Cash In')) {
+      type = 'Cash In';
+      const cashInItem = tx.items.find((i) =>
+        i.itemName.includes('Gcash Cash-In')
+      );
+      const feeItem = tx.items.find((i) =>
+        i.itemName.includes('Gcash Cash-In Fee')
+      );
+      amount = cashInItem?.total || 0;
+      fee = feeItem?.total || 0;
+      total = amount + fee;
+    } else if (tx.customerName?.includes('G-Cash Out')) {
+      type = 'Cash Out';
+      const cashOutItem = tx.items.find(
+        (i) => i.itemName === 'Gcash Cash-Out'
+      );
+      amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
+      fee =
+        tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee')?.total || 0;
+      total = fee; // Total revenue for cash-out is just the fee
+    } else if (tx.customerName?.includes('E-Load')) {
+      type = 'E-Load';
+      const eloadItem = tx.items.find(
+        (i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee')
+      );
+      const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
+      amount = eloadItem?.total || 0;
+      fee = feeItem?.total || 0;
+      total = amount + fee;
+    }
+
+    return {type, amount, fee, total};
+  };
+
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
@@ -240,44 +280,6 @@ export default function GcashPage() {
     );
   };
 
-  const parseTransactionDetails = (tx: SaleTransaction) => {
-    let type = 'Unknown';
-    let amount = 0;
-    let fee = 0;
-    let total = tx.total;
-
-    if (tx.customerName?.includes('G-Cash In')) {
-      type = 'Cash In';
-      const cashInItem = tx.items.find((i) =>
-        i.itemName.includes('Gcash Cash-In') && !i.itemName.includes('Fee')
-      );
-      const feeItem = tx.items.find((i) =>
-        i.itemName.includes('Gcash Cash-In Fee')
-      );
-      amount = cashInItem?.total || 0;
-      fee = feeItem?.total || 0;
-      total = amount + fee;
-    } else if (tx.customerName?.includes('G-Cash Out')) {
-      type = 'Cash Out';
-      const cashOutItem = tx.items.find(
-        (i) => i.itemName === 'Gcash Cash-Out'
-      );
-      amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
-      fee =
-        tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee')?.total || 0;
-      total = fee;
-    } else if (tx.customerName?.includes('E-Load')) {
-      type = 'E-Load';
-      const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
-      const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
-      amount = eloadItem?.total || 0;
-      fee = feeItem?.total || 0;
-      total = amount + fee;
-    }
-
-    return {type, amount, fee, total};
-  };
-
   return (
     <div className="p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
       <header>
@@ -408,7 +410,9 @@ export default function GcashPage() {
                           {format(tx.createdAt.toDate(), 'PPp')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={type === 'Cash Out' ? 'destructive' : 'success'}>
+                          <Badge
+                            variant={type === 'Cash Out' ? 'destructive' : type === 'Cash In' ? 'success' : 'default'}
+                          >
                             {type}
                           </Badge>
                         </TableCell>
@@ -423,7 +427,7 @@ export default function GcashPage() {
                         <TableCell
                           className={cn(
                             'text-right font-mono font-semibold',
-                             'text-primary'
+                            'text-primary'
                           )}
                         >
                           {formatCurrency(total)}
