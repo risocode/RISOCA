@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 
@@ -57,7 +58,7 @@ const nextConfig: NextConfig = {
           {
             key: 'Permissions-Policy',
             value:
-              'publickey-credentials-get=*',
+              'publickey-credentials-get=*, publickey-credentials-create=*',
           },
         ],
       },
