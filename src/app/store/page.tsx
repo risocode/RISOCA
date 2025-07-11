@@ -37,6 +37,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter as UiTableFooter,
 } from '@/components/ui/table';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -681,6 +682,17 @@ export default function StorePage() {
                     </TableRow>
                   ))}
                 </TableBody>
+                <UiTableFooter>
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-right font-bold">
+                      Subtotal
+                    </TableCell>
+                    <TableCell className="text-right font-bold font-mono">
+                      {formatCurrency(grandTotal)}
+                    </TableCell>
+                    <TableCell />
+                  </TableRow>
+                </UiTableFooter>
               </Table>
               <Separator className="my-4" />
               <div className="space-y-4 px-2">
