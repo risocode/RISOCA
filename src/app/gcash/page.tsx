@@ -245,14 +245,13 @@ export default function GcashPage() {
 
     if (tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
-      const cashInItem = tx.items.find((i) => i.itemName === 'Gcash Cash-In');
-      fee =
-        tx.items.find((i) => i.itemName === 'Service Fee')?.total ||
-        Math.max(0, cashInItem ? cashInItem.total - (cashInItem.unitPrice - (cashInItem.total - cashInItem.unitPrice))) : 0);
-      const match = tx.customerName.match(/₱([\d,.]+)/);
-      if(match) amount = parseFloat(match[1].replace(/,/g, ''));
-      else amount = cashInItem ? cashInItem.total - fee : 0;
-      total = amount + fee;
+      const cashInItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In'));
+      const serviceFee = Math.max(10, (cashInItem?.unitPrice || 0) * 0.01);
+      if (cashInItem) {
+          amount = cashInItem.unitPrice;
+          fee = cashInItem.total - cashInItem.unitPrice;
+      }
+      total = tx.total;
     } else if (tx.customerName?.includes('G-Cash Out')) {
       type = 'Cash Out';
       const cashOutItem = tx.items.find(
