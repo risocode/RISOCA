@@ -25,19 +25,38 @@ export function usePasskey() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const isMobile = /Mobi/i.test(window.navigator.userAgent);
-
-    // Check for WebAuthn support on component mount and if it's a mobile device
-    setIsSupported(
-      isMobile &&
-        typeof window !== 'undefined' &&
+    // Asynchronously check for platform authenticator support.
+    // This is the most reliable way to check for Passkey readiness.
+    async function checkSupport() {
+      if (
         window.PublicKeyCredential &&
-        window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
-    );
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable
+      ) {
+        try {
+          const isAvailable =
+            await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          setIsSupported(isAvailable);
+        } catch (error) {
+          console.error('Error checking Passkey support:', error);
+          setIsSupported(false);
+        }
+      } else {
+        setIsSupported(false);
+      }
+    }
+
+    checkSupport();
+
     // Load authenticators from localStorage
-    const savedAuthenticators = localStorage.getItem('risoca-authenticators');
-    if (savedAuthenticators) {
-      setAuthenticators(JSON.parse(savedAuthenticators));
+    try {
+      const savedAuthenticators = localStorage.getItem('risoca-authenticators');
+      if (savedAuthenticators) {
+        setAuthenticators(JSON.parse(savedAuthenticators));
+      }
+    } catch (error) {
+      console.error('Could not parse authenticators from localStorage:', error);
+      // Clear potentially corrupted data
+      localStorage.removeItem('risoca-authenticators');
     }
   }, []);
 
@@ -129,6 +148,9 @@ export function usePasskey() {
     } catch (error: any) {
       setIsLoading(false);
       console.error(error);
+      if (error.name === 'NotAllowedError') {
+        return { success: false, error: 'Authentication was cancelled.' };
+      }
       return {
         success: false,
         error: error.message || 'An unknown error occurred.',

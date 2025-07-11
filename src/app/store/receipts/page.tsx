@@ -26,7 +26,7 @@ import {useToast} from '@/hooks/use-toast';
 import {diagnoseReceipt} from '@/ai/flows/diagnose-receipt-flow';
 import {submitManualReceipt} from '@/app/actions';
 import {type DiagnoseReceiptOutput, type DiagnoseReceiptInput} from '@/ai/flows/diagnose-receipt-flow';
-import {useForm, useFieldArray} from 'react-hook-form';
+import {useForm, useFieldArray, useWatch} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
 import {format} from 'date-fns';
@@ -78,12 +78,16 @@ import {
 } from '@/components/ui/table';
 
 const categories = [
+  'Bakers Percent',
+  'Tobacco',
   'Groceries',
+  'Alcohol',
+  'Soft Drinks',
+  'Utilities',
   'Dining',
   'Travel',
-  'Shopping',
-  'Utilities',
   'Entertainment',
+  'Shopping',
   'Other',
 ];
 
@@ -94,6 +98,7 @@ const ReceiptFormSchema = z.object({
     .number({invalid_type_error: 'Total must be a number.'})
     .min(0, 'Total must be a positive number.'),
   category: z.string({required_error: 'Please select a category.'}),
+  otherCategoryDescription: z.string().optional(),
   paymentSource: z.enum(['Cash on Hand', 'G-Cash'], {
     required_error: 'Please select a payment source.',
   }),
@@ -107,7 +112,16 @@ const ReceiptFormSchema = z.object({
       })
     )
     .min(1, 'At least one item is required.'),
+}).refine(data => {
+    if (data.category === 'Other') {
+        return !!data.otherCategoryDescription && data.otherCategoryDescription.trim().length > 0;
+    }
+    return true;
+}, {
+    message: 'Please specify the category description.',
+    path: ['otherCategoryDescription'],
 });
+
 
 type ReceiptFormData = z.infer<typeof ReceiptFormSchema>;
 type DiagnosisWithSource = DiagnoseReceiptOutput & { paymentSource: 'Cash on Hand' | 'G-Cash' };
@@ -136,6 +150,11 @@ export default function ReceiptPage() {
       items: [{name: '', price: 0}],
       paymentSource: 'Cash on Hand',
     },
+  });
+  
+  const watchedCategory = useWatch({
+    control: form.control,
+    name: 'category'
   });
 
   const {fields, append, remove} = useFieldArray({
@@ -275,6 +294,7 @@ export default function ReceiptPage() {
     const payload = {
       ...data,
       transactionDate: format(data.transactionDate, 'yyyy-MM-dd'),
+      category: data.category === 'Other' && data.otherCategoryDescription ? data.otherCategoryDescription : data.category,
     };
 
     try {
@@ -460,6 +480,21 @@ export default function ReceiptPage() {
                         </FormItem>
                       )}
                     />
+                    {watchedCategory === 'Other' && (
+                        <FormField
+                        name="otherCategoryDescription"
+                        control={form.control}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Specify Other Category</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. Office Supplies" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    )}
                     <FormField
                       name="paymentSource"
                       control={form.control}
@@ -747,6 +782,21 @@ export default function ReceiptPage() {
                       </FormItem>
                     )}
                   />
+                  {watchedCategory === 'Other' && (
+                        <FormField
+                        name="otherCategoryDescription"
+                        control={form.control}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Specify Other Category</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g. Office Supplies" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    )}
                   <FormField
                     name="paymentSource"
                     control={form.control}

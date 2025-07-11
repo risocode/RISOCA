@@ -98,4 +98,5 @@ export type Authenticator = {
 // Extends DiagnoseReceiptOutput with paymentSource
 export type DiagnoseReceiptInputWithSource = DiagnoseReceiptOutput & {
   paymentSource: 'Cash on Hand' | 'G-Cash';
+  otherCategoryDescription?: string;
 };

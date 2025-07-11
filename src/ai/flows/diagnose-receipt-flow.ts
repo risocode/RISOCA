@@ -14,7 +14,7 @@ const DiagnoseReceiptInputSchema = z.object({
   photoDataUri: z
     .string()
     .describe(
-      "A photo of a receipt, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A photo of a receipt, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
     ),
 });
 export type DiagnoseReceiptInput = z.infer<typeof DiagnoseReceiptInputSchema>;
@@ -36,7 +36,13 @@ const DiagnoseReceiptOutputSchema = z.object({
   category: z
     .string()
     .describe(
-      'The category of the expense. Examples: Groceries, Dining, Travel, Shopping, Utilities, Entertainment, Other.'
+      'The category of the expense. Examples: Bakers Percent, Tobacco, Groceries, Alcohol, Soft Drinks, Utilities, Dining, Travel, Entertainment, Shopping, Other.'
+    ),
+  otherCategoryDescription: z
+    .string()
+    .optional()
+    .describe(
+      'If the category is "Other", provide a specific description of the expense category.'
     ),
 });
 export type DiagnoseReceiptOutput = z.infer<typeof DiagnoseReceiptOutputSchema>;
@@ -54,7 +60,8 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert receipt scanner. Analyze the provided receipt image and extract the following information: the merchant's name, the transaction date, a list of all items with their prices, the final total amount, and a relevant category for the expense.
 
 Ensure the date is in YYYY-MM-DD format.
-Choose the most appropriate category from this list: Groceries, Dining, Travel, Shopping, Utilities, Entertainment, Other.
+Choose the most appropriate category from this list: Bakers Percent, Tobacco, Groceries, Alcohol, Soft Drinks, Utilities, Dining, Travel, Entertainment, Shopping, Other.
+If you choose "Other", you MUST provide a specific description in the 'otherCategoryDescription' field.
 
 Photo: {{media url=photoDataUri}}`,
 });

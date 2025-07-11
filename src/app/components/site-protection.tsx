@@ -64,31 +64,62 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   } = usePasskey();
   
   const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
+  const [passkeyLoginAttempted, setPasskeyLoginAttempted] = useState(false);
+
 
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(PasswordSchema),
     defaultValues: {password: ''},
   });
 
-  const checkSession = useCallback(() => {
-    const isAuthenticated = sessionStorage.getItem('risoca-auth') === 'true';
-    if (isAuthenticated) {
-      setAuthStep(AuthStep.Authenticated);
-    } else {
-      setAuthStep(AuthStep.Login);
-    }
-  }, []);
-  
-  const finishAuthentication = useCallback(() => {
-      sessionStorage.setItem('risoca-auth', 'true');
+  const finishAuthentication = useCallback((method: 'password' | 'passkey' = 'passkey') => {
+      // Use localStorage to persist login across sessions
+      localStorage.setItem('risoca-auth', 'true');
       setAuthStep(AuthStep.Authenticated);
       setShowRegistrationPrompt(false);
       toast({variant: 'success', title: 'Login Successful'});
   }, [toast]);
 
+  const handlePasskeyLogin = useCallback(async () => {
+    if (passkeyLoginAttempted) return;
+    setPasskeyLoginAttempted(true);
+    
+    const {success, error} = await loginWithPasskey();
+    if (success) {
+      finishAuthentication();
+    } else {
+      if (error) {
+        toast({variant: 'destructive', title: 'Login Failed', description: error});
+      }
+      // If passkey fails, we stay on the login screen for password fallback
+    }
+  }, [loginWithPasskey, finishAuthentication, toast, passkeyLoginAttempted]);
+
+  const checkSessionAndPasskeys = useCallback(() => {
+    // Check if already authenticated in this session
+    const isAuthenticated = localStorage.getItem('risoca-auth') === 'true';
+    if (isAuthenticated) {
+      setAuthStep(AuthStep.Authenticated);
+      return;
+    }
+
+    // If not authenticated, move to login step.
+    // The useEffect below will handle auto-triggering passkey.
+    setAuthStep(AuthStep.Login);
+  }, []);
+
   useEffect(() => {
-    checkSession();
-  }, [checkSession]);
+    checkSessionAndPasskeys();
+  }, [checkSessionAndPasskeys]);
+  
+  useEffect(() => {
+    // This effect runs when the login screen becomes active.
+    // If passkeys are supported and available, it triggers the login automatically.
+    if (authStep === AuthStep.Login && isSupported && hasPasskeys && !passkeyLoginAttempted) {
+      handlePasskeyLogin();
+    }
+  }, [authStep, isSupported, hasPasskeys, handlePasskeyLogin, passkeyLoginAttempted]);
+
 
   const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsSubmitting(true);
@@ -97,7 +128,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       if (isSupported && !hasPasskeys) {
         setShowRegistrationPrompt(true);
       } else {
-        finishAuthentication();
+        finishAuthentication('password');
       }
     } else {
       form.setError('password', {
@@ -107,15 +138,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       toast({variant: 'destructive', title: 'Access Denied'});
     }
     setIsSubmitting(false);
-  };
-
-  const handlePasskeyLogin = async () => {
-    const {success, error} = await loginWithPasskey();
-    if (success) {
-      finishAuthentication();
-    } else {
-      toast({variant: 'destructive', title: 'Login Failed', description: error});
-    }
   };
 
   const handleRegisterFromPrompt = async () => {
@@ -133,8 +155,12 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
         description: error,
       });
     }
-    finishAuthentication();
+    finishAuthentication('password');
   };
+  
+  const handleSkipRegistration = () => {
+     finishAuthentication('password');
+  }
 
   const renderLoginScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
@@ -158,11 +184,24 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               className="w-auto h-8"
             />
           </div>
-          <KeyRound className="mx-auto h-12 w-12 text-primary" />
-          <CardTitle className="!mt-4">Protected Area</CardTitle>
-          <CardDescription>
-            Please enter the password to continue.
-          </CardDescription>
+          {isPasskeyLoading && passkeyLoginAttempted ? (
+            <>
+              <Fingerprint className="mx-auto h-12 w-12 text-primary animate-pulse" />
+              <CardTitle className="!mt-4">Fingerprint Login</CardTitle>
+              <CardDescription>
+                Please verify your identity.
+              </CardDescription>
+            </>
+          ) : (
+             <>
+              <KeyRound className="mx-auto h-12 w-12 text-primary" />
+              <CardTitle className="!mt-4">Protected Area</CardTitle>
+              <CardDescription>
+                Please enter the password to continue.
+              </CardDescription>
+             </>
+          )}
+
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -193,7 +232,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                   disabled={isSubmitting || isPasskeyLoading}
                   className="w-full"
                 >
-                  {(isSubmitting || isPasskeyLoading) && (
+                  {(isSubmitting) && (
                     <Loader2 className="mr-2 animate-spin" />
                   )}
                   Unlock
@@ -231,7 +270,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={finishAuthentication}>Not Now</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleSkipRegistration}>Not Now</AlertDialogCancel>
           <AlertDialogAction onClick={handleRegisterFromPrompt}>
             <Fingerprint className="mr-2 h-4 w-4" /> Register Device
           </AlertDialogAction>
