@@ -13,7 +13,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
-import {startOfToday, isToday} from 'date-fns';
+import {isToday} from 'date-fns';
 import {db} from '@/lib/firebase';
 import {submitGcashTransaction} from '@/app/actions';
 import type {SaleTransaction} from '@/lib/schemas';
@@ -83,8 +83,7 @@ export default function GcashPage() {
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', '==', 'gcash'),
-      orderBy('createdAt', 'desc')
+      where('serviceType', '==', 'gcash')
     );
 
     const unsubscribe = onSnapshot(
@@ -92,6 +91,10 @@ export default function GcashPage() {
       (snapshot) => {
         const data: SaleTransaction[] = snapshot.docs.map(
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
+        );
+        // Manual sort since orderBy is removed
+        data.sort(
+          (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()
         );
         setTransactions(data);
         setIsLoading(false);
@@ -397,7 +400,7 @@ export default function GcashPage() {
                   transactions.map((tx) => {
                     const {type, amount, fee, total} =
                       parseTransactionDetails(tx);
-                    const isDebit = type === 'Cash Out';
+                    const isDebit = type === 'Cash In';
 
                     return (
                       <TableRow key={tx.id}>
@@ -405,7 +408,7 @@ export default function GcashPage() {
                           {format(tx.createdAt.toDate(), 'PPp')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={isDebit ? 'destructive' : 'success'}>
+                          <Badge variant={type === 'Cash Out' ? 'destructive' : 'success'}>
                             {type}
                           </Badge>
                         </TableCell>
@@ -420,7 +423,7 @@ export default function GcashPage() {
                         <TableCell
                           className={cn(
                             'text-right font-mono font-semibold',
-                            type === 'Cash In' ? 'text-primary' : (isDebit ? 'text-destructive' : 'text-primary')
+                             'text-primary'
                           )}
                         >
                           {formatCurrency(total)}
