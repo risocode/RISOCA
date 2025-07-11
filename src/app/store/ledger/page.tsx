@@ -296,13 +296,10 @@ export default function LedgerPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="px-4 py-2 border-b grid grid-cols-[2fr_1fr_1fr_auto] items-center gap-4">
+          <div className="px-4 py-2 border-b grid grid-cols-[2fr_1fr_auto] items-center gap-4">
             <h4 className="text-sm font-medium text-muted-foreground">Name</h4>
-            <h4 className="text-sm font-medium text-muted-foreground text-center">
+            <h4 className="text-sm font-medium text-muted-foreground text-right">
               Balance
-            </h4>
-            <h4 className="text-sm font-medium text-muted-foreground text-center">
-              Paid
             </h4>
             <span className="sr-only">Action</span>
           </div>
@@ -311,11 +308,10 @@ export default function LedgerPage() {
               Array.from({length: 5}).map((_, i) => (
                 <div
                   key={i}
-                  className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 gap-4 border-b"
+                  className="grid grid-cols-[2fr_1fr_auto] items-center p-4 gap-4 border-b"
                 >
                   <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-6 w-20 justify-self-center" />
-                  <Skeleton className="h-6 w-20 justify-self-center" />
+                  <Skeleton className="h-6 w-20 justify-self-end" />
                   <Skeleton className="h-5 w-5 justify-self-end" />
                 </div>
               ))
@@ -326,7 +322,7 @@ export default function LedgerPage() {
                   <Link
                     key={customer.id}
                     href={`/store/ledger/${customer.id}`}
-                    className="grid grid-cols-[2fr_1fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
+                    className="grid grid-cols-[2fr_1fr_auto] items-center p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors gap-4"
                   >
                     <span
                       className={cn(
@@ -339,14 +335,11 @@ export default function LedgerPage() {
                     </span>
                     <span
                       className={cn(
-                        'font-mono text-center',
+                        'font-mono text-right',
                         isPaid ? 'text-success' : 'text-destructive'
                       )}
                     >
                       {formatCurrency(customer.balance)}
-                    </span>
-                    <span className="font-mono text-center text-muted-foreground">
-                      {formatCurrency(customer.paid)}
                     </span>
                     <ChevronRight className="w-5 h-5 text-muted-foreground justify-self-end" />
                   </Link>
@@ -369,7 +362,7 @@ export default function LedgerPage() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            className="fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl"
+            className="fixed bottom-24 right-4 h-16 w-16 rounded-full shadow-2xl md:right-6"
             size="icon"
           >
             <UserPlus className="h-8 w-8" />

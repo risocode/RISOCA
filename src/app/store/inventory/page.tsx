@@ -340,7 +340,7 @@ export default function InventoryPage() {
                   A list of all products currently in your inventory.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch gap-2 w-full sm:w-auto">
                 <div className="relative flex-grow">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
@@ -352,7 +352,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Sort by..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -372,7 +372,7 @@ export default function InventoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="px-2 md:px-4">Product Name</TableHead>
-                  <TableHead className="px-2 md:px-4">Price</TableHead>
+                  <TableHead className="text-right px-2 md:px-4">Price</TableHead>
                   <TableHead className="text-center px-2 md:px-4">
                     Stock
                   </TableHead>
@@ -389,7 +389,7 @@ export default function InventoryPage() {
                           <Skeleton className="h-5 w-3/4" />
                         </TableCell>
                         <TableCell className="p-2 md:p-4">
-                          <Skeleton className="h-5 w-1/2" />
+                          <Skeleton className="h-5 w-1/2 ml-auto" />
                         </TableCell>
                         <TableCell className="p-2 md:p-4">
                           <Skeleton className="h-5 w-1/3 mx-auto" />
@@ -409,7 +409,7 @@ export default function InventoryPage() {
                         <TableCell className="p-2 md:p-4 font-medium">
                           {item.name}
                         </TableCell>
-                        <TableCell className="p-2 md:p-4 whitespace-nowrap">
+                        <TableCell className="p-2 md:p-4 whitespace-nowrap text-right font-mono">
                           ₱{item.price.toFixed(2)}
                         </TableCell>
                         <TableCell className="p-2 md:p-4 text-center">

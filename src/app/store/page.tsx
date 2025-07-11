@@ -46,7 +46,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import {useToast} from '@/hooks/use-toast';
@@ -568,8 +567,8 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                <div className="flex justify-between items-center mt-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-center mt-2 gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
@@ -596,7 +595,7 @@ export default function StorePage() {
                     </Button>
                   </div>
                   {fields.length > 0 && (
-                    <Button type="submit" size="sm">
+                    <Button type="submit" size="sm" className="w-full sm:w-auto">
                       <PlusCircle className="mr-2" /> Add to Sale
                     </Button>
                   )}
@@ -816,7 +815,7 @@ export default function StorePage() {
                 name="amount"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Load Amount (₱)</FormLabel>
+                    <Label>Load Amount (₱)</Label>
                     <FormControl>
                       <Input
                         type="number"
@@ -867,7 +866,7 @@ export default function StorePage() {
                 name="amount"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Cash-In Amount (₱)</FormLabel>
+                    <Label>Cash-In Amount (₱)</Label>
                     <FormControl>
                       <Input
                         type="number"

@@ -87,6 +87,7 @@ const StartDaySchema = z.object({
   startingCash: z.coerce
     .number()
     .min(0, 'Starting cash must be a positive number.'),
+  date: z.string().optional(),
 });
 type StartDayFormData = z.infer<typeof StartDaySchema>;
 
@@ -267,7 +268,10 @@ export default function WalletPage() {
 
   const handleStartDay = async (data: StartDayFormData) => {
     setIsSubmitting(true);
-    const response = await startDay(data.startingCash);
+    const response = await startDay({
+      startingCash: data.startingCash,
+      date: format(new Date(), 'yyyy-MM-dd'),
+    });
     if (response.success) {
       toast({
         variant: 'success',
@@ -534,7 +538,7 @@ export default function WalletPage() {
           <form onSubmit={startDayForm.handleSubmit(handleStartDay)}>
             <CardContent className="space-y-4">
               {latestClosedDay?.endingCash !== undefined && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg bg-muted gap-2">
                   <p className="text-sm">
                     Last closing balance:{' '}
                     <span className="font-bold font-mono">
@@ -545,6 +549,7 @@ export default function WalletPage() {
                     type="button"
                     variant="secondary"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => {
                       startDayForm.setValue(
                         'startingCash',
@@ -757,71 +762,73 @@ export default function WalletPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-center">Date</TableHead>
-                <TableHead className="text-center">Start</TableHead>
-                <TableHead className="text-center">Sales</TableHead>
-                <TableHead className="text-center">Expenses</TableHead>
-                <TableHead className="text-center">Profit</TableHead>
-                <TableHead className="text-center">End</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {enrichedHistory.length > 0 ? (
-                enrichedHistory.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-center font-medium">
-                      {format(parseISO(entry.date), 'MMMM d, yyyy')}
-                      <Badge
-                        variant={
-                          entry.status === 'open' ? 'default' : 'secondary'
-                        }
-                        className="ml-2"
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-center">Date</TableHead>
+                  <TableHead className="text-center">Start</TableHead>
+                  <TableHead className="text-center">Sales</TableHead>
+                  <TableHead className="text-center">Expenses</TableHead>
+                  <TableHead className="text-center">Profit</TableHead>
+                  <TableHead className="text-center">End</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {enrichedHistory.length > 0 ? (
+                  enrichedHistory.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="text-center font-medium">
+                        {format(parseISO(entry.date), 'MMMM d, yyyy')}
+                        <Badge
+                          variant={
+                            entry.status === 'open' ? 'default' : 'secondary'
+                          }
+                          className="ml-2"
+                        >
+                          {entry.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center font-mono">
+                        {formatCurrency(entry.startingCash)}
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-primary">
+                        {formatCurrency(entry.dailySales)}
+                      </TableCell>
+                      <TableCell className="text-center font-mono text-destructive">
+                        {formatCurrency(entry.dailyExpenses)}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-center font-mono',
+                          entry.profit == null ? '' : (entry.profit >= 0 ? 'text-success' : 'text-destructive')
+                        )}
                       >
-                        {entry.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {formatCurrency(entry.startingCash)}
-                    </TableCell>
-                    <TableCell className="text-center font-mono text-primary">
-                      {formatCurrency(entry.dailySales)}
-                    </TableCell>
-                    <TableCell className="text-center font-mono text-destructive">
-                      {formatCurrency(entry.dailyExpenses)}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        'text-center font-mono',
-                        entry.profit == null ? '' : (entry.profit >= 0 ? 'text-success' : 'text-destructive')
-                      )}
-                    >
-                      <div className="flex items-center justify-center">
-                        {entry.profit != null && (entry.profit >= 0 ? (
-                          <TrendingUp className="mr-1" />
-                        ) : (
-                          <TrendingDown className="mr-1" />
-                        ))}
-                        {formatCurrency(entry.profit)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center font-mono">
-                      {formatCurrency(entry.endingCash)}
+                        <div className="flex items-center justify-center">
+                          {entry.profit != null && (entry.profit >= 0 ? (
+                            <TrendingUp className="mr-1" />
+                          ) : (
+                            <TrendingDown className="mr-1" />
+                          ))}
+                          {formatCurrency(entry.profit)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-mono">
+                        {formatCurrency(entry.endingCash)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      No wallet history found. Start a day to begin.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    <FileWarning className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    No wallet history found. Start a day to begin.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

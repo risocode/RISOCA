@@ -661,7 +661,7 @@ export default function CustomerLedgerPage() {
                         cannotDeleteCustomer ? 'pointer-events-none' : ''
                       }
                     >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete Customer
+                      <Trash2 className="mr-2 h-4 w-4" /> <span className="hidden sm:inline">Delete Customer</span>
                     </Button>
                   </span>
                 </TooltipTrigger>
@@ -937,7 +937,7 @@ export default function CustomerLedgerPage() {
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetTrigger asChild>
           <Button
-            className="fixed bottom-24 right-6 h-16 w-16 rounded-full shadow-2xl"
+            className="fixed bottom-24 right-4 h-16 w-16 rounded-full shadow-2xl md:right-6"
             size="icon"
             disabled={customer?.status === 'deleted'}
           >
@@ -949,14 +949,14 @@ export default function CustomerLedgerPage() {
           side="bottom"
           className="rounded-t-2xl sm:max-w-2xl mx-auto border-none bg-card p-0"
         >
-          <SheetHeader className="p-6">
+          <SheetHeader className="p-4 md:p-6">
             <SheetTitle>New Transaction</SheetTitle>
             <SheetDescription>
               Add a credit or payment to this customer's account.
             </SheetDescription>
           </SheetHeader>
           <ScrollArea className="h-[calc(100vh-200px)]">
-            <div className="p-6 pt-0">
+            <div className="p-4 pt-0 md:p-6 md:pt-0">
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(handleFormSubmit)}
