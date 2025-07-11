@@ -73,6 +73,10 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
+        <meta
+          http-equiv="Permissions-Policy"
+          content="publickey-credentials-get=*, publickey-credentials-create=*"
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=8" />
         <link
