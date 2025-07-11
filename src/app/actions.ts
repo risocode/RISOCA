@@ -331,6 +331,80 @@ export async function submitSaleTransaction(
   }
 }
 
+export async function submitGcashTransaction(
+  type: 'cash-in' | 'cash-out' | 'e-load',
+  amount: number
+): Promise<{success: boolean; message?: string}> {
+  try {
+    let items: SaleItem[] = [];
+    let customerName = '';
+    let total = 0;
+
+    if (type === 'cash-in') {
+      const serviceFee = Math.max(10, amount * 0.01);
+      items = [
+        {
+          itemName: 'Gcash Cash-In',
+          quantity: 1,
+          unitPrice: amount + serviceFee,
+          total: amount + serviceFee,
+        },
+      ];
+      customerName = `G-Cash In (${formatCurrency(amount)})`;
+      total = amount + serviceFee;
+    } else if (type === 'cash-out') {
+      const serviceFee = Math.max(20, amount * 0.02);
+      items = [
+        {
+          itemName: 'Gcash Cash-Out',
+          quantity: 1,
+          unitPrice: -amount,
+          total: -amount,
+        },
+        {
+          itemName: 'Gcash Cash-Out Fee',
+          quantity: 1,
+          unitPrice: serviceFee,
+          total: serviceFee,
+        },
+      ];
+      customerName = `G-Cash Out (${formatCurrency(amount)})`;
+      total = serviceFee - amount;
+    } else if (type === 'e-load') {
+      const serviceFee = 3;
+      items = [
+        {
+          itemName: `E-Load (${formatCurrency(amount)})`,
+          quantity: 1,
+          unitPrice: amount + serviceFee,
+          total: amount + serviceFee,
+        },
+      ];
+      customerName = 'E-Load';
+      total = amount + serviceFee;
+    }
+
+    await submitSaleTransaction({
+      items,
+      customerName,
+      total,
+      status: 'active',
+    });
+
+    return {success: true};
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {success: false, message};
+  }
+}
+
+const formatCurrency = (value: number) =>
+  `₱${value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 export async function voidSaleTransaction(
   transactionId: string
 ): Promise<{success: boolean; message?: string}> {

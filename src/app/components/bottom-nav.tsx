@@ -12,6 +12,7 @@ import {
   ReceiptText,
   Landmark,
   Wallet,
+  Settings,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {
@@ -127,7 +128,7 @@ export function BottomNav() {
               variant="outline"
               className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
-              <Link href="/store?dialog=gcash">
+              <Link href="/gcash">
                 <svg
                   className="w-8 h-8"
                   viewBox="0 0 24 24"

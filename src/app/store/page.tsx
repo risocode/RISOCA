@@ -116,68 +116,6 @@ const SaleFormSchema = z.object({
 
 type SaleFormData = z.infer<typeof SaleFormSchema>;
 
-const GcashServiceSchema = z.object({
-  amount: z.coerce.number().positive('Amount must be greater than zero.'),
-});
-type GcashServiceFormData = z.infer<typeof GcashServiceSchema>;
-
-const submitGcashTransaction = async (
-  type: 'cash-in' | 'cash-out' | 'e-load',
-  amount: number
-) => {
-  let items: SaleItem[] = [];
-  let customerName = '';
-
-  if (type === 'e-load') {
-    const totalAmount = amount + 3;
-    items.push({
-      itemName: 'E-Load',
-      quantity: 1,
-      unitPrice: totalAmount,
-      total: totalAmount,
-    });
-    customerName = 'E-Load';
-  } else if (type === 'cash-in') {
-    const serviceFee = Math.max(10, amount * 0.01);
-    const totalAmount = amount + serviceFee;
-    items.push({
-      itemName: 'Gcash Cash-In',
-      quantity: 1,
-      unitPrice: totalAmount,
-      total: totalAmount,
-    });
-    customerName = 'Gcash Cash-In';
-  } else {
-    // Cash-out
-    const percentFee = amount * 0.02; // 2% for cash-out
-    const serviceFee = Math.max(20, percentFee); // Minimum 20 pesos fee
-
-    // The amount being given out is a negative value
-    items.push({
-      itemName: 'Gcash Cash-Out',
-      quantity: 1,
-      unitPrice: -amount,
-      total: -amount,
-    });
-    // The fee earned is a positive value
-    items.push({
-      itemName: 'Gcash Cash-Out Service Fee',
-      quantity: 1,
-      unitPrice: serviceFee,
-      total: serviceFee,
-    });
-    customerName = 'Gcash Cash-Out';
-  }
-
-  const grandTotal = items.reduce((acc, item) => acc + item.total, 0);
-
-  return await submitSaleTransaction({
-    items: items,
-    customerName,
-    total: grandTotal,
-    status: 'active',
-  });
-};
 
 export default function StorePage() {
   const router = useRouter();
@@ -206,30 +144,12 @@ export default function StorePage() {
   const [commandSearch, setCommandSearch] = useState('');
   const [openTransaction, setOpenTransaction] = useState<string | null>(null);
 
-  const [isGcashDialogOpen, setIsGcashDialogOpen] = useState(false);
-  const [gcashDialogStep, setGcashDialogStep] = useState<
-    'select' | 'cash-in' | 'cash-out' | 'e-load'
-  >('select');
-
-  const gcashForm = useForm<GcashServiceFormData>({
-    resolver: zodResolver(GcashServiceSchema),
-    defaultValues: {amount: 0},
-  });
-
   const form = useForm<SaleFormData>({
     resolver: zodResolver(SaleFormSchema),
     defaultValues: {
       items: [],
     },
   });
-
-  useEffect(() => {
-    if (searchParams.get('dialog') === 'gcash') {
-      setIsGcashDialogOpen(true);
-      // Clean the URL
-      router.replace('/store', {scroll: false});
-    }
-  }, [searchParams, router]);
 
   const {fields, append, remove, update} = useFieldArray({
     control: form.control,
@@ -388,36 +308,6 @@ export default function StorePage() {
     }, 50);
   };
 
-  const handleGcashServiceSubmit = async (data: GcashServiceFormData) => {
-    if (
-      !['cash-in', 'cash-out', 'e-load'].includes(
-        gcashDialogStep as 'cash-in' | 'cash-out' | 'e-load'
-      )
-    )
-      return;
-
-    setIsSubmitting(true);
-    const response = await submitGcashTransaction(
-      gcashDialogStep as 'cash-in' | 'cash-out' | 'e-load',
-      data.amount
-    );
-
-    if (response.success) {
-      toast({
-        variant: 'success',
-        title: 'Transaction Recorded',
-      });
-      setIsGcashDialogOpen(false);
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: response.message || 'An unknown error occurred.',
-      });
-    }
-    setIsSubmitting(false);
-  };
-
   const toggleTransactionRow = (id: string) => {
     setOpenTransaction((prev) => (prev === id ? null : id));
   };
@@ -438,131 +328,6 @@ export default function StorePage() {
       maximumFractionDigits: 2,
     })}`;
 
-  const GcashDialogContent = () => {
-    if (gcashDialogStep === 'select') {
-      return (
-        <>
-          <DialogHeader>
-            <DialogTitle>G-Cash Services</DialogTitle>
-            <DialogDescription>
-              Select a transaction type to record.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 py-4">
-            <Button
-              variant="outline"
-              className="h-20 text-lg justify-between"
-              onClick={() => setGcashDialogStep('cash-in')}
-            >
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-lg text-primary">
-                  <ArrowRight />
-                </div>
-                Cash In
-              </div>
-              <ChevronDown className="-rotate-90" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-20 text-lg justify-between"
-              onClick={() => setGcashDialogStep('cash-out')}
-            >
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-lg text-primary">
-                  <ArrowLeft />
-                </div>
-                Cash Out
-              </div>
-              <ChevronDown className="-rotate-90" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-20 text-lg justify-between"
-              onClick={() => setGcashDialogStep('e-load')}
-            >
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/10 p-3 rounded-lg text-primary">
-                  <Phone />
-                </div>
-                E-Load
-              </div>
-              <ChevronDown className="-rotate-90" />
-            </Button>
-          </div>
-        </>
-      );
-    }
-
-    const titles = {
-      'cash-in': 'Gcash Cash-In',
-      'cash-out': 'Gcash Cash-Out',
-      'e-load': 'E-Load',
-    };
-    const descriptions = {
-      'cash-in':
-        'Enter the amount the customer is cashing in. Service fee will be added.',
-      'cash-out':
-        'Enter the amount the customer is cashing out. Service fee will be earned.',
-      'e-load':
-        'Enter the load amount. A ₱3.00 service fee will be added.',
-    };
-
-    return (
-      <>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 -ml-2"
-              onClick={() => setGcashDialogStep('select')}
-            >
-              <ChevronDown className="rotate-90" />
-            </Button>
-            {titles[gcashDialogStep]}
-          </DialogTitle>
-          <DialogDescription>{descriptions[gcashDialogStep]}</DialogDescription>
-        </DialogHeader>
-        <Form {...gcashForm}>
-          <form
-            onSubmit={gcashForm.handleSubmit(handleGcashServiceSubmit)}
-            className="space-y-4 py-4"
-          >
-            <FormField
-              control={gcashForm.control}
-              name="amount"
-              render={({field}) => (
-                <FormItem>
-                  <Label>Amount (₱)</Label>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="1"
-                      placeholder="e.g. 1000"
-                      {...field}
-                      className="no-spinners text-lg"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                Record Transaction
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </>
-    );
-  };
 
   return (
     <>
@@ -1077,23 +842,6 @@ export default function StorePage() {
           </CardFooter>
         </Card>
       </div>
-
-      <Dialog
-        open={isGcashDialogOpen}
-        onOpenChange={(open) => {
-          setIsGcashDialogOpen(open);
-          if (!open) {
-            setTimeout(() => {
-              gcashForm.reset();
-              setGcashDialogStep('select');
-            }, 300);
-          }
-        }}
-      >
-        <DialogContent>
-          <GcashDialogContent />
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog
         open={!!voidingTransaction}
