@@ -71,6 +71,7 @@ import {
   Minus,
   Zap,
   Phone,
+  PackagePlus,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
 import {
@@ -140,6 +141,7 @@ export default function StorePage() {
     null
   );
   const commandInputRef = useRef<HTMLInputElement>(null);
+  const [commandSearch, setCommandSearch] = useState('');
 
   const [isELoadDialogOpen, setIsELoadDialogOpen] = useState(false);
   const [isGcashDialogOpen, setIsGcashDialogOpen] = useState(false);
@@ -442,9 +444,35 @@ export default function StorePage() {
                                   <CommandInput
                                     ref={commandInputRef}
                                     placeholder="Search inventory..."
+                                    value={commandSearch}
+                                    onValueChange={setCommandSearch}
                                   />
                                   <CommandList>
-                                    <CommandEmpty>No item found.</CommandEmpty>
+                                    <CommandEmpty>
+                                      <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-2"
+                                        onClick={() => {
+                                          update(index, {
+                                            ...form.getValues(`items.${index}`),
+                                            itemName: commandSearch,
+                                            unitPrice: 0,
+                                            itemId: undefined,
+                                          });
+                                          setPopoverStates((prev) => ({
+                                            ...prev,
+                                            [index]: false,
+                                          }));
+                                          setCommandSearch('');
+                                        }}
+                                      >
+                                        <PackagePlus /> Add "
+                                        <span className="font-bold truncate max-w-24">
+                                          {commandSearch}
+                                        </span>
+                                        "
+                                      </Button>
+                                    </CommandEmpty>
                                     <CommandGroup>
                                       {inventory.map((item) => (
                                         <CommandItem

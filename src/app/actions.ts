@@ -759,23 +759,24 @@ export async function deleteCustomer(
 
 // Actions for Wallet
 export async function startDay(
-  startingCash: number
+  data: { startingCash: number; date?: string }
 ): Promise<{success: boolean; message?: string}> {
   try {
-    const dateString = format(new Date(), 'yyyy-MM-dd');
+    const dateString = data.date ? format(new Date(data.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
     const docRef = doc(db, 'walletHistory', dateString);
-
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return {
-        success: false,
-        message: 'A session for this date has already been recorded.',
-      };
-    }
+    
+    // Temporarily bypass this check
+    // const docSnap = await getDoc(docRef);
+    // if (docSnap.exists()) {
+    //   return {
+    //     success: false,
+    //     message: 'A session for this date has already been recorded.',
+    //   };
+    // }
 
     await setDoc(docRef, {
       date: dateString,
-      startingCash,
+      startingCash: data.startingCash,
       endingCash: null,
       status: 'open',
       createdAt: serverTimestamp(),
