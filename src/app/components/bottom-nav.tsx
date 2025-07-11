@@ -29,7 +29,8 @@ const navItems = [
   {href: '/', icon: Home, label: 'Home'},
   {href: '/store/inventory', icon: Boxes, label: 'Products'},
   {href: '/store/ledger', icon: Landmark, label: 'Ledger'},
-  {href: '/transactions', icon: History, label: 'Transactions'},
+  {href: '/wallet', icon: Wallet, label: 'Wallet'},
+  {href: '/settings', icon: Settings, label: 'Settings'},
 ];
 
 export function BottomNav() {
@@ -63,7 +64,7 @@ export function BottomNav() {
 
           <div className="w-20" />
 
-          {navItems.slice(2, 4).map((item) => {
+          {navItems.slice(2, 5).map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link
