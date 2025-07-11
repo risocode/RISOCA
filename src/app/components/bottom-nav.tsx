@@ -29,7 +29,7 @@ const navItems = [
   {href: '/', icon: Home, label: 'Home'},
   {href: '/store/inventory', icon: Boxes, label: 'Products'},
   {href: '/store/ledger', icon: Landmark, label: 'Ledger'},
-  {href: '/wallet', icon: Wallet, label: 'Wallet'},
+  {href: '/transactions', icon: History, label: 'History'},
   {href: '/settings', icon: Settings, label: 'Settings'},
 ];
 
@@ -93,17 +93,17 @@ export function BottomNav() {
 
       <SheetContent
         side="bottom"
-        className="rounded-t-2xl sm:max-w-xl mx-auto border-none bg-card p-6"
+        className="rounded-t-2xl sm:max-w-2xl mx-auto border-none bg-card p-6"
       >
         <SheetHeader className="mb-6">
           <SheetTitle className="text-center text-lg">Create New</SheetTitle>
         </SheetHeader>
-        <div className="flex justify-around gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <SheetClose asChild>
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/store">
                 <Store className="w-8 h-8" />
@@ -115,7 +115,7 @@ export function BottomNav() {
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/store/receipts">
                 <ReceiptText className="w-8 h-8" />
@@ -127,11 +127,37 @@ export function BottomNav() {
             <Button
               asChild
               variant="outline"
-              className="h-24 flex-1 flex-col gap-2 text-lg bg-background hover:bg-muted"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
             >
               <Link href="/store?dialog=gcash">
-                <Wallet className="w-8 h-8" />
+                <svg
+                  className="w-8 h-8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7.168 18.944h9.664a2.2 2.2 0 0 0 2.176-1.936l1-8a2.2 2.2 0 0 0-2.176-2.464H6.168a2.2 2.2 0 0 0-2.176 2.464l1 8a2.2 2.2 0 0 0 2.176 1.936z"
+                    fill="#0072ff"
+                  />
+                  <path
+                    d="M17.832 7.56a1.112 1.112 0 0 1-1.088-1.328l.2-.8a1.112 1.112 0 1 1 2.176.544l-.2.8a1.112 1.112 0 0 1-1.088.784zM6.168 7.56a1.112 1.112 0 0 1-1.088-.784l-.2-.8a1.112 1.112 0 1 1 2.176-.544l.2.8a1.112 1.112 0 0 1-1.088 1.328z"
+                    fill="#fff"
+                  />
+                </svg>
                 <span>Gcash</span>
+              </Link>
+            </Button>
+          </SheetClose>
+           <SheetClose asChild>
+            <Button
+              asChild
+              variant="outline"
+              className="h-24 flex-col gap-2 text-lg bg-background hover:bg-muted"
+            >
+              <Link href="/wallet">
+                <Wallet className="w-8 h-8" />
+                <span>Wallet</span>
               </Link>
             </Button>
           </SheetClose>
