@@ -65,8 +65,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   } = usePasskey();
   
   const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
-  const [passkeyLoginAttempted, setPasskeyLoginAttempted] = useState(false);
-
 
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(PasswordSchema),
@@ -79,10 +77,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   }, []);
 
   const handlePasskeyLogin = useCallback(async () => {
-    if (passkeyLoginAttempted && authStep === AuthStep.Login) return;
-
     setIsPasskeyLoading(true);
-    setPasskeyLoginAttempted(true);
     
     const {success, error} = await loginWithPasskey();
     if (success) {
@@ -94,21 +89,15 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       }
     }
     setIsPasskeyLoading(false);
-  }, [loginWithPasskey, finishAuthentication, toast, passkeyLoginAttempted, authStep]);
+  }, [loginWithPasskey, finishAuthentication, toast]);
 
   useEffect(() => {
-    if (isSupported === null) {
-      return;
+    // We just check for support and then move to the Login step.
+    // The user will initiate any passkey login manually.
+    if (isSupported !== null) {
+      setAuthStep(AuthStep.Login);
     }
-    
-    if (authStep === AuthStep.Checking) {
-      if (isSupported && hasPasskeys) {
-        handlePasskeyLogin();
-      } else {
-        setAuthStep(AuthStep.Login);
-      }
-    }
-  }, [isSupported, hasPasskeys, authStep, handlePasskeyLogin]);
+  }, [isSupported]);
 
 
   const handlePasswordSubmit = async (data: PasswordFormData) => {
@@ -232,7 +221,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                     type="button"
                     variant="secondary"
                     onClick={handlePasskeyLogin}
-                    disabled={isPasskeyLoading}
+                    disabled={isPasskeyLoading || isSubmittingPassword}
                   >
                     {isPasskeyLoading ? (
                       <Loader2 className="mr-2 animate-spin" />
