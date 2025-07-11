@@ -67,7 +67,7 @@ const GcashServiceSchema = z.object({
 type GcashServiceFormData = z.infer<typeof GcashServiceSchema>;
 
 // Set your initial G-Cash balance here.
-const INITIAL_GCASH_BALANCE = 12517.16;
+const INITIAL_GCASH_BALANCE = 15517.16;
 
 export default function GcashPage() {
   const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
