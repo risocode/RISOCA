@@ -12,9 +12,8 @@ import {
   onSnapshot,
   where,
   orderBy,
-  startOfToday,
-  endOfToday,
 } from 'firebase/firestore';
+import {startOfToday, endOfToday} from 'date-fns';
 import {db} from '@/lib/firebase';
 import {submitGcashTransaction} from '@/app/actions';
 import type {SaleTransaction} from '@/lib/schemas';
