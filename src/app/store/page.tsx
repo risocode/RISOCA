@@ -172,7 +172,10 @@ export default function StorePage() {
   const formItems = useWatch({control: form.control, name: 'items'});
 
   const currentFormSubtotal = useMemo(() => {
-    return formItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+    return formItems.reduce(
+      (acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0),
+      0
+    );
   }, [formItems]);
 
   useEffect(() => {
@@ -331,12 +334,30 @@ export default function StorePage() {
   };
 
   const handleGcashSubmit = (data: GcashFormData) => {
-    const serviceFee = data.amount * 0.02;
+    const amount = data.amount;
+    let serviceFee;
+
+    const percentFee = amount * 0.01;
+
+    if (amount <= 1000) {
+      serviceFee = 10;
+    } else if (amount <= 1500) {
+      serviceFee = 15;
+    } else if (amount <= 2000) {
+      serviceFee = 20;
+    } else if (amount <= 2500) {
+      serviceFee = 25;
+    } else if (amount <= 3000) {
+      serviceFee = 30;
+    } else {
+      serviceFee = Math.max(10, percentFee);
+    }
+
     const cashInItem: SaleItem = {
       itemName: 'Gcash Cash-In',
       quantity: 1,
-      unitPrice: data.amount,
-      total: data.amount,
+      unitPrice: amount,
+      total: amount,
     };
     const feeItem: SaleItem = {
       itemName: 'Service Fee',
@@ -600,10 +621,14 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                 {fields.length > 0 && (
+                {fields.length > 0 && (
                   <div className="flex justify-end items-baseline gap-4 pt-2 pr-12">
-                     <p className="text-muted-foreground font-semibold">Subtotal:</p>
-                     <p className="font-mono font-bold text-lg">{formatCurrency(currentFormSubtotal)}</p>
+                    <p className="text-muted-foreground font-semibold">
+                      Subtotal:
+                    </p>
+                    <p className="font-mono font-bold text-lg">
+                      {formatCurrency(currentFormSubtotal)}
+                    </p>
                   </div>
                 )}
 
@@ -635,7 +660,11 @@ export default function StorePage() {
                     </Button>
                   </div>
                   {fields.length > 0 && (
-                    <Button type="submit" size="sm" className="w-full sm:w-auto">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
                       <PlusCircle className="mr-2" /> Add to Sale
                     </Button>
                   )}
@@ -904,7 +933,7 @@ export default function StorePage() {
           <DialogHeader>
             <DialogTitle>Gcash Cash-In</DialogTitle>
             <DialogDescription>
-              Enter the cash-in amount. A 2% service fee will be added.
+              Enter the cash-in amount. A service fee will be added.
             </DialogDescription>
           </DialogHeader>
           <Form {...gcashForm}>
