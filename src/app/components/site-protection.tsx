@@ -53,7 +53,7 @@ enum AuthStep {
 
 export function SiteProtection({children}: {children: React.ReactNode}) {
   const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Checking);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const {toast} = useToast();
   const {
     hasPasskeys,
@@ -75,12 +75,10 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const finishAuthentication = useCallback(() => {
       setAuthStep(AuthStep.Authenticated);
       setShowRegistrationPrompt(false);
-      // Don't show toast on initial passkey login
   }, []);
 
   const handlePasskeyLogin = useCallback(async () => {
-    // Prevent multiple automatic attempts
-    if (passkeyLoginAttempted) return;
+    // This function can be called automatically or by the user.
     setPasskeyLoginAttempted(true);
     
     const {success, error} = await loginWithPasskey();
@@ -88,35 +86,41 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       finishAuthentication();
       toast({variant: 'success', title: 'Login Successful'});
     } else {
+      // Don't show toast for cancellation, but do for other errors.
       if (error && error !== 'Authentication was cancelled.') {
         toast({variant: 'destructive', title: 'Login Failed', description: error});
       }
-      // If passkey fails (or is cancelled), we stay on the login screen for password fallback
     }
-  }, [loginWithPasskey, finishAuthentication, toast, passkeyLoginAttempted]);
+  }, [loginWithPasskey, finishAuthentication, toast]);
 
   useEffect(() => {
     // This is the main authentication flow effect.
-    // It runs once when the component mounts.
-    if (isSupported === null) {
-      // Still waiting for passkey support check
-      setAuthStep(AuthStep.Checking);
+    // It should only run once when the component determines passkey support.
+    if (isSupported === null || passkeyLoginAttempted) {
+      // Still waiting for support check OR we have already attempted passkey login.
       return;
     }
 
-    if (isSupported && hasPasskeys && !passkeyLoginAttempted) {
-        // If passkeys are ready and we haven't tried yet, attempt login.
-        setAuthStep(AuthStep.Login); // Show login screen in the background
+    if (isSupported && hasPasskeys) {
+        // If passkeys are supported and exist, attempt automatic login.
         handlePasskeyLogin();
     } else {
-        // Otherwise, just show the login screen for password entry.
-        setAuthStep(AuthStep.Login);
+        // Otherwise, mark the attempt as done and just show the password screen.
+        setPasskeyLoginAttempted(true);
     }
   }, [isSupported, hasPasskeys, handlePasskeyLogin, passkeyLoginAttempted]);
   
+  useEffect(() => {
+    // This effect determines when to show the main login screen.
+    // We show it as soon as the passkey check is done.
+    if (authStep === AuthStep.Checking && passkeyLoginAttempted) {
+      setAuthStep(AuthStep.Login);
+    }
+  }, [authStep, passkeyLoginAttempted]);
+
 
   const handlePasswordSubmit = async (data: PasswordFormData) => {
-    setIsSubmitting(true);
+    setIsSubmittingPassword(true);
     const response = await verifyPassword(data.password);
     if (response.success) {
       toast({variant: 'success', title: 'Login Successful'});
@@ -132,7 +136,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
       });
       toast({variant: 'destructive', title: 'Access Denied'});
     }
-    setIsSubmitting(false);
+    setIsSubmittingPassword(false);
   };
 
   const handleRegisterFromPrompt = async () => {
@@ -150,7 +154,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
         description: error,
       });
     }
-    // Close the prompt, user is already authenticated
+    // Just close the prompt, user is already authenticated
     setShowRegistrationPrompt(false);
   };
   
@@ -226,10 +230,10 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               <div className="flex flex-col gap-2">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isPasskeyLoading}
+                  disabled={isSubmittingPassword || isPasskeyLoading}
                   className="w-full"
                 >
-                  {(isSubmitting) && (
+                  {(isSubmittingPassword) && (
                     <Loader2 className="mr-2 animate-spin" />
                   )}
                   Unlock
@@ -238,11 +242,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => {
-                        // Reset the attempt flag to allow manual trigger
-                        setPasskeyLoginAttempted(false); 
-                        handlePasskeyLogin();
-                    }}
+                    onClick={handlePasskeyLogin}
                     disabled={isPasskeyLoading}
                   >
                     {isPasskeyLoading ? (
@@ -289,9 +289,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   }
 
   if (authStep === AuthStep.Login) {
-    return (
-        renderLoginScreen()
-    );
+    return renderLoginScreen();
   }
 
   if (authStep === AuthStep.Authenticated) {
