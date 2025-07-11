@@ -77,53 +77,49 @@ export default function GcashPage() {
 
   const gcashForm = useForm<GcashServiceFormData>({
     resolver: zodResolver(GcashServiceSchema),
-    defaultValues: {amount: 0},
+    defaultValues: {
+      amount: undefined,
+    },
   });
 
   const parseTransactionDetails = (tx: SaleTransaction) => {
     let type = 'Unknown';
     let amount = 0;
     let fee = 0;
-    let total = tx.total;
+    let revenue = 0;
 
     if (tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
-      const cashInItem = tx.items.find((i) =>
-        i.itemName.includes('Gcash Cash-In')
-      );
-      const feeItem = tx.items.find((i) =>
-        i.itemName.includes('Gcash Cash-In Fee')
-      );
+      const cashInItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In'));
+      const feeItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In Fee'));
       amount = cashInItem?.total || 0;
       fee = feeItem?.total || 0;
-      total = fee; // Total revenue for cash-in is just the fee
+      revenue = fee;
     } else if (tx.customerName?.includes('G-Cash Out')) {
       type = 'Cash Out';
-      const cashOutItem = tx.items.find(
-        (i) => i.itemName === 'Gcash Cash-Out'
-      );
+      const cashOutItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out');
+      const feeItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee');
       amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
-      fee =
-        tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee')?.total || 0;
-      total = fee; // Total revenue for cash-out is just the fee
+      fee = feeItem?.total || 0;
+      revenue = fee;
     } else if (tx.customerName?.includes('E-Load')) {
       type = 'E-Load';
-      const eloadItem = tx.items.find(
-        (i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee')
-      );
+      const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
       const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
       amount = eloadItem?.total || 0;
       fee = feeItem?.total || 0;
-      total = amount + fee;
+      revenue = amount + fee;
     }
 
-    return {type, amount, fee, total};
+    return {type, amount, fee, revenue};
   };
+
 
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', '==', 'gcash')
+      where('serviceType', '==', 'gcash'),
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(
@@ -131,10 +127,6 @@ export default function GcashPage() {
       (snapshot) => {
         const data: SaleTransaction[] = snapshot.docs.map(
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
-        );
-        // Manual sort since orderBy is removed
-        data.sort(
-          (a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()
         );
         setTransactions(data);
         setIsLoading(false);
@@ -154,15 +146,16 @@ export default function GcashPage() {
   }, [toast]);
 
   const {
-    todaysTransactions,
     totalCashIn,
     totalCashOut,
+    totalEload,
     totalFees,
     netFlow,
     currentBalance,
   } = useMemo(() => {
     let cashIn = 0;
     let cashOut = 0;
+    let eload = 0;
     let fees = 0;
 
     transactions.forEach((tx) => {
@@ -175,25 +168,25 @@ export default function GcashPage() {
           cashOut += amount;
           fees += fee;
         } else if (type === 'E-Load') {
+          eload += amount;
           fees += fee;
         }
       }
     });
 
-    const net = -cashIn + cashOut; // Digital money flow
+    const net = -cashIn + cashOut + eload; // Digital money flow from your perspective
     const currentBalance = INITIAL_GCASH_BALANCE + net;
 
     return {
-      todaysTransactions: transactions.filter((tx) =>
-        isToday(tx.createdAt.toDate())
-      ),
       totalCashIn: cashIn,
       totalCashOut: cashOut,
+      totalEload: eload,
       totalFees: fees,
       netFlow: net,
       currentBalance,
     };
   }, [transactions]);
+
 
   const handleGcashSubmit = async (
     type: 'cash-in' | 'cash-out' | 'e-load',
@@ -263,6 +256,7 @@ export default function GcashPage() {
                         placeholder="e.g. 1000"
                         {...field}
                         className="no-spinners text-lg"
+                        value={field.value ?? ''}
                       />
                     </FormControl>
                     <FormMessage />
@@ -285,7 +279,7 @@ export default function GcashPage() {
       <header>
         <h1 className="text-2xl font-bold">G-Cash Services</h1>
       </header>
-      <Card>
+      <Card className="bg-primary text-primary-foreground">
         <CardHeader className="items-center text-center">
           <CardTitle className="flex items-center gap-2">
             <Wallet /> G-Cash Balance
@@ -297,6 +291,7 @@ export default function GcashPage() {
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Today's G-Cash Summary</CardTitle>
@@ -317,27 +312,39 @@ export default function GcashPage() {
             >
               {formatCurrency(netFlow)}
             </CardTitle>
+            <CardDescription className="text-sm mt-1">
+              (Change in G-Cash Balance)
+            </CardDescription>
           </Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
             <Card>
-              <CardHeader>
-                <CardDescription>Total Cash In</CardDescription>
+              <CardHeader className="p-4">
+                <CardDescription>Cash In</CardDescription>
                 <CardTitle className="text-primary">
                   {formatCurrency(totalCashIn)}
                 </CardTitle>
               </CardHeader>
             </Card>
             <Card>
-              <CardHeader>
-                <CardDescription>Total Cash Out</CardDescription>
+              <CardHeader className="p-4">
+                <CardDescription>Cash Out</CardDescription>
                 <CardTitle className="text-destructive">
                   {formatCurrency(totalCashOut)}
                 </CardTitle>
               </CardHeader>
             </Card>
+             <Card>
+              <CardHeader className="p-4">
+                <CardDescription>E-Load</CardDescription>
+                <CardTitle className="text-primary">
+                  {formatCurrency(totalEload)}
+                </CardTitle>
+              </CardHeader>
+            </Card>
             <Card>
-              <CardHeader>
-                <CardDescription>Total Fees Earned</CardDescription>
+              <CardHeader className="p-4">
+                <CardDescription>Fees Earned</CardDescription>
                 <CardTitle className="text-success">
                   {formatCurrency(totalFees)}
                 </CardTitle>
@@ -400,9 +407,8 @@ export default function GcashPage() {
                   ))
                 ) : transactions.length > 0 ? (
                   transactions.map((tx) => {
-                    const {type, amount, fee, total} =
+                    const {type, amount, fee, revenue} =
                       parseTransactionDetails(tx);
-                    const isDebit = type === 'Cash In';
 
                     return (
                       <TableRow key={tx.id}>
@@ -425,12 +431,9 @@ export default function GcashPage() {
                           {formatCurrency(fee)}
                         </TableCell>
                         <TableCell
-                          className={cn(
-                            'text-right font-mono font-semibold',
-                            'text-primary'
-                          )}
+                          className={cn('text-right font-mono font-semibold text-primary')}
                         >
-                          {formatCurrency(total)}
+                          {formatCurrency(revenue)}
                         </TableCell>
                       </TableRow>
                     );
