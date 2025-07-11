@@ -324,11 +324,12 @@ export default function StorePage() {
   };
 
   const handleELoadSubmit = (data: ELoadFormData) => {
+    const totalAmount = data.amount + 3;
     const newItem: SaleItem = {
       itemName: 'E-Load',
       quantity: 1,
-      unitPrice: data.amount,
-      total: data.amount,
+      unitPrice: totalAmount,
+      total: totalAmount,
     };
     setReceiptItems((prev) => [...prev, newItem]);
     setIsELoadDialogOpen(false);
@@ -338,7 +339,6 @@ export default function StorePage() {
   const handleGcashSubmit = (data: GcashFormData) => {
     const amount = data.amount;
     let serviceFee;
-
     const percentFee = amount * 0.01;
 
     if (amount <= 1000) {
@@ -354,20 +354,16 @@ export default function StorePage() {
     } else {
       serviceFee = Math.max(10, percentFee);
     }
+    
+    const totalAmount = amount + serviceFee;
 
-    const cashInItem: SaleItem = {
+    const newItem: SaleItem = {
       itemName: 'Gcash Cash-In',
       quantity: 1,
-      unitPrice: amount,
-      total: amount,
+      unitPrice: totalAmount,
+      total: totalAmount,
     };
-    const feeItem: SaleItem = {
-      itemName: 'Service Fee',
-      quantity: 1,
-      unitPrice: serviceFee,
-      total: serviceFee,
-    };
-    setReceiptItems((prev) => [...prev, cashInItem, feeItem]);
+    setReceiptItems((prev) => [...prev, newItem]);
     setIsGcashDialogOpen(false);
     gcashForm.reset();
   };
@@ -933,7 +929,7 @@ export default function StorePage() {
           <DialogHeader>
             <DialogTitle>E-Load Transaction</DialogTitle>
             <DialogDescription>
-              Enter the amount of load to be sold.
+              Enter the amount of load to be sold. A ₱3 service fee will be added.
             </DialogDescription>
           </DialogHeader>
           <Form {...eLoadForm}>
@@ -984,7 +980,7 @@ export default function StorePage() {
           <DialogHeader>
             <DialogTitle>Gcash Cash-In</DialogTitle>
             <DialogDescription>
-              Enter the cash-in amount. A service fee will be added.
+              Enter the cash-in amount. The service fee will be included.
             </DialogDescription>
           </DialogHeader>
           <Form {...gcashForm}>
