@@ -157,38 +157,24 @@ export default function HomePage() {
       .filter((doc) => doc.status !== 'voided')
       .reduce((acc, doc) => acc + doc.total, 0);
 
-    const gcashTransactions = allSales.filter(
-      (tx) => tx.serviceType === 'gcash'
-    );
+    const gcashDigitalFlow = allSales
+      .filter(tx => tx.status !== 'voided')
+      .reduce((acc, tx) => {
+        if (tx.serviceType === 'gcash') {
+          const cashInItem = tx.items.find(i => i.itemName === 'Gcash Cash-In');
+          const cashOutItem = tx.items.find(i => i.itemName === 'Gcash Cash-Out');
+          const eloadItem = tx.items.find(i => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
+          if (cashInItem) acc -= cashInItem.unitPrice;
+          if (cashOutItem) acc += Math.abs(cashOutItem.unitPrice);
+          if (eloadItem) acc += eloadItem.unitPrice;
+        } else if (tx.serviceType === 'gcash-expense') {
+          // Expenses paid by G-Cash are negative, so adding them works.
+          acc += tx.total;
+        }
+        return acc;
+      }, 0);
 
-    let cashIn = 0;
-    let cashOut = 0;
-    let eload = 0;
-
-    gcashTransactions.forEach((tx) => {
-      const cashInItem = tx.items.find(
-        (i) => i.itemName === 'Gcash Cash-In'
-      );
-      const cashOutItem = tx.items.find(
-        (i) => i.itemName === 'Gcash Cash-Out'
-      );
-      const eloadItem = tx.items.find(
-        (i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee')
-      );
-
-      if (cashInItem) {
-        cashIn += cashInItem.unitPrice;
-      }
-      if (cashOutItem) {
-        cashOut += Math.abs(cashOutItem.unitPrice);
-      }
-      if (eloadItem) {
-        eload += eloadItem.unitPrice;
-      }
-    });
-
-    const netFlow = -cashIn + cashOut + eload;
-    const currentGcashBalance = INITIAL_GCASH_BALANCE + netFlow;
+    const currentGcashBalance = INITIAL_GCASH_BALANCE + gcashDigitalFlow;
 
     const openDay = walletHistory.find((e) => e.status === 'open');
     const latestClosedDay = walletHistory.find((e) => e.status === 'closed');
@@ -229,7 +215,7 @@ export default function HomePage() {
                 {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-success">
+                  <p className="text-2xl sm:text-3xl font-bold text-success">
                     {formatCurrency(totalSales)}
                   </p>
                 )}
@@ -241,7 +227,7 @@ export default function HomePage() {
                 {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-destructive">
+                  <p className="text-2xl sm:text-3xl font-bold text-destructive">
                     {formatCurrency(totalExpenses)}
                   </p>
                 )}
@@ -256,7 +242,7 @@ export default function HomePage() {
                   <>
                     <p
                       className={cn(
-                        'text-3xl font-bold',
+                        'text-2xl sm:text-3xl font-bold',
                         isDayOpen ? 'text-amber-500' : 'text-foreground'
                       )}
                     >
@@ -278,7 +264,7 @@ export default function HomePage() {
                 {isTotalsLoading ? (
                   <Skeleton className="h-8 w-2/3 mt-1" />
                 ) : (
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
                     {formatCurrency(gcashBalance)}
                   </p>
                 )}
