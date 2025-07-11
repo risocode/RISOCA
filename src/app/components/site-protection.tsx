@@ -72,11 +72,11 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     defaultValues: {password: ''},
   });
 
-  const finishAuthentication = useCallback((method: 'password' | 'passkey' = 'passkey') => {
+  const finishAuthentication = useCallback(() => {
       setAuthStep(AuthStep.Authenticated);
       setShowRegistrationPrompt(false);
-      toast({variant: 'success', title: 'Login Successful'});
-  }, [toast]);
+      // Don't show toast on initial passkey login
+  }, []);
 
   const handlePasskeyLogin = useCallback(async () => {
     // Prevent multiple automatic attempts
@@ -86,6 +86,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     const {success, error} = await loginWithPasskey();
     if (success) {
       finishAuthentication();
+      toast({variant: 'success', title: 'Login Successful'});
     } else {
       if (error && error !== 'Authentication was cancelled.') {
         toast({variant: 'destructive', title: 'Login Failed', description: error});
@@ -118,10 +119,11 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     setIsSubmitting(true);
     const response = await verifyPassword(data.password);
     if (response.success) {
+      toast({variant: 'success', title: 'Login Successful'});
+      finishAuthentication();
+      // After successful login, check if we should prompt for passkey registration
       if (isSupported && !hasPasskeys) {
         setShowRegistrationPrompt(true);
-      } else {
-        finishAuthentication('password');
       }
     } else {
       form.setError('password', {
@@ -148,11 +150,13 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
         description: error,
       });
     }
-    finishAuthentication('password');
+    // Close the prompt, user is already authenticated
+    setShowRegistrationPrompt(false);
   };
   
   const handleSkipRegistration = () => {
-     finishAuthentication('password');
+     // Just close the prompt, user is already authenticated
+     setShowRegistrationPrompt(false);
   }
 
   const renderLoginScreen = () => (
@@ -258,7 +262,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   );
   
   const renderPasskeyPrompt = () => (
-    <AlertDialog open={showRegistrationPrompt}>
+    <AlertDialog open={showRegistrationPrompt} onOpenChange={setShowRegistrationPrompt}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Enable Quick Login?</AlertDialogTitle>
@@ -286,15 +290,17 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
 
   if (authStep === AuthStep.Login) {
     return (
-      <>
-        {renderLoginScreen()}
-        {renderPasskeyPrompt()}
-      </>
+        renderLoginScreen()
     );
   }
 
   if (authStep === AuthStep.Authenticated) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        {renderPasskeyPrompt()}
+      </>
+    );
   }
 
   return null;
