@@ -21,7 +21,7 @@ const USER = {
 
 export function usePasskey() {
   const [authenticators, setAuthenticators] = useState<Authenticator[]>([]);
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
