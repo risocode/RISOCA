@@ -23,6 +23,7 @@ import {
   type DocumentReference,
   setDoc,
   orderBy,
+  Timestamp,
 } from 'firebase/firestore';
 import type {
   InventoryItemInput,
@@ -31,6 +32,7 @@ import type {
   SaleTransactionInput,
   SaleItem,
   Authenticator,
+  DiagnoseReceiptInputWithSource,
 } from '@/lib/schemas';
 import {format} from 'date-fns';
 import {v4 as uuidv4} from 'uuid';
@@ -63,6 +65,20 @@ export type ActionResponse = {
   diagnosis: DiagnoseReceiptOutput;
   notificationStatus: NotificationStatus;
 };
+
+// --- Wallet Status Check ---
+async function checkIfDayIsClosed(
+  dateToCheck: Date = new Date()
+): Promise<boolean> {
+  const dateString = format(dateToCheck, 'yyyy-MM-dd');
+  const walletQuery = query(
+    collection(db, 'walletHistory'),
+    where('date', '==', dateString),
+    where('status', '==', 'closed')
+  );
+  const walletSnapshot = await getDocs(walletQuery);
+  return !walletSnapshot.empty;
+}
 
 function escapeMarkdownV2(text: string): string {
   const charsToEscape = /[_*[\]()~`>#+\-=|{}.!]/g;
@@ -179,20 +195,63 @@ async function notifyOnTelegram(
 }
 
 async function saveReceiptToFirestore(
-  receiptData: DiagnoseReceiptOutput,
+  receiptData: DiagnoseReceiptInputWithSource,
   imagePreview?: string
 ) {
   try {
-    const newId = `${format(
+    // Save to the receipts collection first
+    const newReceiptId = `${format(
       new Date(),
       'yyyyMMdd_HHmmss'
     )}-E-${uuidv4().substring(0, 6)}`;
-    const docRef = doc(db, 'receipts', newId);
-    await setDoc(docRef, {
+    const receiptDocRef = doc(db, 'receipts', newReceiptId);
+    await setDoc(receiptDocRef, {
       ...receiptData,
       imagePreview: imagePreview || null,
       createdAt: serverTimestamp(),
     });
+
+    // If paid by G-Cash, create a corresponding transaction
+    if (receiptData.paymentSource === 'G-Cash') {
+      const counterRef = doc(db, 'counters', 'saleReceipt');
+
+      await runTransaction(db, async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+        let newReceiptNumber = 1;
+        if (counterDoc.exists()) {
+          newReceiptNumber = (counterDoc.data().currentNumber || 0) + 1;
+        }
+        const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
+        const transactionId = `${format(
+          new Date(),
+          'yyyyMMdd_HHmmss'
+        )}-S-${formattedReceiptNumber}`;
+        const transactionRef = doc(db, 'saleTransactions', transactionId);
+        
+        const saleItems: SaleItem[] = receiptData.items.map(item => ({
+          itemName: item.name,
+          quantity: 1,
+          unitPrice: item.price,
+          total: item.price,
+        }));
+        
+        // This is a negative transaction, so the total should be negative
+        const gcashTransactionPayload: SaleTransactionInput = {
+          customerName: `Expense: ${receiptData.merchantName}`,
+          items: saleItems,
+          total: -receiptData.total, // Negative total to signify an expense
+          status: 'active',
+          serviceType: 'gcash-expense', // A new type to identify G-Cash expenses
+        };
+
+        transaction.set(transactionRef, {
+          ...gcashTransactionPayload,
+          receiptNumber: formattedReceiptNumber,
+          createdAt: serverTimestamp(),
+        });
+        transaction.set(counterRef, { currentNumber: newReceiptNumber });
+      });
+    }
   } catch (error) {
     console.error('Error writing document to Firestore: ', error);
     throw new Error('Could not save receipt to database.');
@@ -200,9 +259,16 @@ async function saveReceiptToFirestore(
 }
 
 export async function submitManualReceipt(
-  data: DiagnoseReceiptOutput,
+  data: DiagnoseReceiptInputWithSource,
   imagePreview?: string
 ): Promise<ActionResponse> {
+  const dayIsClosed = await checkIfDayIsClosed(
+    new Date(data.transactionDate)
+  );
+  if (dayIsClosed) {
+    throw new Error('Cannot record an expense for a closed day.');
+  }
+
   await saveReceiptToFirestore(data, imagePreview);
   const notificationStatus = await notifyOnTelegram(data, imagePreview);
   return {diagnosis: data, notificationStatus};
@@ -212,6 +278,14 @@ export async function submitManualReceipt(
 export async function submitSaleTransaction(
   saleData: SaleTransactionInput
 ): Promise<{success: boolean; message?: string; transactionId?: string}> {
+  const dayIsClosed = await checkIfDayIsClosed();
+  if (dayIsClosed) {
+    return {
+      success: false,
+      message: 'Cannot record a sale. The daily session is already closed.',
+    };
+  }
+
   if (!saleData.items || saleData.items.length === 0) {
     return {success: false, message: 'No items in the report.'};
   }
@@ -606,6 +680,13 @@ export async function updateCustomerName(
 export async function addLedgerTransaction(
   transactionData: LedgerTransactionInput
 ): Promise<{success: boolean; message?: string}> {
+  const dayIsClosed = await checkIfDayIsClosed();
+  if (dayIsClosed) {
+    return {
+      success: false,
+      message: 'Cannot record a transaction. The daily session is already closed.',
+    };
+  }
   try {
     await runTransaction(db, async (transaction) => {
       const newId = `${format(

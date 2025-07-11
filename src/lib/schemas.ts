@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import type {Timestamp} from 'firebase/firestore';
 import type {AuthenticatorTransport} from '@simplewebauthn/types';
+import type {DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 
 export const InventoryItemSchema = z.object({
   name: z.string().min(1, 'Item name is required.'),
@@ -92,4 +93,9 @@ export type Authenticator = {
   credentialBackedUp: boolean;
   transports?: AuthenticatorTransport[];
   createdAt: string; // ISO 8601 date string
+};
+
+// Extends DiagnoseReceiptOutput with paymentSource
+export type DiagnoseReceiptInputWithSource = DiagnoseReceiptOutput & {
+  paymentSource: 'Cash on Hand' | 'G-Cash';
 };

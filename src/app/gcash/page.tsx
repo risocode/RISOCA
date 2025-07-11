@@ -69,26 +69,18 @@ type GcashServiceFormData = z.infer<typeof GcashServiceSchema>;
 // Set your initial G-Cash balance here.
 const INITIAL_GCASH_BALANCE = 9517.16;
 
-export default function GcashPage() {
-  const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const {toast} = useToast();
-
-  const gcashForm = useForm<GcashServiceFormData>({
-    resolver: zodResolver(GcashServiceSchema),
-    defaultValues: {
-      amount: undefined,
-    },
-  });
-
-  const parseTransactionDetails = (tx: SaleTransaction) => {
+const parseTransactionDetails = (tx: SaleTransaction) => {
     let type = 'Unknown';
     let amount = 0;
     let fee = 0;
     let revenue = 0;
-
-    if (tx.customerName?.includes('G-Cash In')) {
+  
+    if (tx.serviceType === 'gcash-expense') {
+      type = 'Expense';
+      amount = Math.abs(tx.total);
+      fee = 0;
+      revenue = tx.total; // already negative
+    } else if (tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
       const cashInItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In'));
       const feeItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In Fee'));
@@ -110,15 +102,27 @@ export default function GcashPage() {
       fee = feeItem?.total || 0;
       revenue = amount + fee;
     }
-
+  
     return {type, amount, fee, revenue};
-  };
+};
 
+export default function GcashPage() {
+  const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {toast} = useToast();
+
+  const gcashForm = useForm<GcashServiceFormData>({
+    resolver: zodResolver(GcashServiceSchema),
+    defaultValues: {
+      amount: undefined,
+    },
+  });
 
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', '==', 'gcash'),
+      where('serviceType', 'in', ['gcash', 'gcash-expense']),
       orderBy('createdAt', 'desc')
     );
 
@@ -152,38 +156,53 @@ export default function GcashPage() {
     totalFees,
     netFlow,
     currentBalance,
+    totalExpenses,
   } = useMemo(() => {
     let cashIn = 0;
     let cashOut = 0;
     let eload = 0;
     let fees = 0;
+    let expenses = 0;
+    let digitalNetFlow = 0;
 
     transactions.forEach((tx) => {
-      const {type, amount, fee} = parseTransactionDetails(tx);
-      if (isToday(tx.createdAt.toDate())) {
+        const {type, amount, fee} = parseTransactionDetails(tx);
         if (type === 'Cash In') {
-          cashIn += amount;
-          fees += fee;
+            digitalNetFlow -= amount;
         } else if (type === 'Cash Out') {
-          cashOut += amount;
-          fees += fee;
+            digitalNetFlow += amount;
         } else if (type === 'E-Load') {
-          eload += amount;
-          fees += fee;
+            digitalNetFlow += amount;
+        } else if (type === 'Expense') {
+            digitalNetFlow -= amount;
         }
-      }
+    
+        if (isToday(tx.createdAt.toDate())) {
+            if (type === 'Cash In') {
+              cashIn += amount;
+              fees += fee;
+            } else if (type === 'Cash Out') {
+              cashOut += amount;
+              fees += fee;
+            } else if (type === 'E-Load') {
+              eload += amount;
+              fees += fee;
+            } else if (type === 'Expense') {
+              expenses += amount;
+            }
+        }
     });
 
-    const net = -cashIn + cashOut + eload; // Digital money flow from your perspective
-    const currentBalance = INITIAL_GCASH_BALANCE + net;
+    const currentBalance = INITIAL_GCASH_BALANCE + digitalNetFlow;
 
     return {
       totalCashIn: cashIn,
       totalCashOut: cashOut,
       totalEload: eload,
       totalFees: fees,
-      netFlow: net,
+      netFlow: digitalNetFlow, // This might need renaming if it's confusing
       currentBalance,
+      totalExpenses: expenses,
     };
   }, [transactions]);
 
@@ -300,23 +319,6 @@ export default function GcashPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Card className="text-center p-6 bg-secondary text-secondary-foreground">
-            <CardDescription className="text-lg">
-              Today's Net Flow
-            </CardDescription>
-            <CardTitle
-              className={cn(
-                'text-5xl font-bold tracking-tighter',
-                netFlow >= 0 ? 'text-success' : 'text-destructive'
-              )}
-            >
-              {formatCurrency(netFlow)}
-            </CardTitle>
-            <CardDescription className="text-sm mt-1">
-              (Change in G-Cash Balance)
-            </CardDescription>
-          </Card>
-          
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
             <Card>
               <CardHeader className="p-4">
@@ -369,7 +371,7 @@ export default function GcashPage() {
         <CardHeader>
           <CardTitle>G-Cash Transaction History</CardTitle>
           <CardDescription>
-            A log of all your recorded G-Cash services.
+            A log of all your recorded G-Cash services and expenses.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -417,12 +419,17 @@ export default function GcashPage() {
                         </TableCell>
                         <TableCell>
                           <Badge
-                            variant={type === 'Cash Out' ? 'destructive' : type === 'Cash In' ? 'success' : 'default'}
+                           variant={
+                            type === 'Expense' ? 'destructive' :
+                            type === 'Cash Out' ? 'destructive' : 
+                            type === 'Cash In' ? 'success' : 
+                            'default'
+                          }
                           >
                             {type}
                           </Badge>
                         </TableCell>
-                        <TableCell className={cn('text-right font-mono')}>
+                        <TableCell className={cn('text-right font-mono', type === 'Expense' && 'text-destructive')}>
                           {formatCurrency(amount)}
                         </TableCell>
                         <TableCell
@@ -431,7 +438,7 @@ export default function GcashPage() {
                           {formatCurrency(fee)}
                         </TableCell>
                         <TableCell
-                          className={cn('text-right font-mono font-semibold text-primary')}
+                          className={cn('text-right font-mono font-semibold', revenue >= 0 ? 'text-primary' : 'text-destructive')}
                         >
                           {formatCurrency(revenue)}
                         </TableCell>

@@ -19,12 +19,13 @@ import {
   Tag,
   Save,
   ChevronDown,
+  Coins,
 } from 'lucide-react';
 import {useReceipts} from '@/contexts/ReceiptContext';
 import {useToast} from '@/hooks/use-toast';
 import {diagnoseReceipt} from '@/ai/flows/diagnose-receipt-flow';
 import {submitManualReceipt} from '@/app/actions';
-import {type DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
+import {type DiagnoseReceiptOutput, type DiagnoseReceiptInput} from '@/ai/flows/diagnose-receipt-flow';
 import {useForm, useFieldArray} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
@@ -93,6 +94,9 @@ const ReceiptFormSchema = z.object({
     .number({invalid_type_error: 'Total must be a number.'})
     .min(0, 'Total must be a positive number.'),
   category: z.string({required_error: 'Please select a category.'}),
+  paymentSource: z.enum(['Cash on Hand', 'G-Cash'], {
+    required_error: 'Please select a payment source.',
+  }),
   items: z
     .array(
       z.object({
@@ -106,6 +110,8 @@ const ReceiptFormSchema = z.object({
 });
 
 type ReceiptFormData = z.infer<typeof ReceiptFormSchema>;
+type DiagnosisWithSource = DiagnoseReceiptOutput & { paymentSource: 'Cash on Hand' | 'G-Cash' };
+
 
 export default function ReceiptPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -116,7 +122,7 @@ export default function ReceiptPage() {
     null
   );
   const [editableDiagnosis, setEditableDiagnosis] =
-    useState<DiagnoseReceiptOutput | null>(null);
+    useState<DiagnosisWithSource | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +134,7 @@ export default function ReceiptPage() {
     defaultValues: {
       merchantName: '',
       items: [{name: '', price: 0}],
+      paymentSource: 'Cash on Hand',
     },
   });
 
@@ -242,9 +249,13 @@ export default function ReceiptPage() {
 
     try {
       const diagnosisResult = await diagnoseReceipt({photoDataUri: imageData});
-      setEditableDiagnosis(diagnosisResult);
-      form.reset({
+      const diagnosisWithSource: DiagnosisWithSource = {
         ...diagnosisResult,
+        paymentSource: 'Cash on Hand'
+      };
+      setEditableDiagnosis(diagnosisWithSource);
+      form.reset({
+        ...diagnosisWithSource,
         transactionDate: new Date(
           diagnosisResult.transactionDate + 'T00:00:00'
         ),
@@ -261,7 +272,7 @@ export default function ReceiptPage() {
     setIsLoading(true);
     setError(null);
 
-    const payload: DiagnoseReceiptOutput = {
+    const payload = {
       ...data,
       transactionDate: format(data.transactionDate, 'yyyy-MM-dd'),
     };
@@ -275,9 +286,9 @@ export default function ReceiptPage() {
         title: 'Receipt Saved!',
       });
       form.reset();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setError('Could not save the receipt. Please try again.');
+      setError(e.message || 'Could not save the receipt. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -296,7 +307,7 @@ export default function ReceiptPage() {
     if (cameraInputRef.current) {
       cameraInputRef.current.value = '';
     }
-    form.reset({merchantName: '', items: [{name: '', price: 0}]});
+    form.reset({merchantName: '', items: [{name: '', price: 0}], paymentSource: 'Cash on Hand'});
   };
 
   const renderInitialState = () => (
@@ -450,10 +461,36 @@ export default function ReceiptPage() {
                       )}
                     />
                     <FormField
-                      name="total"
+                      name="paymentSource"
                       control={form.control}
                       render={({field}) => (
                         <FormItem>
+                          <FormLabel>Payment Source</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a payment source" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Cash on Hand">
+                                Cash on Hand
+                              </SelectItem>
+                              <SelectItem value="G-Cash">G-Cash</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      name="total"
+                      control={form.control}
+                      render={({field}) => (
+                        <FormItem className="md:col-span-2">
                           <FormLabel>Total Amount (₱)</FormLabel>
                           <FormControl>
                             <Input
@@ -462,6 +499,7 @@ export default function ReceiptPage() {
                               placeholder="e.g. 150.75"
                               {...field}
                               disabled
+                              className="text-lg font-bold"
                             />
                           </FormControl>
                           <FormMessage />
@@ -710,13 +748,37 @@ export default function ReceiptPage() {
                     )}
                   />
                   <FormField
-                    name="total"
+                    name="paymentSource"
                     control={form.control}
                     render={({field}) => (
                       <FormItem>
+                        <FormLabel>Payment Source</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a source" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Cash on Hand">Cash on Hand</SelectItem>
+                            <SelectItem value="G-Cash">G-Cash</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="total"
+                    control={form.control}
+                    render={({field}) => (
+                      <FormItem className="sm:col-span-2">
                         <FormLabel>Total (₱)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" {...field} disabled />
+                          <Input type="number" step="0.01" {...field} disabled className="text-lg font-bold" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
