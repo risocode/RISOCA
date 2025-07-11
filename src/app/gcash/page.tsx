@@ -115,8 +115,8 @@ export default function GcashPage() {
     netFlow,
   } = useMemo(() => {
     const todayStart = startOfToday();
-    const todays = transactions.filter((tx) =>
-      tx.createdAt.toDate() >= todayStart
+    const todays = transactions.filter(
+      (tx) => tx.createdAt.toDate() >= todayStart
     );
 
     let cashIn = 0;
@@ -136,7 +136,7 @@ export default function GcashPage() {
           cashOut += Math.abs(item.total);
         }
         if (item.itemName.includes('E-Load')) {
-           fees += 3;
+          fees += 3;
         }
       });
     });
@@ -237,6 +237,42 @@ export default function GcashPage() {
     );
   };
 
+  const parseTransactionDetails = (tx: SaleTransaction) => {
+    let type = 'Unknown';
+    let amount = 0;
+    let fee = 0;
+    let total = tx.total;
+
+    if (tx.customerName?.includes('G-Cash In')) {
+      type = 'Cash In';
+      const cashInItem = tx.items.find((i) => i.itemName === 'Gcash Cash-In');
+      fee =
+        tx.items.find((i) => i.itemName === 'Service Fee')?.total ||
+        Math.max(0, cashInItem ? cashInItem.total - (cashInItem.unitPrice - (cashInItem.total - cashInItem.unitPrice))) : 0);
+      const match = tx.customerName.match(/₱([\d,.]+)/);
+      if(match) amount = parseFloat(match[1].replace(/,/g, ''));
+      else amount = cashInItem ? cashInItem.total - fee : 0;
+      total = amount + fee;
+    } else if (tx.customerName?.includes('G-Cash Out')) {
+      type = 'Cash Out';
+      const cashOutItem = tx.items.find(
+        (i) => i.itemName === 'Gcash Cash-Out'
+      );
+      amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
+      fee =
+        tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee')?.total || 0;
+      total = fee - amount;
+    } else if (tx.customerName?.includes('E-Load')) {
+      type = 'E-Load';
+      const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load'));
+      fee = 3;
+      amount = eloadItem ? eloadItem.total - fee : 0;
+      total = amount + fee;
+    }
+
+    return {type, amount, fee, total};
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-6 opacity-0 animate-page-enter">
       <header>
@@ -310,71 +346,94 @@ export default function GcashPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({length: 5}).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-5 w-3/4" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-1/2" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="h-5 w-1/4 ml-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : transactions.length > 0 ? (
-                transactions.map((tx) => {
-                  const isCashOut = tx.customerName?.includes('Cash Out');
-                  return (
-                    <TableRow key={tx.id}>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({length: 5}).map((_, i) => (
+                    <TableRow key={i}>
                       <TableCell>
-                        {format(tx.createdAt.toDate(), 'PPp')}
+                        <Skeleton className="h-5 w-3/4" />
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            isCashOut ? 'destructive' : 'success'
-                          }
-                        >
-                          {tx.customerName}
-                        </Badge>
+                        <Skeleton className="h-5 w-1/2" />
                       </TableCell>
-                      <TableCell
-                        className={cn(
-                          'text-right font-mono',
-                          isCashOut
-                            ? 'text-destructive'
-                            : 'text-success'
-                        )}
-                      >
-                        {formatCurrency(tx.total)}
+                      <TableCell className="text-right">
+                        <Skeleton className="h-5 w-1/4 ml-auto" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="h-5 w-1/4 ml-auto" />
+                      </TableCell>
+                       <TableCell className="text-right">
+                        <Skeleton className="h-5 w-1/4 ml-auto" />
                       </TableCell>
                     </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No G-Cash transactions found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                ) : transactions.length > 0 ? (
+                  transactions.map((tx) => {
+                    const {type, amount, fee, total} =
+                      parseTransactionDetails(tx);
+                    const isDebit = type === 'Cash Out';
+
+                    return (
+                      <TableRow key={tx.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {format(tx.createdAt.toDate(), 'PPp')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={isDebit ? 'destructive' : 'success'}
+                          >
+                            {type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right font-mono',
+                          )}
+                        >
+                          {formatCurrency(amount)}
+                        </TableCell>
+                         <TableCell
+                          className={cn(
+                            'text-right font-mono text-success',
+                          )}
+                        >
+                          {formatCurrency(fee)}
+                        </TableCell>
+                         <TableCell
+                          className={cn(
+                            'text-right font-mono font-semibold',
+                             isDebit ? 'text-destructive' : 'text-primary'
+                          )}
+                        >
+                          {formatCurrency(total)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No G-Cash transactions found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
