@@ -12,7 +12,6 @@ import {
   ReceiptText,
   Landmark,
   Wallet,
-  Settings,
 } from 'lucide-react';
 import {cn} from '@/lib/utils';
 import {
@@ -30,7 +29,6 @@ const navItems = [
   {href: '/store/inventory', icon: Boxes, label: 'Products'},
   {href: '/store/ledger', icon: Landmark, label: 'Ledger'},
   {href: '/transactions', icon: History, label: 'History'},
-  {href: '/settings', icon: Settings, label: 'Settings'},
 ];
 
 export function BottomNav() {
@@ -64,7 +62,7 @@ export function BottomNav() {
 
           <div className="w-20" />
 
-          {navItems.slice(2, 5).map((item) => {
+          {navItems.slice(2, 4).map((item) => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link
