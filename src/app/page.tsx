@@ -254,7 +254,12 @@ export default function HomePage() {
                   <Skeleton className="h-8 w-3/4" />
                 ) : (
                   <>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p
+                      className={cn(
+                        'text-3xl font-bold',
+                        isDayOpen ? 'text-amber-500' : 'text-foreground'
+                      )}
+                    >
                       {formatCurrency(cashBalance)}
                     </p>
                     {isDayOpen && (
