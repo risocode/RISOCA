@@ -79,8 +79,7 @@ export default function GcashPage() {
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', '==', 'gcash'),
-      orderBy('createdAt', 'desc')
+      where('serviceType', '==', 'gcash')
     );
 
     const unsubscribe = onSnapshot(
@@ -89,6 +88,8 @@ export default function GcashPage() {
         const data: SaleTransaction[] = snapshot.docs.map(
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
         );
+        // Sort the data on the client side
+        data.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
         setTransactions(data);
         setIsLoading(false);
       },
