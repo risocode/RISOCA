@@ -96,7 +96,7 @@ export default function GcashPage() {
       );
       amount = cashInItem?.total || 0;
       fee = feeItem?.total || 0;
-      total = amount + fee;
+      total = fee; // Total revenue for cash-in is just the fee
     } else if (tx.customerName?.includes('G-Cash Out')) {
       type = 'Cash Out';
       const cashOutItem = tx.items.find(
@@ -374,7 +374,7 @@ export default function GcashPage() {
                   <TableHead>Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="text-right">Fee</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
