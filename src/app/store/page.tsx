@@ -137,52 +137,36 @@ const submitGcashTransaction = async (
       total: totalAmount,
     });
     customerName = 'E-Load';
+  } else if (type === 'cash-in') {
+    const serviceFee = Math.max(10, amount * 0.01);
+    const totalAmount = amount + serviceFee;
+    items.push({
+      itemName: 'Gcash Cash-In',
+      quantity: 1,
+      unitPrice: totalAmount,
+      total: totalAmount,
+    });
+    customerName = 'Gcash Cash-In';
   } else {
-    // Both cash-in and cash-out logic
-    let serviceFee: number;
-    if (type === 'cash-in') {
-      const percentFee = amount * 0.01;
-      if (amount <= 1000) serviceFee = 10;
-      else if (amount <= 1500) serviceFee = 15;
-      else if (amount <= 2000) serviceFee = 20;
-      else if (amount <= 2500) serviceFee = 25;
-      else if (amount <= 3000) serviceFee = 30;
-      else serviceFee = Math.max(10, percentFee);
+    // Cash-out
+    const percentFee = amount * 0.02; // 2% for cash-out
+    const serviceFee = Math.max(20, percentFee); // Minimum 20 pesos fee
 
-      items.push({
-        itemName: 'Gcash Cash-In',
-        quantity: 1,
-        unitPrice: amount,
-        total: amount,
-      });
-      items.push({
-        itemName: 'Gcash Cash-In Service Fee',
-        quantity: 1,
-        unitPrice: serviceFee,
-        total: serviceFee,
-      });
-      customerName = 'Gcash Cash-In';
-    } else {
-      // Cash-out
-      const percentFee = amount * 0.02; // 2% for cash-out
-      serviceFee = Math.max(20, percentFee); // Minimum 20 pesos fee
-
-      // The amount being given out is a negative value
-      items.push({
-        itemName: 'Gcash Cash-Out',
-        quantity: 1,
-        unitPrice: -amount,
-        total: -amount,
-      });
-      // The fee earned is a positive value
-      items.push({
-        itemName: 'Gcash Cash-Out Service Fee',
-        quantity: 1,
-        unitPrice: serviceFee,
-        total: serviceFee,
-      });
-      customerName = 'Gcash Cash-Out';
-    }
+    // The amount being given out is a negative value
+    items.push({
+      itemName: 'Gcash Cash-Out',
+      quantity: 1,
+      unitPrice: -amount,
+      total: -amount,
+    });
+    // The fee earned is a positive value
+    items.push({
+      itemName: 'Gcash Cash-Out Service Fee',
+      quantity: 1,
+      unitPrice: serviceFee,
+      total: serviceFee,
+    });
+    customerName = 'Gcash Cash-Out';
   }
 
   const grandTotal = items.reduce((acc, item) => acc + item.total, 0);
