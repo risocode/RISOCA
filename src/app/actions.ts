@@ -346,8 +346,14 @@ export async function submitGcashTransaction(
         {
           itemName: 'Gcash Cash-In',
           quantity: 1,
-          unitPrice: amount + serviceFee,
-          total: amount + serviceFee,
+          unitPrice: amount,
+          total: amount,
+        },
+        {
+          itemName: 'Gcash Cash-In Fee',
+          quantity: 1,
+          unitPrice: serviceFee,
+          total: serviceFee,
         },
       ];
       customerName = `G-Cash In (${formatCurrency(amount)})`;
@@ -369,15 +375,21 @@ export async function submitGcashTransaction(
         },
       ];
       customerName = `G-Cash Out (${formatCurrency(amount)})`;
-      total = serviceFee - amount;
+      total = serviceFee;
     } else if (type === 'e-load') {
       const serviceFee = 3;
       items = [
         {
           itemName: `E-Load (${formatCurrency(amount)})`,
           quantity: 1,
-          unitPrice: amount + serviceFee,
-          total: amount + serviceFee,
+          unitPrice: amount,
+          total: amount,
+        },
+        {
+          itemName: `E-Load Fee`,
+          quantity: 1,
+          unitPrice: serviceFee,
+          total: serviceFee,
         },
       ];
       customerName = 'E-Load';

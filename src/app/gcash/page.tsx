@@ -130,23 +130,25 @@ export default function GcashPage() {
 
     todays.forEach((tx) => {
       tx.items.forEach((item) => {
-        if (item.itemName.includes('Gcash Cash-In')) {
-          const match = tx.customerName?.match(/₱([\d,.]+)/);
-          if (match) cashIn += parseFloat(match[1].replace(/,/g, ''));
+        if (item.itemName.includes('Gcash Cash-In Fee')) {
+          fees += item.total;
+        } else if (item.itemName.includes('Gcash Cash-In')) {
+          cashIn += item.total;
         }
+
         if (item.itemName.includes('Gcash Cash-Out Fee')) {
           fees += item.total;
-        }
-        if (item.itemName.includes('Gcash Cash-Out') && item.total < 0) {
+        } else if (item.itemName.includes('Gcash Cash-Out')) {
           cashOut += Math.abs(item.total);
         }
-        if (item.itemName.includes('E-Load')) {
-          fees += 3;
+
+        if (item.itemName.includes('E-Load Fee')) {
+          fees += item.total;
         }
       });
     });
 
-    const net = cashIn - cashOut + fees;
+    const net = -cashIn + cashOut; // Digital money flow
     const currentBalance = INITIAL_GCASH_BALANCE + net;
 
     return {
@@ -253,13 +255,14 @@ export default function GcashPage() {
     if (tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
       const cashInItem = tx.items.find((i) =>
-        i.itemName.includes('Gcash Cash-In')
+        i.itemName.includes('Gcash Cash-In') && !i.itemName.includes('Fee')
       );
-      if (cashInItem) {
-        fee = cashInItem.total - cashInItem.unitPrice;
-        amount = cashInItem.unitPrice;
-      }
-      total = tx.total;
+      const feeItem = tx.items.find((i) =>
+        i.itemName.includes('Gcash Cash-In Fee')
+      );
+      amount = cashInItem?.total || 0;
+      fee = feeItem?.total || 0;
+      total = amount + fee;
     } else if (tx.customerName?.includes('G-Cash Out')) {
       type = 'Cash Out';
       const cashOutItem = tx.items.find(
@@ -268,12 +271,13 @@ export default function GcashPage() {
       amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
       fee =
         tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee')?.total || 0;
-      total = fee - amount;
+      total = fee;
     } else if (tx.customerName?.includes('E-Load')) {
       type = 'E-Load';
-      const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load'));
-      fee = 3;
-      amount = eloadItem ? eloadItem.total - fee : 0;
+      const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
+      const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
+      amount = eloadItem?.total || 0;
+      fee = feeItem?.total || 0;
       total = amount + fee;
     }
 
@@ -429,7 +433,7 @@ export default function GcashPage() {
                         <TableCell
                           className={cn(
                             'text-right font-mono font-semibold',
-                            isDebit ? 'text-destructive' : 'text-primary'
+                            type === 'Cash In' ? 'text-primary' : (isDebit ? 'text-destructive' : 'text-primary')
                           )}
                         >
                           {formatCurrency(total)}
