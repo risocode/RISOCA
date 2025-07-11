@@ -171,6 +171,10 @@ export default function StorePage() {
 
   const formItems = useWatch({control: form.control, name: 'items'});
 
+  const currentFormSubtotal = useMemo(() => {
+    return formItems.reduce((acc, item) => acc + (item.quantity || 0) * (item.unitPrice || 0), 0);
+  }, [formItems]);
+
   useEffect(() => {
     formItems.forEach((item, index) => {
       const newTotal = (item.quantity || 0) * (item.unitPrice || 0);
@@ -595,6 +599,13 @@ export default function StorePage() {
                     </div>
                   ))}
                 </div>
+
+                 {fields.length > 0 && (
+                  <div className="flex justify-end items-baseline gap-4 pt-2 pr-12">
+                     <p className="text-muted-foreground font-semibold">Subtotal:</p>
+                     <p className="font-mono font-bold text-lg">{formatCurrency(currentFormSubtotal)}</p>
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row justify-between items-center mt-2 gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
