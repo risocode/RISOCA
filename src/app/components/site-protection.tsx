@@ -73,7 +73,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   });
 
   const finishAuthentication = useCallback((method: 'password' | 'passkey' = 'passkey') => {
-      // Use localStorage to persist login across sessions
       localStorage.setItem('risoca-auth', 'true');
       setAuthStep(AuthStep.Authenticated);
       setShowRegistrationPrompt(false);
@@ -81,30 +80,27 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   }, [toast]);
 
   const handlePasskeyLogin = useCallback(async () => {
-    if (passkeyLoginAttempted) return;
+    // Prevent multiple automatic attempts
+    if (passkeyLoginAttempted && authStep === AuthStep.Login) return;
     setPasskeyLoginAttempted(true);
     
     const {success, error} = await loginWithPasskey();
     if (success) {
       finishAuthentication();
     } else {
-      if (error) {
+      if (error && error !== 'Authentication was cancelled.') {
         toast({variant: 'destructive', title: 'Login Failed', description: error});
       }
-      // If passkey fails, we stay on the login screen for password fallback
+      // If passkey fails (or is cancelled), we stay on the login screen for password fallback
     }
-  }, [loginWithPasskey, finishAuthentication, toast, passkeyLoginAttempted]);
+  }, [loginWithPasskey, finishAuthentication, toast, passkeyLoginAttempted, authStep]);
 
   const checkSessionAndPasskeys = useCallback(() => {
-    // Check if already authenticated in this session
     const isAuthenticated = localStorage.getItem('risoca-auth') === 'true';
     if (isAuthenticated) {
       setAuthStep(AuthStep.Authenticated);
       return;
     }
-
-    // If not authenticated, move to login step.
-    // The useEffect below will handle auto-triggering passkey.
     setAuthStep(AuthStep.Login);
   }, []);
 
@@ -114,7 +110,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   
   useEffect(() => {
     // This effect runs when the login screen becomes active.
-    // If passkeys are supported and available, it triggers the login automatically.
+    // If passkeys are supported and available, it triggers the login automatically ONE TIME.
     if (authStep === AuthStep.Login && isSupported && hasPasskeys && !passkeyLoginAttempted) {
       handlePasskeyLogin();
     }
@@ -184,12 +180,12 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               className="w-auto h-8"
             />
           </div>
-          {isPasskeyLoading && passkeyLoginAttempted ? (
+          {isPasskeyLoading ? (
             <>
               <Fingerprint className="mx-auto h-12 w-12 text-primary animate-pulse" />
-              <CardTitle className="!mt-4">Fingerprint Login</CardTitle>
+              <CardTitle className="!mt-4">Verifying...</CardTitle>
               <CardDescription>
-                Please verify your identity.
+                Please use your fingerprint or face to log in.
               </CardDescription>
             </>
           ) : (
@@ -242,7 +238,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                     type="button"
                     variant="secondary"
                     onClick={handlePasskeyLogin}
-                    disabled={isPasskeyLoading || isSubmitting}
+                    disabled={isPasskeyLoading}
                   >
                     {isPasskeyLoading ? (
                       <Loader2 className="mr-2 animate-spin" />
