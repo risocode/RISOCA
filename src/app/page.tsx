@@ -22,6 +22,7 @@ import {
   Wallet,
   Activity,
   Receipt,
+  AlertCircle,
 } from 'lucide-react';
 import {
   Card,
@@ -63,7 +64,7 @@ export default function HomePage() {
   const [walletHistory, setWalletHistory] = useState<WalletEntry[]>([]);
   const [isTotalsLoading, setIsTotalsLoading] = useState(true);
 
-  const { totalSpent: totalExpenses } = useReceipts();
+  const {totalSpent: totalExpenses} = useReceipts();
 
   const [openRecentSales, setOpenRecentSales] =
     useState<Record<string, boolean>>({});
@@ -135,7 +136,9 @@ export default function HomePage() {
       onSnapshot(
         query,
         (snapshot) => {
-          setter(snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()})) as any);
+          setter(
+            snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()})) as any
+          );
           pendingLoads--;
           if (pendingLoads === 0) setIsTotalsLoading(false);
         },
@@ -149,7 +152,7 @@ export default function HomePage() {
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [handleFirestoreError]);
 
-  const {totalSales, gcashBalance, cashBalance} = useMemo(() => {
+  const {totalSales, gcashBalance, cashBalance, isDayOpen} = useMemo(() => {
     const total = allSales
       .filter((doc) => doc.status !== 'voided')
       .reduce((acc, doc) => acc + doc.total, 0);
@@ -163,12 +166,18 @@ export default function HomePage() {
     let eload = 0;
 
     gcashTransactions.forEach((tx) => {
-       const cashInItem = tx.items.find(i => i.itemName === 'Gcash Cash-In');
-      const cashOutItem = tx.items.find(i => i.itemName === 'Gcash Cash-Out');
-      const eloadItem = tx.items.find(i => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
+      const cashInItem = tx.items.find(
+        (i) => i.itemName === 'Gcash Cash-In'
+      );
+      const cashOutItem = tx.items.find(
+        (i) => i.itemName === 'Gcash Cash-Out'
+      );
+      const eloadItem = tx.items.find(
+        (i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee')
+      );
 
       if (cashInItem) {
-        cashIn += cashInItem.unitPrice; 
+        cashIn += cashInItem.unitPrice;
       }
       if (cashOutItem) {
         cashOut += Math.abs(cashOutItem.unitPrice);
@@ -182,12 +191,16 @@ export default function HomePage() {
     const currentGcashBalance = INITIAL_GCASH_BALANCE + netFlow;
 
     const openDay = walletHistory.find((e) => e.status === 'open');
-    const currentCashBalance = openDay ? openDay.startingCash : 0;
+    const latestClosedDay = walletHistory.find((e) => e.status === 'closed');
+    
+    // Logic: Always show the ending cash from the most recently closed day.
+    const currentCashBalance = latestClosedDay?.endingCash ?? 0;
 
     return {
       totalSales: total,
       gcashBalance: currentGcashBalance,
       cashBalance: currentCashBalance,
+      isDayOpen: !!openDay,
     };
   }, [allSales, walletHistory]);
 
@@ -209,7 +222,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 text-center gap-4">
-               <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
+              <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <TrendingUp /> Total Sales
                 </p>
@@ -221,7 +234,7 @@ export default function HomePage() {
                   </p>
                 )}
               </div>
-               <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
+              <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Receipt /> Total Expenses
                 </p>
@@ -238,11 +251,19 @@ export default function HomePage() {
                   <Wallet /> Cash on Hand
                 </p>
                 {isTotalsLoading ? (
-                  <Skeleton className="h-8 w-2/3 mt-1" />
+                  <Skeleton className="h-8 w-3/4" />
                 ) : (
-                  <p className="text-3xl font-bold text-foreground">
-                    {formatCurrency(cashBalance)}
-                  </p>
+                  <>
+                    <p className="text-3xl font-bold text-foreground">
+                      {formatCurrency(cashBalance)}
+                    </p>
+                    {isDayOpen && (
+                      <p className="text-xs text-amber-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Session in progress
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
               <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
