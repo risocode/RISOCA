@@ -21,6 +21,7 @@ import {
   TrendingDown,
   Wallet,
   Activity,
+  Receipt,
 } from 'lucide-react';
 import {
   Card,
@@ -61,6 +62,8 @@ export default function HomePage() {
   const [allSales, setAllSales] = useState<SaleTransaction[]>([]);
   const [walletHistory, setWalletHistory] = useState<WalletEntry[]>([]);
   const [isTotalsLoading, setIsTotalsLoading] = useState(true);
+
+  const { totalSpent: totalExpenses } = useReceipts();
 
   const [openRecentSales, setOpenRecentSales] =
     useState<Record<string, boolean>>({});
@@ -160,19 +163,18 @@ export default function HomePage() {
     let eload = 0;
 
     gcashTransactions.forEach((tx) => {
-      const isCashIn = tx.customerName?.includes('G-Cash In');
-      const isCashOut = tx.customerName?.includes('G-Cash Out');
-      const isEload = tx.customerName?.includes('E-Load');
+       const cashInItem = tx.items.find(i => i.itemName === 'Gcash Cash-In');
+      const cashOutItem = tx.items.find(i => i.itemName === 'Gcash Cash-Out');
+      const eloadItem = tx.items.find(i => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
 
-      if (isCashIn) {
-        const cashInItem = tx.items.find((i) => i.itemName === 'Gcash Cash-In');
-        if (cashInItem) cashIn += cashInItem.total;
-      } else if (isCashOut) {
-        const cashOutItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out');
-        if (cashOutItem) cashOut += Math.abs(cashOutItem.total);
-      } else if (isEload) {
-        const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
-        if(eloadItem) eload += eloadItem.total;
+      if (cashInItem) {
+        cashIn += cashInItem.unitPrice; 
+      }
+      if (cashOutItem) {
+        cashOut += Math.abs(cashOutItem.unitPrice);
+      }
+      if (eloadItem) {
+        eload += eloadItem.unitPrice;
       }
     });
 
@@ -206,8 +208,32 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 items-center text-center gap-6">
-              <div className="flex flex-col items-center justify-center space-y-1">
+            <div className="grid grid-cols-2 text-center gap-4">
+               <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <TrendingUp /> Total Sales
+                </p>
+                {isTotalsLoading ? (
+                  <Skeleton className="h-8 w-2/3 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(totalSales)}
+                  </p>
+                )}
+              </div>
+               <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
+                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Receipt /> Total Expenses
+                </p>
+                {isTotalsLoading ? (
+                  <Skeleton className="h-8 w-2/3 mt-1" />
+                ) : (
+                  <p className="text-3xl font-bold text-destructive">
+                    {formatCurrency(totalExpenses)}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Wallet /> Cash on Hand
                 </p>
@@ -219,7 +245,7 @@ export default function HomePage() {
                   </p>
                 )}
               </div>
-              <div className="flex flex-col items-center justify-center space-y-1">
+              <div className="flex flex-col items-center justify-center space-y-1 p-4 border rounded-lg">
                 <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                   <Activity /> G-Cash Balance
                 </p>
@@ -228,18 +254,6 @@ export default function HomePage() {
                 ) : (
                   <p className="text-3xl font-bold text-primary">
                     {formatCurrency(gcashBalance)}
-                  </p>
-                )}
-              </div>
-              <div className="flex flex-col items-center justify-center space-y-1">
-                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <TrendingUp /> Total Sales
-                </p>
-                {isTotalsLoading ? (
-                  <Skeleton className="h-8 w-2/3 mt-1" />
-                ) : (
-                  <p className="text-3xl font-bold text-primary">
-                    {formatCurrency(totalSales)}
                   </p>
                 )}
               </div>
