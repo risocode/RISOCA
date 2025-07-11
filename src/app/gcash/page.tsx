@@ -67,7 +67,7 @@ const GcashServiceSchema = z.object({
 type GcashServiceFormData = z.infer<typeof GcashServiceSchema>;
 
 // Set your initial G-Cash balance here.
-const INITIAL_GCASH_BALANCE = 15517.16;
+const INITIAL_GCASH_BALANCE = 9517.16;
 
 export default function GcashPage() {
   const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
@@ -83,7 +83,8 @@ export default function GcashPage() {
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', '==', 'gcash')
+      where('serviceType', '==', 'gcash'),
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(
@@ -92,8 +93,6 @@ export default function GcashPage() {
         const data: SaleTransaction[] = snapshot.docs.map(
           (doc) => ({id: doc.id, ...doc.data()} as SaleTransaction)
         );
-        // Sort the data on the client side
-        data.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
         setTransactions(data);
         setIsLoading(false);
       },
@@ -298,10 +297,6 @@ export default function GcashPage() {
         <CardContent>
           <p className="text-5xl font-bold text-center tracking-tighter">
             {formatCurrency(currentBalance)}
-          </p>
-          <p className="text-center text-sm text-muted-foreground mt-2">
-            Based on an initial balance of{' '}
-            {formatCurrency(INITIAL_GCASH_BALANCE)}
           </p>
         </CardContent>
       </Card>
