@@ -30,6 +30,7 @@ export const SaleTransactionSchema = z.object({
   items: z.array(SaleItemSchema),
   total: z.number(),
   status: z.enum(['active', 'voided']),
+  serviceType: z.string().optional(),
 });
 export type SaleTransactionInput = z.infer<typeof SaleTransactionSchema>;
 

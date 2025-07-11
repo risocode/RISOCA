@@ -13,7 +13,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
-import {startOfToday, endOfToday} from 'date-fns';
+import {startOfToday} from 'date-fns';
 import {db} from '@/lib/firebase';
 import {submitGcashTransaction} from '@/app/actions';
 import type {SaleTransaction} from '@/lib/schemas';
@@ -77,12 +77,9 @@ export default function GcashPage() {
   });
 
   useEffect(() => {
-    const todayStart = startOfToday();
-    const todayEnd = endOfToday();
-
     const q = query(
       collection(db, 'saleTransactions'),
-      where('customerName', 'in', ['G-Cash In', 'G-Cash Out', 'E-Load']),
+      where('serviceType', '==', 'gcash'),
       orderBy('createdAt', 'desc')
     );
 

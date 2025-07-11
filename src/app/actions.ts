@@ -389,6 +389,7 @@ export async function submitGcashTransaction(
       customerName,
       total,
       status: 'active',
+      serviceType: 'gcash',
     });
 
     return {success: true};
