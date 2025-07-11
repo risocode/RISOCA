@@ -13,7 +13,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
-import {startOfToday} from 'date-fns';
+import {startOfToday, isToday} from 'date-fns';
 import {db} from '@/lib/firebase';
 import {submitGcashTransaction} from '@/app/actions';
 import type {SaleTransaction} from '@/lib/schemas';
@@ -118,40 +118,32 @@ export default function GcashPage() {
     netFlow,
     currentBalance,
   } = useMemo(() => {
-    const todayStart = startOfToday();
-    const todays = transactions.filter(
-      (tx) => tx.createdAt.toDate() >= todayStart
-    );
-
     let cashIn = 0;
     let cashOut = 0;
     let fees = 0;
 
-    todays.forEach((tx) => {
-      tx.items.forEach((item) => {
-        if (item.itemName.includes('Gcash Cash-In Fee')) {
-          fees += item.total;
-        } else if (item.itemName.includes('Gcash Cash-In')) {
-          cashIn += item.total;
+    transactions.forEach((tx) => {
+      const {type, amount, fee} = parseTransactionDetails(tx);
+      if (isToday(tx.createdAt.toDate())) {
+        if (type === 'Cash In') {
+          cashIn += amount;
+          fees += fee;
+        } else if (type === 'Cash Out') {
+          cashOut += amount;
+          fees += fee;
+        } else if (type === 'E-Load') {
+          fees += fee;
         }
-
-        if (item.itemName.includes('Gcash Cash-Out Fee')) {
-          fees += item.total;
-        } else if (item.itemName.includes('Gcash Cash-Out')) {
-          cashOut += Math.abs(item.total);
-        }
-
-        if (item.itemName.includes('E-Load Fee')) {
-          fees += item.total;
-        }
-      });
+      }
     });
 
     const net = -cashIn + cashOut; // Digital money flow
     const currentBalance = INITIAL_GCASH_BALANCE + net;
 
     return {
-      todaysTransactions: todays,
+      todaysTransactions: transactions.filter((tx) =>
+        isToday(tx.createdAt.toDate())
+      ),
       totalCashIn: cashIn,
       totalCashOut: cashOut,
       totalFees: fees,
