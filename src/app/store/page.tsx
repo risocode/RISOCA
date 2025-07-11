@@ -73,6 +73,7 @@ import {
   Zap,
   Phone,
   PackagePlus,
+  ChevronDown,
 } from 'lucide-react';
 import {Popover, PopoverTrigger, PopoverContent} from '@/components/ui/popover';
 import {
@@ -143,6 +144,7 @@ export default function StorePage() {
   );
   const commandInputRef = useRef<HTMLInputElement>(null);
   const [commandSearch, setCommandSearch] = useState('');
+  const [openTransaction, setOpenTransaction] = useState<string | null>(null);
 
   const [isELoadDialogOpen, setIsELoadDialogOpen] = useState(false);
   const [isGcashDialogOpen, setIsGcashDialogOpen] = useState(false);
@@ -368,6 +370,10 @@ export default function StorePage() {
     setReceiptItems((prev) => [...prev, cashInItem, feeItem]);
     setIsGcashDialogOpen(false);
     gcashForm.reset();
+  };
+
+  const toggleTransactionRow = (id: string) => {
+    setOpenTransaction((prev) => (prev === id ? null : id));
   };
 
   const grandTotal = receiptItems.reduce((acc, item) => acc + item.total, 0);
@@ -790,75 +796,120 @@ export default function StorePage() {
               Here are the 5 most recent sales. You can void or print them.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {recentTransactions.length > 0 ? (
-                recentTransactions.map((tx) => (
-                  <li
-                    key={tx.id}
-                    className={cn(
-                      'flex items-center justify-between p-2 rounded-md bg-background',
-                      tx.status === 'voided' && 'opacity-60 bg-muted/50'
-                    )}
-                  >
-                    <div
+          <CardContent className="p-0">
+            {recentTransactions.length > 0 ? (
+              <ul className="space-y-1 px-2">
+                {recentTransactions.map((tx) => {
+                  const isOpen = openTransaction === tx.id;
+                  return (
+                    <li
+                      key={tx.id}
                       className={cn(
-                        'flex-grow',
-                        tx.status === 'voided' && 'line-through'
+                        'rounded-lg',
+                        isOpen && 'bg-muted/50'
                       )}
                     >
-                      <p className="font-medium">
-                        Receipt #{tx.receiptNumber}
-                        {tx.customerName && (
-                          <span className="text-sm text-muted-foreground">
-                            {' '}
-                            - {tx.customerName}
-                          </span>
+                      <div
+                        className={cn(
+                          'flex items-center justify-between p-2 cursor-pointer',
+                          tx.status === 'voided' && 'opacity-60'
                         )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {tx.items.length} items &bull; Total: ₱
-                        {tx.total.toFixed(2)}
-                      </p>
-                    </div>
-                    {tx.status === 'voided' ? (
-                      <Badge variant="destructive">Voided</Badge>
-                    ) : (
-                      <div className="flex items-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                          className="text-primary"
+                        onClick={() => toggleTransactionRow(tx.id)}
+                      >
+                        <div
+                          className={cn(
+                            'flex-grow flex items-center gap-2',
+                            tx.status === 'voided' && 'line-through'
+                          )}
                         >
-                          <Link
-                            href={`/print/receipt/${tx.id}`}
-                            target="_blank"
-                          >
-                            <Printer className="mr-2 w-4 h-4" /> Print
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setVoidingTransaction(tx)}
-                        >
-                          <Trash2 className="mr-2 w-4 h-4 text-destructive" />
-                          Void
-                        </Button>
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 transition-transform shrink-0',
+                              isOpen && 'rotate-180'
+                            )}
+                          />
+                          <div>
+                            <p className="font-medium">
+                              Receipt #{tx.receiptNumber}
+                              {tx.customerName && (
+                                <span className="text-sm text-muted-foreground">
+                                  {' '}
+                                  - {tx.customerName}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {tx.items.length} items &bull; Total: ₱
+                              {tx.total.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        {tx.status === 'voided' ? (
+                          <Badge variant="destructive">Voided</Badge>
+                        ) : (
+                          <div className="flex items-center shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              className="text-primary"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link
+                                href={`/print/receipt/${tx.id}`}
+                                target="_blank"
+                              >
+                                <Printer className="mr-2 w-4 h-4" /> Print
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVoidingTransaction(tx);
+                              }}
+                            >
+                              <Trash2 className="mr-2 w-4 h-4 text-destructive" />
+                              Void
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </li>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
-                  <FileWarning className="w-10 h-10 mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium">
-                    No sales recorded yet.
-                  </p>
-                </div>
-              )}
-            </ul>
+                      {isOpen && (
+                        <div className="p-2 mx-4 mb-2 bg-background rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="h-8">Item</TableHead>
+                                <TableHead className="h-8 text-center w-16">Qty</TableHead>
+                                <TableHead className="h-8 text-right">Amount</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {tx.items.map((item, index) => (
+                                <TableRow key={index} className="border-none">
+                                  <TableCell className="py-1 font-medium">{item.itemName}</TableCell>
+                                  <TableCell className="py-1 text-center">{item.quantity}</TableCell>
+                                  <TableCell className="py-1 text-right font-mono">{formatCurrency(item.total)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg m-4">
+                <FileWarning className="w-10 h-10 mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">
+                  No sales recorded yet.
+                </p>
+              </div>
+            )}
           </CardContent>
           <CardFooter>
             <Button asChild variant="outline" className="w-full">
