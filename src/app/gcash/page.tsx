@@ -54,6 +54,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Phone,
+  Wallet,
 } from 'lucide-react';
 import {Skeleton} from '@/components/ui/skeleton';
 import {cn} from '@/lib/utils';
@@ -64,6 +65,9 @@ const GcashServiceSchema = z.object({
   amount: z.coerce.number().positive('Amount must be greater than zero.'),
 });
 type GcashServiceFormData = z.infer<typeof GcashServiceSchema>;
+
+// Set your initial G-Cash balance here.
+const INITIAL_GCASH_BALANCE = 12517.16;
 
 export default function GcashPage() {
   const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
@@ -113,6 +117,7 @@ export default function GcashPage() {
     totalCashOut,
     totalFees,
     netFlow,
+    currentBalance,
   } = useMemo(() => {
     const todayStart = startOfToday();
     const todays = transactions.filter(
@@ -142,6 +147,7 @@ export default function GcashPage() {
     });
 
     const net = cashIn - cashOut + fees;
+    const currentBalance = INITIAL_GCASH_BALANCE + net;
 
     return {
       todaysTransactions: todays,
@@ -149,6 +155,7 @@ export default function GcashPage() {
       totalCashOut: cashOut,
       totalFees: fees,
       netFlow: net,
+      currentBalance,
     };
   }, [transactions]);
 
@@ -245,11 +252,12 @@ export default function GcashPage() {
 
     if (tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
-      const cashInItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In'));
-      const serviceFee = Math.max(10, (cashInItem?.unitPrice || 0) * 0.01);
+      const cashInItem = tx.items.find((i) =>
+        i.itemName.includes('Gcash Cash-In')
+      );
       if (cashInItem) {
-          amount = cashInItem.unitPrice;
-          fee = cashInItem.total - cashInItem.unitPrice;
+        fee = cashInItem.total - cashInItem.unitPrice;
+        amount = cashInItem.unitPrice;
       }
       total = tx.total;
     } else if (tx.customerName?.includes('G-Cash Out')) {
@@ -277,7 +285,22 @@ export default function GcashPage() {
       <header>
         <h1 className="text-2xl font-bold">G-Cash Services</h1>
       </header>
-
+      <Card>
+        <CardHeader className="items-center text-center">
+          <CardTitle className="flex items-center gap-2">
+            <Wallet /> G-Cash Balance
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-5xl font-bold text-center tracking-tighter">
+            {formatCurrency(currentBalance)}
+          </p>
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Based on an initial balance of{' '}
+            {formatCurrency(INITIAL_GCASH_BALANCE)}
+          </p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Today's G-Cash Summary</CardTitle>
@@ -287,7 +310,9 @@ export default function GcashPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Card className="text-center p-6 bg-secondary text-secondary-foreground">
-            <CardDescription className="text-lg">Net Cash Flow</CardDescription>
+            <CardDescription className="text-lg">
+              Today's Net Flow
+            </CardDescription>
             <CardTitle
               className={cn(
                 'text-5xl font-bold tracking-tighter',
@@ -372,7 +397,7 @@ export default function GcashPage() {
                       <TableCell className="text-right">
                         <Skeleton className="h-5 w-1/4 ml-auto" />
                       </TableCell>
-                       <TableCell className="text-right">
+                      <TableCell className="text-right">
                         <Skeleton className="h-5 w-1/4 ml-auto" />
                       </TableCell>
                     </TableRow>
@@ -389,30 +414,22 @@ export default function GcashPage() {
                           {format(tx.createdAt.toDate(), 'PPp')}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={isDebit ? 'destructive' : 'success'}
-                          >
+                          <Badge variant={isDebit ? 'destructive' : 'success'}>
                             {type}
                           </Badge>
                         </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right font-mono',
-                          )}
-                        >
+                        <TableCell className={cn('text-right font-mono')}>
                           {formatCurrency(amount)}
                         </TableCell>
-                         <TableCell
-                          className={cn(
-                            'text-right font-mono text-success',
-                          )}
+                        <TableCell
+                          className={cn('text-right font-mono text-success')}
                         >
                           {formatCurrency(fee)}
                         </TableCell>
-                         <TableCell
+                        <TableCell
                           className={cn(
                             'text-right font-mono font-semibold',
-                             isDebit ? 'text-destructive' : 'text-primary'
+                            isDebit ? 'text-destructive' : 'text-primary'
                           )}
                         >
                           {formatCurrency(total)}
