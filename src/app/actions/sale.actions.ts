@@ -176,6 +176,7 @@ export async function submitGcashTransaction(
     let items: SaleItem[] = [];
     let customerName = '';
     let total = 0;
+    let serviceType = 'gcash';
 
     if (type === 'cash-in') {
       const serviceFee = Math.max(10, amount * 0.01);
@@ -214,7 +215,7 @@ export async function submitGcashTransaction(
       customerName = `G-Cash Out (${formatCurrency(amount)})`;
       total = amount + serviceFee; // The total cash out from your drawer
     } else if (type === 'e-load') {
-      const serviceFee = 3;
+      const serviceFee = 2;
       items = [
         {
           itemName: `E-Load (${formatCurrency(amount)})`,
@@ -231,6 +232,7 @@ export async function submitGcashTransaction(
       ];
       customerName = 'E-Load';
       total = serviceFee; // Only the fee is your revenue
+      serviceType = 'gcash-e-load';
     }
 
     await submitSaleTransaction({
@@ -238,7 +240,7 @@ export async function submitGcashTransaction(
       customerName,
       total,
       status: 'active',
-      serviceType: 'gcash',
+      serviceType,
     });
 
     return {success: true};

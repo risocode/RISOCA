@@ -12,6 +12,7 @@ import {
   onSnapshot,
   where,
   orderBy,
+  Timestamp,
 } from 'firebase/firestore';
 import {isToday} from 'date-fns';
 import {db} from '@/lib/firebase';
@@ -74,27 +75,29 @@ const parseTransactionDetails = (tx: SaleTransaction) => {
     let amount = 0;
     let fee = 0;
     let revenue = 0;
-  
-    if (tx.serviceType === 'gcash-expense') {
+    
+    const serviceType = tx.serviceType || 'gcash';
+
+    if (serviceType === 'gcash-expense') {
       type = 'Expense';
       amount = Math.abs(tx.total);
       fee = 0;
       revenue = tx.total; // already negative
-    } else if (tx.customerName?.includes('G-Cash In')) {
+    } else if (serviceType === 'gcash' && tx.customerName?.includes('G-Cash In')) {
       type = 'Cash In';
       const cashInItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In'));
       const feeItem = tx.items.find((i) => i.itemName.includes('Gcash Cash-In Fee'));
       amount = cashInItem?.total || 0;
       fee = feeItem?.total || 0;
       revenue = fee;
-    } else if (tx.customerName?.includes('G-Cash Out')) {
+    } else if (serviceType === 'gcash' && tx.customerName?.includes('G-Cash Out')) {
       type = 'Cash Out';
       const cashOutItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out');
       const feeItem = tx.items.find((i) => i.itemName === 'Gcash Cash-Out Fee');
       amount = cashOutItem ? Math.abs(cashOutItem.total) : 0;
       fee = feeItem?.total || 0;
       revenue = fee;
-    } else if (tx.customerName?.includes('E-Load')) {
+    } else if (serviceType === 'gcash-e-load') {
       type = 'E-Load';
       const eloadItem = tx.items.find((i) => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
       const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
@@ -110,6 +113,7 @@ export default function GcashPage() {
   const [transactions, setTransactions] = useState<SaleTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allReceipts, setAllReceipts] = useState<any[]>([]);
   const {toast} = useToast();
 
   const gcashForm = useForm<GcashServiceFormData>({
@@ -122,11 +126,11 @@ export default function GcashPage() {
   useEffect(() => {
     const q = query(
       collection(db, 'saleTransactions'),
-      where('serviceType', 'in', ['gcash', 'gcash-expense']),
+      where('serviceType', 'in', ['gcash', 'gcash-e-load']),
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubTransactions = onSnapshot(
       q,
       (snapshot) => {
         const data: SaleTransaction[] = snapshot.docs.map(
@@ -146,7 +150,27 @@ export default function GcashPage() {
       }
     );
 
-    return () => unsubscribe();
+    const receiptsQuery = query(
+      collection(db, 'receipts'),
+      where('paymentSource', '==', 'G-Cash'),
+      orderBy('createdAt', 'desc')
+    );
+  
+    const unsubReceipts = onSnapshot(receiptsQuery, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        type: 'Expense',
+        createdAt: doc.data().createdAt,
+        total: doc.data().total,
+        merchantName: doc.data().merchantName
+      }));
+      setAllReceipts(data);
+    });
+
+    return () => {
+      unsubTransactions();
+      unsubReceipts();
+    }
   }, [toast]);
 
   const {
@@ -154,9 +178,9 @@ export default function GcashPage() {
     totalCashOut,
     totalEload,
     totalFees,
-    netFlow,
     currentBalance,
     totalExpenses,
+    unifiedHistory,
   } = useMemo(() => {
     let cashIn = 0;
     let cashOut = 0;
@@ -165,46 +189,67 @@ export default function GcashPage() {
     let expenses = 0;
     let digitalNetFlow = 0;
 
-    transactions.forEach((tx) => {
-        const {type, amount, fee} = parseTransactionDetails(tx);
-        if (type === 'Cash In') {
-            digitalNetFlow -= amount;
-        } else if (type === 'Cash Out') {
-            digitalNetFlow += amount;
-        } else if (type === 'E-Load') {
-            digitalNetFlow -= amount;
-        } else if (type === 'Expense') {
-            digitalNetFlow -= amount;
+    const allTransactions = [
+        ...transactions,
+        ...allReceipts.map(r => ({
+            id: r.id,
+            serviceType: 'gcash-expense',
+            total: -r.total,
+            createdAt: r.createdAt,
+            items: [{itemName: r.merchantName, quantity: 1, unitPrice: r.total, total: r.total}]
+        }))
+    ].sort((a,b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
+
+
+    allTransactions.forEach((tx) => {
+        const details = parseTransactionDetails(tx as SaleTransaction);
+        if (details.type === 'Cash In') {
+            digitalNetFlow -= details.amount;
+        } else if (details.type === 'Cash Out') {
+            digitalNetFlow += details.amount;
+        } else if (details.type === 'E-Load') {
+            digitalNetFlow -= details.amount;
+        } else if (details.type === 'Expense') {
+            digitalNetFlow -= details.amount;
         }
     
         if (isToday(tx.createdAt.toDate())) {
-            if (type === 'Cash In') {
-              cashIn += amount;
-              fees += fee;
-            } else if (type === 'Cash Out') {
-              cashOut += amount;
-              fees += fee;
-            } else if (type === 'E-Load') {
-              eload += amount;
-              fees += fee;
-            } else if (type === 'Expense') {
-              expenses += amount;
+            if (details.type === 'Cash In') {
+              cashIn += details.amount;
+              fees += details.fee;
+            } else if (details.type === 'Cash Out') {
+              cashOut += details.amount;
+              fees += details.fee;
+            } else if (details.type === 'E-Load') {
+              eload += details.amount;
+              fees += details.fee;
+            } else if (details.type === 'Expense') {
+              expenses += details.amount;
             }
         }
     });
 
     const currentBalance = INITIAL_GCASH_BALANCE + digitalNetFlow;
+    
+    const unifiedHistory = allTransactions.map(tx => {
+        const details = parseTransactionDetails(tx as SaleTransaction);
+        return {
+            id: tx.id,
+            date: tx.createdAt.toDate(),
+            ...details
+        }
+    });
 
     return {
       totalCashIn: cashIn,
       totalCashOut: cashOut,
       totalEload: eload,
       totalFees: fees,
-      netFlow: digitalNetFlow, // This might need renaming if it's confusing
       currentBalance,
       totalExpenses: expenses,
+      unifiedHistory,
     };
-  }, [transactions]);
+  }, [transactions, allReceipts]);
 
 
   const handleGcashSubmit = async (
@@ -245,7 +290,7 @@ export default function GcashPage() {
     const descriptions = {
       'cash-in': 'Enter amount customer is cashing in. Fee will be added.',
       'cash-out': 'Enter amount customer is cashing out. Fee will be earned.',
-      'e-load': 'Enter load amount. A ₱3.00 fee will be added.',
+      'e-load': 'Enter load amount. A ₱2.00 fee will be added.',
     };
 
     return (
@@ -407,39 +452,36 @@ export default function GcashPage() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : transactions.length > 0 ? (
-                  transactions.map((tx) => {
-                    const {type, amount, fee, revenue} =
-                      parseTransactionDetails(tx);
-                    
-                    const isOutflow = type === 'Cash In' || type === 'E-Load' || type === 'Expense';
+                ) : unifiedHistory.length > 0 ? (
+                  unifiedHistory.map((tx) => {
+                    const isOutflow = tx.type === 'Cash In' || tx.type === 'E-Load' || tx.type === 'Expense';
 
                     return (
                       <TableRow key={tx.id}>
                         <TableCell className="whitespace-nowrap">
-                          {format(tx.createdAt.toDate(), 'PPp')}
+                          {format(tx.date, 'PPp')}
                         </TableCell>
                         <TableCell>
                           <Badge
                            variant={
-                            isOutflow ? 'destructive' : 'success'
+                            tx.type === 'Cash Out' ? 'success' : 'destructive'
                           }
                           >
-                            {type}
+                            {tx.type}
                           </Badge>
                         </TableCell>
-                        <TableCell className={cn('text-right font-mono', isOutflow ? 'text-destructive' : 'text-success')}>
-                          {formatCurrency(amount)}
+                        <TableCell className={cn('text-right font-mono', tx.type === 'Cash Out' ? 'text-success' : 'text-destructive')}>
+                          {formatCurrency(tx.amount)}
                         </TableCell>
                         <TableCell
                           className={cn('text-right font-mono text-success')}
                         >
-                          {formatCurrency(fee)}
+                          {formatCurrency(tx.fee)}
                         </TableCell>
                         <TableCell
-                          className={cn('text-right font-mono font-semibold', revenue >= 0 ? 'text-primary' : 'text-destructive')}
+                          className={cn('text-right font-mono font-semibold', tx.revenue >= 0 ? 'text-primary' : 'text-destructive')}
                         >
-                          {formatCurrency(revenue)}
+                          {formatCurrency(tx.revenue)}
                         </TableCell>
                       </TableRow>
                     );
