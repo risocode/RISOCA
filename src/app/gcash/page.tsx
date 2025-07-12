@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import {isToday} from 'date-fns';
 import {db} from '@/lib/firebase';
-import {submitGcashTransaction} from '@/app/actions';
+import {submitGcashTransaction} from '@/app/actions/sale.actions';
 import type {SaleTransaction} from '@/lib/schemas';
 
 import {

@@ -10,7 +10,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {voidSaleTransaction} from '@/app/actions';
+import {voidSaleTransaction} from '@/app/actions/sale.actions';
 import type {SaleTransaction} from '@/lib/schemas';
 import {isToday, isThisMonth, isThisYear} from 'date-fns';
 

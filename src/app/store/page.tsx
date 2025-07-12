@@ -15,7 +15,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import {db} from '@/lib/firebase';
-import {submitSaleTransaction, voidSaleTransaction} from '@/app/actions';
+import {submitSaleTransaction, voidSaleTransaction} from '@/app/actions/sale.actions';
 import type {
   InventoryItem,
   SaleItem,
