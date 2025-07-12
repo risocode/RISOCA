@@ -323,7 +323,7 @@ export default function GcashPage() {
             <Card>
               <CardHeader className="p-4">
                 <CardDescription>Cash In</CardDescription>
-                <CardTitle className="text-primary">
+                <CardTitle className="text-destructive">
                   {formatCurrency(totalCashIn)}
                 </CardTitle>
               </CardHeader>
@@ -331,7 +331,7 @@ export default function GcashPage() {
             <Card>
               <CardHeader className="p-4">
                 <CardDescription>Cash Out</CardDescription>
-                <CardTitle className="text-destructive">
+                <CardTitle className="text-success">
                   {formatCurrency(totalCashOut)}
                 </CardTitle>
               </CardHeader>
@@ -411,6 +411,8 @@ export default function GcashPage() {
                   transactions.map((tx) => {
                     const {type, amount, fee, revenue} =
                       parseTransactionDetails(tx);
+                    
+                    const isOutflow = type === 'Cash In' || type === 'E-Load' || type === 'Expense';
 
                     return (
                       <TableRow key={tx.id}>
@@ -420,17 +422,13 @@ export default function GcashPage() {
                         <TableCell>
                           <Badge
                            variant={
-                            type === 'Expense' ? 'destructive' :
-                            type === 'Cash Out' ? 'destructive' : 
-                            type === 'E-Load' ? 'destructive' :
-                            type === 'Cash In' ? 'success' : 
-                            'default'
+                            isOutflow ? 'destructive' : 'success'
                           }
                           >
                             {type}
                           </Badge>
                         </TableCell>
-                        <TableCell className={cn('text-right font-mono', (type === 'Expense' || type === 'Cash Out' || type === 'E-Load') && 'text-destructive')}>
+                        <TableCell className={cn('text-right font-mono', isOutflow ? 'text-destructive' : 'text-success')}>
                           {formatCurrency(amount)}
                         </TableCell>
                         <TableCell
