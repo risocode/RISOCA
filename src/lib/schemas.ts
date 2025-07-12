@@ -1,6 +1,5 @@
 import {z} from 'zod';
 import type {Timestamp} from 'firebase/firestore';
-import type {AuthenticatorTransport} from '@simplewebauthn/types';
 import type {DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 
 export const InventoryItemSchema = z.object({
@@ -82,18 +81,6 @@ export const WalletEntrySchema = z.object({
 
 export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
     id: string;
-};
-
-// Schema for storing Passkey authenticators
-export type Authenticator = {
-  id?: string; // Document ID from Firestore
-  credentialID: string; // Stored as Base64URL string
-  credentialPublicKey: string; // Stored as Base64URL string
-  counter: number;
-  credentialDeviceType: 'singleDevice' | 'multiDevice';
-  credentialBackedUp: boolean;
-  transports?: AuthenticatorTransport[];
-  createdAt: string; // ISO 8601 date string
 };
 
 // Extends DiagnoseReceiptOutput with paymentSource

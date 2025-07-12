@@ -1,7 +1,7 @@
 
 'use client';
 
-import {useState, useEffect, useCallback} from 'react';
+import {useState} from 'react';
 import Image from 'next/image';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
@@ -25,19 +25,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import {useToast} from '@/hooks/use-toast';
-import {KeyRound, Loader2, Fingerprint} from 'lucide-react';
-import {usePasskey} from '@/hooks/use-passkey';
+import {KeyRound, Loader2} from 'lucide-react';
 
 const PasswordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
@@ -46,71 +35,26 @@ const PasswordSchema = z.object({
 type PasswordFormData = z.infer<typeof PasswordSchema>;
 
 enum AuthStep {
-  Checking,
   Login,
   Authenticated,
 }
 
 export function SiteProtection({children}: {children: React.ReactNode}) {
-  const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Checking);
+  const [authStep, setAuthStep] = useState<AuthStep>(AuthStep.Login);
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const {toast} = useToast();
-  const {
-    authenticators,
-    hasPasskeys,
-    isSupported,
-    loginWithPasskey,
-    registerNewPasskey,
-    isLoading: isPasskeyHookLoading,
-    loadAuthenticators,
-  } = usePasskey();
-  
-  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
-  const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
 
   const form = useForm<PasswordFormData>({
     resolver: zodResolver(PasswordSchema),
     defaultValues: {password: ''},
   });
 
-  const finishAuthentication = useCallback(() => {
-      setAuthStep(AuthStep.Authenticated);
-  }, []);
-
-  const handlePasskeyLogin = useCallback(async () => {
-    setIsPasskeyLoading(true);
-    const {success, error} = await loginWithPasskey();
-    if (success) {
-      finishAuthentication();
-      toast({variant: 'success', title: 'Login Successful'});
-    } else {
-      if (error && error !== 'Authentication was cancelled.') {
-        toast({variant: 'destructive', title: 'Login Failed', description: error});
-      }
-    }
-    setIsPasskeyLoading(false);
-  }, [loginWithPasskey, finishAuthentication, toast]);
-
-  useEffect(() => {
-    async function checkStatus() {
-        if (isSupported === null) return;
-        
-        await loadAuthenticators();
-        setAuthStep(AuthStep.Login);
-    }
-    checkStatus();
-  }, [isSupported, loadAuthenticators]);
-
-
   const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsSubmittingPassword(true);
     const response = await verifyPassword(data.password);
     if (response.success) {
       toast({variant: 'success', title: 'Login Successful'});
-      finishAuthentication();
-      if (isSupported && !hasPasskeys) {
-        setShowRegistrationPrompt(true);
-      }
+      setAuthStep(AuthStep.Authenticated);
     } else {
       form.setError('password', {
         type: 'manual',
@@ -120,28 +64,6 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
     }
     setIsSubmittingPassword(false);
   };
-
-  const handleRegisterFromPrompt = async () => {
-    const {success, error} = await registerNewPasskey();
-    if (success) {
-      toast({
-        variant: 'success',
-        title: 'Device Registered',
-        description: 'You can now use this device to log in.',
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Registration Failed',
-        description: error,
-      });
-    }
-    setShowRegistrationPrompt(false);
-  };
-  
-  const handleSkipRegistration = () => {
-     setShowRegistrationPrompt(false);
-  }
 
   const renderLoginScreen = () => (
     <div className="flex h-full w-full items-center justify-center bg-background p-4">
@@ -165,24 +87,11 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               className="w-auto h-8"
             />
           </div>
-          {isPasskeyLoading ? (
-            <>
-              <Fingerprint className="mx-auto h-12 w-12 text-primary animate-pulse" />
-              <CardTitle className="!mt-4">Verifying...</CardTitle>
-              <CardDescription>
-                Please use your fingerprint or face to log in.
-              </CardDescription>
-            </>
-          ) : (
-             <>
-              <KeyRound className="mx-auto h-12 w-12 text-primary" />
-              <CardTitle className="!mt-4">Protected Area</CardTitle>
-              <CardDescription>
-                Please enter the password to continue.
-              </CardDescription>
-             </>
-          )}
-
+          <KeyRound className="mx-auto h-12 w-12 text-primary" />
+          <CardTitle className="!mt-4">Protected Area</CardTitle>
+          <CardDescription>
+            Please enter the password to continue.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -207,79 +116,34 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                   </FormItem>
                 )}
               />
-              <div className="flex flex-col gap-2">
-                <Button
-                  type="submit"
-                  disabled={isSubmittingPassword || isPasskeyLoading}
-                  className="w-full"
-                >
-                  {(isSubmittingPassword) && (
-                    <Loader2 className="mr-2 animate-spin" />
-                  )}
-                  Unlock
-                </Button>
-                {isSupported && hasPasskeys && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handlePasskeyLogin}
-                    disabled={isPasskeyLoading || isSubmittingPassword}
-                  >
-                    {isPasskeyLoading ? (
-                      <Loader2 className="mr-2 animate-spin" />
-                    ) : (
-                      <Fingerprint className="mr-2" />
-                    )}
-                    Login with Passkey
-                  </Button>
+              <Button
+                type="submit"
+                disabled={isSubmittingPassword}
+                className="w-full"
+              >
+                {isSubmittingPassword && (
+                  <Loader2 className="mr-2 animate-spin" />
                 )}
-              </div>
+                Unlock
+              </Button>
             </form>
           </Form>
         </CardContent>
       </Card>
     </div>
   );
-  
-  const renderPasskeyPrompt = () => (
-    <AlertDialog open={showRegistrationPrompt} onOpenChange={setShowRegistrationPrompt}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Enable Quick Login?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Would you like to register this device to log in quickly and securely with its built-in security (e.g., fingerprint, face, or PIN)?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleSkipRegistration}>Not Now</AlertDialogCancel>
-          <AlertDialogAction onClick={handleRegisterFromPrompt}>
-            <Fingerprint className="mr-2 h-4 w-4" /> Register Device
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-
-  if (authStep === AuthStep.Checking) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   if (authStep === AuthStep.Login) {
     return renderLoginScreen();
   }
 
   if (authStep === AuthStep.Authenticated) {
-    return (
-      <>
-        {children}
-        {renderPasskeyPrompt()}
-      </>
-    );
+    return <>{children}</>;
   }
 
-  return null;
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-background">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+    </div>
+  );
 }
