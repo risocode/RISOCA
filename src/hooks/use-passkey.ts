@@ -90,7 +90,8 @@ export function usePasskey() {
         };
         const saveResponse = await saveAuthenticator(newAuthenticator);
         if (saveResponse.success) {
-            setAuthenticators((prev) => [...prev, authToSave]);
+            // After saving, reload the authenticators from DB to get the single one
+            await loadAuthenticators();
         } else {
              throw new Error(saveResponse.message || 'Could not save authenticator to database.');
         }
@@ -145,15 +146,11 @@ export function usePasskey() {
       localStorage.removeItem(CHALLENGE_KEY);
 
       if (verified && newCounter !== undefined) {
+        // Since we only have one authenticator, we just update it.
+        // A more robust implementation for multiple keys would update the specific one.
         const updatedAuthenticator = { ...authenticator, counter: newCounter };
         await saveAuthenticator(updatedAuthenticator);
-        setAuthenticators((prev) =>
-          prev.map((auth) =>
-            auth.credentialID === updatedAuthenticator.credentialID
-              ? { ...auth, ...updatedAuthenticator }
-              : auth
-          )
-        );
+        await loadAuthenticators(); // Reload to reflect the change.
 
         setIsLoading(false);
         return {success: true};

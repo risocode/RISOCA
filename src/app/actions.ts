@@ -1097,14 +1097,27 @@ export async function saveAuthenticator(
   authenticator: Omit<Authenticator, 'createdAt' | 'id'>
 ): Promise<{success: boolean; message?: string}> {
   try {
-    const docRef = doc(db, 'authenticators', authenticator.credentialID);
-    await setDoc(docRef, {
-      ...authenticator,
-      createdAt: serverTimestamp(),
+    await runTransaction(db, async (transaction) => {
+      // 1. Get all existing authenticators
+      const authCollection = collection(db, 'authenticators');
+      const existingAuthsSnapshot = await transaction.get(query(authCollection));
+
+      // 2. Delete all existing authenticators
+      existingAuthsSnapshot.forEach((doc) => {
+        transaction.delete(doc.ref);
+      });
+
+      // 3. Save the new authenticator
+      const newDocRef = doc(authCollection, authenticator.credentialID);
+      transaction.set(newDocRef, {
+        ...authenticator,
+        createdAt: serverTimestamp(),
+      });
     });
+
     return {success: true};
   } catch (error) {
-    console.error('Error saving authenticator:', error);
+    console.error('Error saving authenticator in transaction:', error);
     return {
       success: false,
       message:
@@ -1128,3 +1141,4 @@ export async function removeAuthenticator(
     };
   }
 }
+
