@@ -57,7 +57,7 @@ export default function HomePage() {
   const [recentSales, setRecentSales] = useState<SaleTransaction[]>([]);
   const [historyLimit, setHistoryLimit] = useState(5);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [isSalesLoading, setIsSalesLoading] = useState(true);
+  const [isSalesLoading, setIsSalesLoading] = useState(false);
   const {toast} = useToast();
 
   const [allSales, setAllSales] = useState<SaleTransaction[]>([]);
@@ -166,7 +166,7 @@ export default function HomePage() {
           const eloadItem = tx.items.find(i => i.itemName.includes('E-Load') && !i.itemName.includes('Fee'));
           if (cashInItem) acc -= cashInItem.unitPrice;
           if (cashOutItem) acc += Math.abs(cashOutItem.unitPrice);
-          if (eloadItem) acc += eloadItem.unitPrice;
+          if (eloadItem) acc -= eloadItem.unitPrice;
         } else if (tx.serviceType === 'gcash-expense') {
           // Expenses paid by G-Cash are negative, so adding them works.
           acc += tx.total;

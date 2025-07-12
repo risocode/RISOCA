@@ -100,7 +100,7 @@ const parseTransactionDetails = (tx: SaleTransaction) => {
       const feeItem = tx.items.find((i) => i.itemName.includes('E-Load Fee'));
       amount = eloadItem?.total || 0;
       fee = feeItem?.total || 0;
-      revenue = amount + fee;
+      revenue = fee;
     }
   
     return {type, amount, fee, revenue};
@@ -172,7 +172,7 @@ export default function GcashPage() {
         } else if (type === 'Cash Out') {
             digitalNetFlow += amount;
         } else if (type === 'E-Load') {
-            digitalNetFlow += amount;
+            digitalNetFlow -= amount;
         } else if (type === 'Expense') {
             digitalNetFlow -= amount;
         }
@@ -339,7 +339,7 @@ export default function GcashPage() {
              <Card>
               <CardHeader className="p-4">
                 <CardDescription>E-Load</CardDescription>
-                <CardTitle className="text-primary">
+                <CardTitle className="text-destructive">
                   {formatCurrency(totalEload)}
                 </CardTitle>
               </CardHeader>
@@ -422,6 +422,7 @@ export default function GcashPage() {
                            variant={
                             type === 'Expense' ? 'destructive' :
                             type === 'Cash Out' ? 'destructive' : 
+                            type === 'E-Load' ? 'destructive' :
                             type === 'Cash In' ? 'success' : 
                             'default'
                           }
@@ -429,7 +430,7 @@ export default function GcashPage() {
                             {type}
                           </Badge>
                         </TableCell>
-                        <TableCell className={cn('text-right font-mono', type === 'Expense' && 'text-destructive')}>
+                        <TableCell className={cn('text-right font-mono', (type === 'Expense' || type === 'Cash Out' || type === 'E-Load') && 'text-destructive')}>
                           {formatCurrency(amount)}
                         </TableCell>
                         <TableCell

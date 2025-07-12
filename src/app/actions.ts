@@ -71,7 +71,22 @@ export async function getAuthenticators() {
 }
 
 export async function saveAuthenticator(authenticator: AuthenticatorDevice) {
-  await addDoc(collection(db, 'authenticators'), authenticator);
+  // This transaction ensures atomicity: delete all old keys, then add the new one.
+  // This enforces a "one-device-only" rule for passkeys.
+  await runTransaction(db, async (transaction) => {
+    // 1. Query for all existing authenticators
+    const authQuery = query(collection(db, 'authenticators'));
+    const querySnapshot = await getDocs(authQuery);
+
+    // 2. Delete each existing authenticator within the transaction
+    querySnapshot.forEach((doc) => {
+      transaction.delete(doc.ref);
+    });
+
+    // 3. Add the new authenticator
+    const newAuthenticatorRef = doc(collection(db, 'authenticators'));
+    transaction.set(newAuthenticatorRef, authenticator);
+  });
 }
 
 export async function generateRegistrationOptions() {
@@ -147,9 +162,15 @@ export async function verifyAuthentication(
 ) {
   const authenticators = await getAuthenticators();
   const bodyCredID = authenticationResponse.id;
-  const authenticator = authenticators.find(
-    (auth) => auth.credentialID.toString() === bodyCredID
-  );
+  const authenticator = authenticators.find((auth) => {
+    // The credentialID from the browser is a base64url-encoded string.
+    // The stored credentialID is an object that needs to be converted to a Buffer,
+    // then to a base64url-encoded string for comparison.
+    const storedCredIDBase64 = Buffer.from(
+      Object.values(auth.credentialID)
+    ).toString('base64url');
+    return storedCredIDBase64 === bodyCredID;
+  });
 
   if (!authenticator) {
     return {verified: false, error: 'Authenticator not found'};
@@ -585,7 +606,7 @@ export async function submitGcashTransaction(
         },
       ];
       customerName = 'E-Load';
-      total = amount + serviceFee;
+      total = serviceFee;
     }
 
     await submitSaleTransaction({
