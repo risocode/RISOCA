@@ -74,7 +74,7 @@ export default async function RootLayout({
     <html lang="en" className="h-full">
       <head>
         <meta
-          http-equiv="Permissions-Policy"
+          httpEquiv="Permissions-Policy"
           content="publickey-credentials-get=*, publickey-credentials-create=*"
         />
         <meta name="mobile-web-app-capable" content="yes" />
