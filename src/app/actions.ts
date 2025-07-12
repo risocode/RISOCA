@@ -17,11 +17,6 @@ import type {
   AuthenticatorDevice,
 } from '@simplewebauthn/server/script/deps';
 
-import {
-  diagnoseReceipt,
-  type DiagnoseReceiptInput,
-  type DiagnoseReceiptOutput,
-} from '@/ai/flows/diagnose-receipt-flow';
 import {db} from '@/lib/firebase';
 import {
   addDoc,
@@ -162,6 +157,8 @@ export async function verifyAuthentication(
 ) {
   const authenticators = await getAuthenticators();
   const bodyCredID = authenticationResponse.id;
+  
+  // Find the authenticator from the database that matches the one presented by the browser
   const authenticator = authenticators.find((auth) => {
     // The credentialID from the browser is a base64url-encoded string.
     // The stored credentialID is an object that needs to be converted to a Buffer,
@@ -183,7 +180,7 @@ export async function verifyAuthentication(
       expectedChallenge: challenge,
       expectedOrigin: rpOrigin,
       expectedRPID: rpID,
-      authenticator,
+      authenticator: authenticator, // Pass the original authenticator object from the DB
       requireUserVerification: true,
     });
   } catch (error) {
@@ -195,6 +192,7 @@ export async function verifyAuthentication(
 }
 
 
+// --- Other Actions (Unchanged) ---
 type NotificationStatus = {
   success: boolean;
   message?: string;
@@ -1117,3 +1115,5 @@ export async function closeDay(
     return {success: false, message: `Could not close day: ${message}`};
   }
 }
+
+    
