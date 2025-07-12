@@ -46,6 +46,7 @@ import type {
 } from '@/lib/schemas';
 import {format} from 'date-fns';
 import {v4 as uuidv4} from 'uuid';
+import type {DiagnoseReceiptOutput} from '@/ai/flows/diagnose-receipt-flow';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
@@ -336,59 +337,19 @@ async function saveReceiptToFirestore(
   imagePreview?: string
 ) {
   try {
-    // Save to the receipts collection first
+    // Save to the receipts collection
     const newReceiptId = `${format(
       new Date(),
       'yyyyMMdd_HHmmss'
     )}-E-${uuidv4().substring(0, 6)}`;
     const receiptDocRef = doc(db, 'receipts', newReceiptId);
+    
     await setDoc(receiptDocRef, {
       ...receiptData,
       imagePreview: imagePreview || null,
       createdAt: serverTimestamp(),
     });
 
-    // If paid by G-Cash, create a corresponding transaction
-    if (receiptData.paymentSource === 'G-Cash') {
-      const counterRef = doc(db, 'counters', 'saleReceipt');
-
-      await runTransaction(db, async (transaction) => {
-        const counterDoc = await transaction.get(counterRef);
-        let newReceiptNumber = 1;
-        if (counterDoc.exists()) {
-          newReceiptNumber = (counterDoc.data().currentNumber || 0) + 1;
-        }
-        const formattedReceiptNumber = String(newReceiptNumber).padStart(6, '0');
-        const transactionId = `${format(
-          new Date(),
-          'yyyyMMdd_HHmmss'
-        )}-S-${formattedReceiptNumber}`;
-        const transactionRef = doc(db, 'saleTransactions', transactionId);
-        
-        const saleItems: SaleItem[] = receiptData.items.map(item => ({
-          itemName: item.name,
-          quantity: 1,
-          unitPrice: item.price,
-          total: item.price,
-        }));
-        
-        // This is a negative transaction, so the total should be negative
-        const gcashTransactionPayload: SaleTransactionInput = {
-          customerName: `Expense: ${receiptData.merchantName}`,
-          items: saleItems,
-          total: -receiptData.total, // Negative total to signify an expense
-          status: 'active',
-          serviceType: 'gcash-expense', // A new type to identify G-Cash expenses
-        };
-
-        transaction.set(transactionRef, {
-          ...gcashTransactionPayload,
-          receiptNumber: formattedReceiptNumber,
-          createdAt: serverTimestamp(),
-        });
-        transaction.set(counterRef, { currentNumber: newReceiptNumber });
-      });
-    }
   } catch (error) {
     console.error('Error writing document to Firestore: ', error);
     throw new Error('Could not save receipt to database.');
@@ -568,15 +529,15 @@ export async function submitGcashTransaction(
         },
       ];
       customerName = `G-Cash In (${formatCurrency(amount)})`;
-      total = amount + serviceFee;
+      total = serviceFee; // Only the fee is your revenue
     } else if (type === 'cash-out') {
       const serviceFee = Math.max(10, amount * 0.01);
       items = [
         {
           itemName: 'Gcash Cash-Out',
           quantity: 1,
-          unitPrice: -amount,
-          total: -amount,
+          unitPrice: amount, // Positive amount, as it's a "sale" of cash from your drawer
+          total: amount,
         },
         {
           itemName: 'Gcash Cash-Out Fee',
@@ -586,7 +547,7 @@ export async function submitGcashTransaction(
         },
       ];
       customerName = `G-Cash Out (${formatCurrency(amount)})`;
-      total = serviceFee;
+      total = amount + serviceFee; // The total cash out from your drawer
     } else if (type === 'e-load') {
       const serviceFee = 3;
       items = [
@@ -604,7 +565,7 @@ export async function submitGcashTransaction(
         },
       ];
       customerName = 'E-Load';
-      total = serviceFee;
+      total = serviceFee; // Only the fee is your revenue
     }
 
     await submitSaleTransaction({
@@ -1115,5 +1076,3 @@ export async function closeDay(
     return {success: false, message: `Could not close day: ${message}`};
   }
 }
-
-    
