@@ -10,7 +10,7 @@ import {
   addInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
-} from '@/app/actions';
+} from '@/app/actions/inventory.actions';
 import {
   InventoryItemSchema,
   type InventoryItemInput,
