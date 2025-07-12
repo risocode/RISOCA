@@ -173,7 +173,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
             </form>
           </Form>
         </CardContent>
-        {isPasskeySupported && (
+        {isPasskeySupported && hasRegisteredPasskey && (
            <CardFooter className="flex-col gap-2 pt-4">
             <Button
               variant="outline"

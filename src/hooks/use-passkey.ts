@@ -29,7 +29,7 @@ export function usePasskey({
   onRegisterSuccess,
   onRegisterError,
 }: UsePasskeyOptions = {}) {
-  const [isPasskeyLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsLoading] = useState(true); // Start loading to check for passkeys
   const [isPasskeySupported, setIsPasskeySupported] = useState(false);
   const [hasRegisteredPasskey, setHasRegisteredPasskey] = useState(false);
 
@@ -53,12 +53,15 @@ export function usePasskey({
   }, []);
   
   const checkRegisteredPasskeys = useCallback(async () => {
+    setIsLoading(true);
     try {
         const authenticators = await getAuthenticators();
         setHasRegisteredPasskey(authenticators.length > 0);
     } catch (error) {
         console.error("Could not check for passkeys", error);
         setHasRegisteredPasskey(false);
+    } finally {
+        setIsLoading(false);
     }
   }, []);
   
