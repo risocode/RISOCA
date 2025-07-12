@@ -86,6 +86,7 @@ export type WalletEntry = z.infer<typeof WalletEntrySchema> & {
 
 // Schema for storing Passkey authenticators
 export type Authenticator = {
+  id?: string; // Document ID from Firestore
   credentialID: string; // Stored as Base64URL string
   credentialPublicKey: string; // Stored as Base64URL string
   counter: number;

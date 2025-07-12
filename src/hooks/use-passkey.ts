@@ -12,6 +12,9 @@ import {
   verifyNewRegistration,
   getAuthenticationOptions,
   verifyAuthentication,
+  getAuthenticators,
+  saveAuthenticator,
+  removeAuthenticator,
 } from '@/app/actions';
 import type {
   RegistrationResponseJSON,
@@ -30,9 +33,14 @@ export function usePasskey() {
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const loadAuthenticators = useCallback(async () => {
+    setIsLoading(true);
+    const fetchedAuthenticators = await getAuthenticators();
+    setAuthenticators(fetchedAuthenticators);
+    setIsLoading(false);
+  }, []);
+
   useEffect(() => {
-    // Asynchronously check for platform authenticator support.
-    // This is the most reliable way to check for Passkey readiness.
     async function checkSupport() {
       if (
         window.PublicKeyCredential &&
@@ -52,36 +60,15 @@ export function usePasskey() {
     }
 
     checkSupport();
-
-    // Load authenticators from localStorage
-    try {
-      const savedAuthenticators = localStorage.getItem('risoca-authenticators');
-      if (savedAuthenticators) {
-        setAuthenticators(JSON.parse(savedAuthenticators));
-      }
-    } catch (error) {
-      console.error('Could not parse authenticators from localStorage:', error);
-      // Clear potentially corrupted data
-      localStorage.removeItem('risoca-authenticators');
-    }
-  }, []);
-
-  const saveAuthenticators = (newAuthenticators: Authenticator[]) => {
-    setAuthenticators(newAuthenticators);
-    localStorage.setItem(
-      'risoca-authenticators',
-      JSON.stringify(newAuthenticators)
-    );
-  };
+    loadAuthenticators();
+  }, [loadAuthenticators]);
 
   const registerNewPasskey = async () => {
     setIsLoading(true);
     try {
-      // 1. Get registration options from the server
       const options = await getRegistrationOptions(USER.id, USER.name);
       localStorage.setItem(CHALLENGE_KEY, options.challenge);
 
-      // 2. Start the registration process on the client
       const registrationResponse = await startRegistration(options);
       const challenge = localStorage.getItem(CHALLENGE_KEY);
       
@@ -89,7 +76,6 @@ export function usePasskey() {
         throw new Error('Challenge not found');
       }
 
-      // 3. Verify the registration response with the server
       const {verified, newAuthenticator} = await verifyNewRegistration(
         registrationResponse,
         challenge
@@ -98,12 +84,17 @@ export function usePasskey() {
       localStorage.removeItem(CHALLENGE_KEY);
 
       if (verified && newAuthenticator) {
-        // 4. Save the new authenticator to localStorage
-        const newAuthWithDate = {
-          ...newAuthenticator,
-          createdAt: new Date().toISOString(),
+        const authToSave = {
+            ...newAuthenticator,
+            createdAt: new Date().toISOString(),
         };
-        saveAuthenticators([...authenticators, newAuthWithDate]);
+        const saveResponse = await saveAuthenticator(newAuthenticator);
+        if (saveResponse.success) {
+            setAuthenticators((prev) => [...prev, authToSave]);
+        } else {
+             throw new Error(saveResponse.message || 'Could not save authenticator to database.');
+        }
+
         setIsLoading(false);
         return {success: true};
       }
@@ -126,11 +117,9 @@ export function usePasskey() {
     }
     setIsLoading(true);
     try {
-      // 1. Get authentication options from server, passing the stored authenticators
       const options = await getAuthenticationOptions(authenticators);
       localStorage.setItem(CHALLENGE_KEY, options.challenge);
 
-      // 2. Start the authentication process on the client
       const authResponse = await startAuthentication(options);
       const challenge = localStorage.getItem(CHALLENGE_KEY);
       
@@ -138,7 +127,6 @@ export function usePasskey() {
         throw new Error('Challenge not found');
       }
 
-      // 3. Find the authenticator that was used
       const authenticator = authenticators.find(
         (auth) => auth.credentialID === authResponse.id
       );
@@ -148,7 +136,6 @@ export function usePasskey() {
         return {success: false, error: 'Unknown authenticator.'};
       }
 
-      // 4. Verify the authentication response with the server
       const {verified, newCounter} = await verifyAuthentication(
         authResponse,
         authenticator,
@@ -158,13 +145,16 @@ export function usePasskey() {
       localStorage.removeItem(CHALLENGE_KEY);
 
       if (verified && newCounter !== undefined) {
-        // 5. Update the counter for the authenticator in localStorage
-        const updatedAuthenticators = authenticators.map((auth) =>
-          auth.credentialID === authResponse.id
-            ? {...auth, counter: newCounter}
-            : auth
+        const updatedAuthenticator = { ...authenticator, counter: newCounter };
+        await saveAuthenticator(updatedAuthenticator);
+        setAuthenticators((prev) =>
+          prev.map((auth) =>
+            auth.credentialID === updatedAuthenticator.credentialID
+              ? { ...auth, ...updatedAuthenticator }
+              : auth
+          )
         );
-        saveAuthenticators(updatedAuthenticators);
+
         setIsLoading(false);
         return {success: true};
       }
@@ -184,11 +174,14 @@ export function usePasskey() {
     }
   };
 
-  const removePasskey = (credentialID: string) => {
-    const newAuthenticators = authenticators.filter(
-      (auth) => auth.credentialID !== credentialID
-    );
-    saveAuthenticators(newAuthenticators);
+  const removePasskey = async (credentialID: string) => {
+    const response = await removeAuthenticator(credentialID);
+    if (response.success) {
+      setAuthenticators((prev) =>
+        prev.filter((auth) => auth.credentialID !== credentialID)
+      );
+    }
+    return response;
   };
 
   return {
@@ -196,6 +189,7 @@ export function usePasskey() {
     hasPasskeys: authenticators.length > 0,
     isSupported,
     isLoading,
+    loadAuthenticators,
     registerNewPasskey,
     loginWithPasskey,
     removePasskey,

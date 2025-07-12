@@ -56,13 +56,16 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const {toast} = useToast();
   const {
+    authenticators,
     hasPasskeys,
     isSupported,
     loginWithPasskey,
     registerNewPasskey,
     isLoading: isPasskeyHookLoading,
+    loadAuthenticators,
   } = usePasskey();
   
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [showRegistrationPrompt, setShowRegistrationPrompt] = useState(false);
 
   const form = useForm<PasswordFormData>({
@@ -75,6 +78,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
   }, []);
 
   const handlePasskeyLogin = useCallback(async () => {
+    setIsPasskeyLoading(true);
     const {success, error} = await loginWithPasskey();
     if (success) {
       finishAuthentication();
@@ -84,13 +88,18 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
         toast({variant: 'destructive', title: 'Login Failed', description: error});
       }
     }
+    setIsPasskeyLoading(false);
   }, [loginWithPasskey, finishAuthentication, toast]);
 
   useEffect(() => {
-    if (isSupported !== null) {
-      setAuthStep(AuthStep.Login);
+    async function checkStatus() {
+        if (isSupported === null) return;
+        
+        await loadAuthenticators();
+        setAuthStep(AuthStep.Login);
     }
-  }, [isSupported]);
+    checkStatus();
+  }, [isSupported, loadAuthenticators]);
 
 
   const handlePasswordSubmit = async (data: PasswordFormData) => {
@@ -156,7 +165,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               className="w-auto h-8"
             />
           </div>
-          {isPasskeyHookLoading ? (
+          {isPasskeyLoading ? (
             <>
               <Fingerprint className="mx-auto h-12 w-12 text-primary animate-pulse" />
               <CardTitle className="!mt-4">Verifying...</CardTitle>
@@ -201,7 +210,7 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
               <div className="flex flex-col gap-2">
                 <Button
                   type="submit"
-                  disabled={isSubmittingPassword || isPasskeyHookLoading}
+                  disabled={isSubmittingPassword || isPasskeyLoading}
                   className="w-full"
                 >
                   {(isSubmittingPassword) && (
@@ -214,9 +223,9 @@ export function SiteProtection({children}: {children: React.ReactNode}) {
                     type="button"
                     variant="secondary"
                     onClick={handlePasskeyLogin}
-                    disabled={isPasskeyHookLoading || isSubmittingPassword}
+                    disabled={isPasskeyLoading || isSubmittingPassword}
                   >
-                    {isPasskeyHookLoading ? (
+                    {isPasskeyLoading ? (
                       <Loader2 className="mr-2 animate-spin" />
                     ) : (
                       <Fingerprint className="mr-2" />

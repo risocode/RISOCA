@@ -999,7 +999,7 @@ export async function getRegistrationOptions(userId: string, userName: string) {
 export async function verifyNewRegistration(
   response: RegistrationResponseJSON,
   expectedChallenge: string
-): Promise<{verified: boolean; newAuthenticator?: Authenticator}> {
+): Promise<{verified: boolean; newAuthenticator?: Omit<Authenticator, 'createdAt'>}> {
   try {
     const verification = await verifyRegistrationResponse({
       response,
@@ -1018,7 +1018,7 @@ export async function verifyNewRegistration(
         credentialBackedUp,
       } = verification.registrationInfo;
 
-      const newAuthenticator: Authenticator = {
+      const newAuthenticator = {
         credentialID: Buffer.from(credentialID).toString('base64'),
         credentialPublicKey: Buffer.from(credentialPublicKey).toString(
           'base64'
@@ -1083,4 +1083,48 @@ export async function verifyAuthentication(
     return {verified: false};
   }
   return {verified: false};
+}
+
+export async function getAuthenticators(): Promise<Authenticator[]> {
+  const authenticatorsQuery = query(collection(db, 'authenticators'));
+  const querySnapshot = await getDocs(authenticatorsQuery);
+  return querySnapshot.docs.map(
+    (doc) => ({id: doc.id, ...doc.data()}) as Authenticator
+  );
+}
+
+export async function saveAuthenticator(
+  authenticator: Omit<Authenticator, 'createdAt' | 'id'>
+): Promise<{success: boolean; message?: string}> {
+  try {
+    const docRef = doc(db, 'authenticators', authenticator.credentialID);
+    await setDoc(docRef, {
+      ...authenticator,
+      createdAt: serverTimestamp(),
+    });
+    return {success: true};
+  } catch (error) {
+    console.error('Error saving authenticator:', error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'An unknown error occurred.',
+    };
+  }
+}
+
+export async function removeAuthenticator(
+  credentialID: string
+): Promise<{success: boolean; message?: string}> {
+  try {
+    await deleteDoc(doc(db, 'authenticators', credentialID));
+    return {success: true};
+  } catch (error) {
+    console.error('Error removing authenticator:', error);
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'An unknown error occurred.',
+    };
+  }
 }

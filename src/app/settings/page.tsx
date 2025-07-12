@@ -69,13 +69,21 @@ export default function SettingsPage() {
     setIsAlertOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (credentialIDToDelete) {
-      removePasskey(credentialIDToDelete);
-      toast({
-        variant: 'destructive',
-        title: 'Device Removed',
-      });
+      const response = await removePasskey(credentialIDToDelete);
+      if (response.success) {
+        toast({
+          variant: 'destructive',
+          title: 'Device Removed',
+        });
+      } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error Removing Device',
+            description: response.message,
+        })
+      }
     }
     setCredentialIDToDelete(null);
     setIsAlertOpen(false);
@@ -107,7 +115,12 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isSupported && (
+            {isSupported === null ? (
+               <div className="flex items-center gap-2 text-muted-foreground">
+                   <Loader2 className="animate-spin" />
+                   <span>Checking for Passkey support...</span>
+               </div>
+            ) : isSupported === true ? (
               <>
                 <Button
                   onClick={handleRegister}
@@ -164,6 +177,8 @@ export default function SettingsPage() {
                   )}
                 </div>
               </>
+            ) : (
+                <p className="text-sm text-destructive">This browser does not support Passkeys.</p>
             )}
           </CardContent>
         </Card>
