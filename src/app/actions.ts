@@ -1,6 +1,22 @@
 
 'use server';
 
+import type {
+  VerifiedRegistrationResponse,
+  VerifiedAuthenticationResponse,
+} from '@simplewebauthn/server';
+import {
+  generateRegistrationOptions as generateRegistrationOptionsSWA,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions as generateAuthenticationOptionsSWA,
+  verifyAuthenticationResponse,
+} from '@simplewebauthn/server';
+import type {
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  AuthenticatorDevice,
+} from '@simplewebauthn/server/script/deps';
+
 import {
   diagnoseReceipt,
   type DiagnoseReceiptInput,
@@ -38,6 +54,124 @@ import {v4 as uuidv4} from 'uuid';
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHANNEL_ID = process.env.TELEGRAM_CHANNEL_ID;
+
+const rpID = process.env.RP_ID!;
+const rpOrigin = process.env.RP_ORIGIN!;
+
+// --- Passkey Actions ---
+
+export async function getAuthenticators() {
+  const q = query(collection(db, 'authenticators'));
+  const querySnapshot = await getDocs(q);
+  const authenticators: AuthenticatorDevice[] = [];
+  querySnapshot.forEach((doc) => {
+    authenticators.push(doc.data() as AuthenticatorDevice);
+  });
+  return authenticators;
+}
+
+export async function saveAuthenticator(authenticator: AuthenticatorDevice) {
+  await addDoc(collection(db, 'authenticators'), authenticator);
+}
+
+export async function generateRegistrationOptions() {
+  const authenticators = await getAuthenticators();
+  const options = await generateRegistrationOptionsSWA({
+    rpName: 'RiSoCa',
+    rpID,
+    userName: 'risoca_user',
+    attestationType: 'none',
+    excludeCredentials: authenticators.map((auth) => ({
+      id: auth.credentialID,
+      type: 'public-key',
+      transports: auth.transports,
+    })),
+    authenticatorSelection: {
+      residentKey: 'required',
+      userVerification: 'preferred',
+    },
+  });
+  return options;
+}
+
+export async function verifyNewRegistration(
+  registrationResponse: RegistrationResponseJSON,
+  challenge: string
+) {
+  let verification: VerifiedRegistrationResponse;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: registrationResponse,
+      expectedChallenge: challenge,
+      expectedOrigin: rpOrigin,
+      expectedRPID: rpID,
+      requireUserVerification: true,
+    });
+  } catch (error) {
+    console.error('Verification failed:', error);
+    return {verified: false, error: (error as Error).message};
+  }
+
+  const {verified, registrationInfo} = verification;
+  if (verified && registrationInfo) {
+    const {credentialPublicKey, credentialID, counter} = registrationInfo;
+    const newAuthenticator: AuthenticatorDevice = {
+      credentialID,
+      credentialPublicKey,
+      counter,
+      transports: registrationResponse.response.transports,
+    };
+    await saveAuthenticator(newAuthenticator);
+  }
+
+  return {verified};
+}
+
+export async function generateAuthenticationOptions() {
+  const authenticators = await getAuthenticators();
+  const options = await generateAuthenticationOptionsSWA({
+    rpID,
+    allowCredentials: authenticators.map((auth) => ({
+      id: auth.credentialID,
+      type: 'public-key',
+      transports: auth.transports,
+    })),
+    userVerification: 'preferred',
+  });
+  return options;
+}
+
+export async function verifyAuthentication(
+  authenticationResponse: AuthenticationResponseJSON,
+  challenge: string
+) {
+  const authenticators = await getAuthenticators();
+  const bodyCredID = authenticationResponse.id;
+  const authenticator = authenticators.find(
+    (auth) => auth.credentialID.toString() === bodyCredID
+  );
+
+  if (!authenticator) {
+    return {verified: false, error: 'Authenticator not found'};
+  }
+
+  let verification: VerifiedAuthenticationResponse;
+  try {
+    verification = await verifyAuthenticationResponse({
+      response: authenticationResponse,
+      expectedChallenge: challenge,
+      expectedOrigin: rpOrigin,
+      expectedRPID: rpID,
+      authenticator,
+      requireUserVerification: true,
+    });
+  } catch (error) {
+    console.error('Authentication verification failed:', error);
+    return {verified: false, error: (error as Error).message};
+  }
+
+  return {verified: verification.verified};
+}
 
 
 type NotificationStatus = {
