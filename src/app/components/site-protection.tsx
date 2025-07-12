@@ -6,7 +6,7 @@ import Image from 'next/image';
 import {useForm} from 'react-hook-form';
 import {zodResolver} from '@hookform/resolvers/zod';
 import {z} from 'zod';
-import {verifyPassword} from '@/app/actions';
+import {verifyPassword} from '@/app/actions/auth.actions';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {

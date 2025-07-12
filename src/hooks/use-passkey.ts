@@ -12,7 +12,7 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
   getAuthenticators,
-} from '@/app/actions';
+} from '@/app/actions/auth.actions';
 
 const CHALLENGE_KEY = 'risoca_passkey_challenge';
 
